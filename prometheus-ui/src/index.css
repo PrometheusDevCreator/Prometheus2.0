@@ -1,0 +1,66 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap');
+
+@theme {
+  --color-prometheus-dark: #0d0d0d;
+  --color-prometheus-panel: #1a1a1a;
+  --color-prometheus-input: #252525;
+  --color-accent-green: #22c55e;
+  --color-accent-orange: #f97316;
+  --color-accent-cyan: #06b6d4;
+}
+
+/* Prometheus font family - Candara/Calibri aesthetic */
+.font-prometheus {
+  font-family: Candara, Calibri, 'Segoe UI', sans-serif;
+}
+
+/* Cascadia Code style font for data values */
+.font-cascadia {
+  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0d0d0d;
+  color: #e0e0e0;
+  font-family: Candara, Calibri, 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #505050;
+}
+
+/* Focus styles for inputs */
+input:focus {
+  box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.3);
+}
+
+/* Selection styling */
+::selection {
+  background-color: rgba(217, 119, 6, 0.3);
+  color: #ffffff;
+}
