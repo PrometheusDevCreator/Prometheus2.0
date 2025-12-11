@@ -177,45 +177,25 @@ function Describe({ onNavigate, courseLoaded, setCourseLoaded }) {
       <div className="flex-1 relative" style={{ marginTop: `${LAYOUT.FORM_TOP_OFFSET}px` }}>
         
         {/* Left Side - Form Fields */}
-        <div 
+        <div
           className="absolute"
-          style={{ 
+          style={{
             right: `calc(50% - ${leftFormRightEdge}px)`,
             top: 0
           }}
         >
-          <div className="flex">
-            {/* Labels column - B4: Heights adjusted to match bordered input heights (39px + 2px border = 41px) */}
-            <div className="flex flex-col items-end pr-4" style={{ width: `${LAYOUT.LABEL_WIDTH}px` }}>
-              <label className={`${getLabelColor('title')} ${labelFontSize} font-prometheus h-[41px] flex items-center transition-colors`}>
+          {/* Row-based layout: each row is a flex container with label + input */}
+          <div className="flex flex-col" style={{ gap: `${LAYOUT.ROW_GAP}px` }}>
+
+            {/* Row 1: Title */}
+            <div className="flex items-center">
+              <label
+                className={`${getLabelColor('title')} ${labelFontSize} font-prometheus transition-colors text-right pr-4`}
+                style={{ width: `${LAYOUT.LABEL_WIDTH}px` }}
+              >
                 Title:
               </label>
-              <div style={{ height: `${LAYOUT.ROW_GAP}px` }} />
-              <label className={`${getLabelColor('level')} ${labelFontSize} font-prometheus h-[41px] flex items-center transition-colors`}>
-                Level:
-              </label>
-              <div style={{ height: `${LAYOUT.ROW_GAP}px` }} />
-              <label className={`${getLabelColor('thematic')} ${labelFontSize} font-prometheus h-[41px] flex items-center transition-colors`}>
-                Thematic:
-              </label>
-              <div style={{ height: `${LAYOUT.ROW_GAP}px` }} />
-              <label className={`${getLabelColor('duration')} ${labelFontSize} font-prometheus h-[41px] flex items-center transition-colors`}>
-                Duration:
-              </label>
-              <div style={{ height: `${LAYOUT.ROW_GAP}px` }} />
-              <label className={`${getLabelColor('developer')} ${labelFontSize} font-prometheus h-[41px] flex items-center transition-colors`}>
-                Developer:
-              </label>
-              <div style={{ height: `${LAYOUT.ROW_GAP + LAYOUT.DEVELOPER_SELECT_GAP}px` }} />
-              <label className={`${getLabelColor('selectedCourse')} ${labelFontSize} font-prometheus h-[41px] flex items-center transition-colors`}>
-                Select Course:
-              </label>
-            </div>
-            
-            {/* Inputs column */}
-            <div className="flex flex-col" style={{ width: `${LAYOUT.INPUT_WIDTH}px` }}>
-              {/* Title */}
-              <GradientBorder isActive={isFieldActive('title')}>
+              <GradientBorder isActive={isFieldActive('title')} className={`w-[${LAYOUT.INPUT_WIDTH}px]`}>
                 <input
                   type="text"
                   value={formData.title}
@@ -226,11 +206,19 @@ function Describe({ onNavigate, courseLoaded, setCourseLoaded }) {
                   onMouseEnter={() => setHoveredField('title')}
                   onMouseLeave={() => setHoveredField(null)}
                   className={`w-full h-[${LAYOUT.INPUT_HEIGHT}px] bg-[#0d0d0d] text-[#f2f2f2] text-[13px] px-4 rounded-[3px] focus:outline-none font-cascadia`}
+                  style={{ border: 'none', boxShadow: 'none', outline: 'none' }}
                 />
               </GradientBorder>
-              <div style={{ height: `${LAYOUT.ROW_GAP}px` }} />
-              
-              {/* Level + Senior Course Row (C2, C5) */}
+            </div>
+
+            {/* Row 2: Level + Senior Course */}
+            <div className="flex items-center">
+              <label
+                className={`${getLabelColor('level')} ${labelFontSize} font-prometheus transition-colors text-right pr-4`}
+                style={{ width: `${LAYOUT.LABEL_WIDTH}px` }}
+              >
+                Level:
+              </label>
               <div className="flex items-center gap-4">
                 <GradientBorder isActive={isFieldActive('level')} className="w-[190px]">
                   <select
@@ -242,6 +230,7 @@ function Describe({ onNavigate, courseLoaded, setCourseLoaded }) {
                     onMouseEnter={() => setHoveredField('level')}
                     onMouseLeave={() => setHoveredField(null)}
                     className={`w-full h-[${LAYOUT.INPUT_HEIGHT}px] bg-[#0d0d0d] text-[#f2f2f2] text-[13px] px-4 rounded-[3px] focus:outline-none font-cascadia cursor-pointer`}
+                    style={{ border: 'none', boxShadow: 'none', outline: 'none' }}
                   >
                     {levelOptions.map(opt => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -274,10 +263,17 @@ function Describe({ onNavigate, courseLoaded, setCourseLoaded }) {
                   </button>
                 </div>
               </div>
-              <div style={{ height: `${LAYOUT.ROW_GAP}px` }} />
-              
-              {/* Thematic */}
-              <GradientBorder isActive={isFieldActive('thematic')}>
+            </div>
+
+            {/* Row 3: Thematic */}
+            <div className="flex items-center">
+              <label
+                className={`${getLabelColor('thematic')} ${labelFontSize} font-prometheus transition-colors text-right pr-4`}
+                style={{ width: `${LAYOUT.LABEL_WIDTH}px` }}
+              >
+                Thematic:
+              </label>
+              <GradientBorder isActive={isFieldActive('thematic')} className={`w-[${LAYOUT.INPUT_WIDTH}px]`}>
                 <select
                   value={formData.thematic}
                   onChange={(e) => handleInputChange('thematic', e.target.value)}
@@ -287,16 +283,24 @@ function Describe({ onNavigate, courseLoaded, setCourseLoaded }) {
                   onMouseEnter={() => setHoveredField('thematic')}
                   onMouseLeave={() => setHoveredField(null)}
                   className={`w-full h-[${LAYOUT.INPUT_HEIGHT}px] bg-[#0d0d0d] text-[#f2f2f2] text-[13px] px-4 rounded-[3px] focus:outline-none font-cascadia cursor-pointer`}
+                  style={{ border: 'none', boxShadow: 'none', outline: 'none' }}
                 >
                   {thematicOptions.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
               </GradientBorder>
-              <div style={{ height: `${LAYOUT.ROW_GAP}px` }} />
-              
-              {/* Duration + Code Row (C2: Duration 190px, C3-C4: Code shifted left) */}
-              <div className="flex items-center gap-3">
+            </div>
+
+            {/* Row 4: Duration + Code */}
+            <div className="flex items-center">
+              <label
+                className={`${getLabelColor('duration')} ${labelFontSize} font-prometheus transition-colors text-right pr-4`}
+                style={{ width: `${LAYOUT.LABEL_WIDTH}px` }}
+              >
+                Duration:
+              </label>
+              <div className="flex items-center gap-3" style={{ width: `${LAYOUT.INPUT_WIDTH}px` }}>
                 <GradientBorder className="w-[190px]" isActive={isFieldActive('duration')}>
                   <input
                     type="text"
@@ -308,6 +312,7 @@ function Describe({ onNavigate, courseLoaded, setCourseLoaded }) {
                     onMouseEnter={() => setHoveredField('duration')}
                     onMouseLeave={() => setHoveredField(null)}
                     className={`w-full h-[${LAYOUT.INPUT_HEIGHT}px] bg-[#0d0d0d] text-[#f2f2f2] text-[13px] px-4 rounded-[3px] focus:outline-none font-cascadia`}
+                    style={{ border: 'none', boxShadow: 'none', outline: 'none' }}
                   />
                 </GradientBorder>
                 <label className={`${getLabelColor('code')} ${labelFontSize} font-prometheus transition-colors`}>
@@ -324,13 +329,21 @@ function Describe({ onNavigate, courseLoaded, setCourseLoaded }) {
                     onMouseEnter={() => setHoveredField('code')}
                     onMouseLeave={() => setHoveredField(null)}
                     className={`w-full h-[${LAYOUT.INPUT_HEIGHT}px] bg-[#0d0d0d] text-[#f2f2f2] text-[13px] px-4 rounded-[3px] focus:outline-none font-cascadia`}
+                    style={{ border: 'none', boxShadow: 'none', outline: 'none' }}
                   />
                 </GradientBorder>
               </div>
-              <div style={{ height: `${LAYOUT.ROW_GAP}px` }} />
-              
-              {/* Developer */}
-              <GradientBorder isActive={isFieldActive('developer')}>
+            </div>
+
+            {/* Row 5: Developer */}
+            <div className="flex items-center">
+              <label
+                className={`${getLabelColor('developer')} ${labelFontSize} font-prometheus transition-colors text-right pr-4`}
+                style={{ width: `${LAYOUT.LABEL_WIDTH}px` }}
+              >
+                Developer:
+              </label>
+              <GradientBorder isActive={isFieldActive('developer')} className={`w-[${LAYOUT.INPUT_WIDTH}px]`}>
                 <input
                   type="text"
                   value={formData.developer}
@@ -341,12 +354,23 @@ function Describe({ onNavigate, courseLoaded, setCourseLoaded }) {
                   onMouseEnter={() => setHoveredField('developer')}
                   onMouseLeave={() => setHoveredField(null)}
                   className={`w-full h-[${LAYOUT.INPUT_HEIGHT}px] bg-[#0d0d0d] text-[#f2f2f2] text-[13px] px-4 rounded-[3px] focus:outline-none font-cascadia`}
+                  style={{ border: 'none', boxShadow: 'none', outline: 'none' }}
                 />
               </GradientBorder>
-              <div style={{ height: `${LAYOUT.ROW_GAP + LAYOUT.DEVELOPER_SELECT_GAP}px` }} />
-              
-              {/* Select Course */}
-              <GradientBorder isActive={isFieldActive('selectedCourse')}>
+            </div>
+
+            {/* Extra gap before Select Course */}
+            <div style={{ height: `${LAYOUT.DEVELOPER_SELECT_GAP}px` }} />
+
+            {/* Row 6: Select Course */}
+            <div className="flex items-center">
+              <label
+                className={`${getLabelColor('selectedCourse')} ${labelFontSize} font-prometheus transition-colors text-right pr-4`}
+                style={{ width: `${LAYOUT.LABEL_WIDTH}px` }}
+              >
+                Select Course:
+              </label>
+              <GradientBorder isActive={isFieldActive('selectedCourse')} className={`w-[${LAYOUT.INPUT_WIDTH}px]`}>
                 <select
                   value={formData.selectedCourse}
                   onChange={(e) => handleInputChange('selectedCourse', e.target.value)}
@@ -356,6 +380,7 @@ function Describe({ onNavigate, courseLoaded, setCourseLoaded }) {
                   onMouseEnter={() => setHoveredField('selectedCourse')}
                   onMouseLeave={() => setHoveredField(null)}
                   className={`w-full h-[${LAYOUT.INPUT_HEIGHT}px] bg-[#0d0d0d] text-[#f2f2f2] text-[13px] px-4 rounded-[3px] focus:outline-none font-cascadia cursor-pointer`}
+                  style={{ border: 'none', boxShadow: 'none', outline: 'none' }}
                 >
                   <option value="">Select...</option>
                   <option value="course1">Course 1</option>
@@ -363,27 +388,27 @@ function Describe({ onNavigate, courseLoaded, setCourseLoaded }) {
                   <option value="course3">Course 3</option>
                 </select>
               </GradientBorder>
-              <div style={{ height: `${LAYOUT.ROW_GAP}px` }} />
-              
-              {/* Load Button - Right aligned (D7: grey default, orange+glow when active) */}
-              <div className="flex justify-end">
-                <button
-                  onClick={handleLoad}
-                  className={`h-[31px] px-10 rounded-full text-[13px] font-prometheus uppercase tracking-wider transition-all hover:brightness-110 ${
-                    isLoadActive ? 'text-white' : 'text-[#f2f2f2]'
-                  }`}
-                  style={{
-                    background: isLoadActive
-                      ? 'linear-gradient(to bottom, #D65700, #763000)'
-                      : '#767171',
-                    boxShadow: isLoadActive
-                      ? '0 0 10px 2px rgba(255, 102, 0, 0.4)'
-                      : 'none'
-                  }}
-                >
-                  Load
-                </button>
-              </div>
+            </div>
+
+            {/* Load Button - Right aligned (D7: grey default, orange+glow when active) */}
+            <div className="flex justify-end" style={{ marginLeft: `${LAYOUT.LABEL_WIDTH}px` }}>
+              <button
+                onClick={handleLoad}
+                className={`h-[31px] px-10 rounded-full text-[13px] font-prometheus uppercase tracking-wider transition-all hover:brightness-110 ${
+                  isLoadActive ? 'text-white' : 'text-[#f2f2f2]'
+                }`}
+                style={{
+                  background: isLoadActive
+                    ? 'linear-gradient(to bottom, #D65700, #763000)'
+                    : '#767171',
+                  boxShadow: isLoadActive
+                    ? '0 0 10px 2px rgba(255, 102, 0, 0.4)'
+                    : 'none',
+                  width: `${LAYOUT.INPUT_WIDTH}px`
+                }}
+              >
+                Load
+              </button>
             </div>
           </div>
         </div>
@@ -407,7 +432,7 @@ function Describe({ onNavigate, courseLoaded, setCourseLoaded }) {
               onMouseEnter={() => setHoveredField('description')}
               onMouseLeave={() => setHoveredField(null)}
               className={`w-full h-full bg-[#0d0d0d] text-[#f2f2f2] text-[13px] p-5 rounded-[3px] focus:outline-none font-cascadia resize-none`}
-              style={{ minHeight: `${LAYOUT.DESCRIPTION_MIN_HEIGHT}px` }}
+              style={{ minHeight: `${LAYOUT.DESCRIPTION_MIN_HEIGHT}px`, border: 'none', boxShadow: 'none', outline: 'none' }}
               placeholder="Enter course description..."
             />
           </GradientBorder>

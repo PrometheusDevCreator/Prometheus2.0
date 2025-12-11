@@ -188,13 +188,22 @@ function DebugGrid({ isVisible, scale = 1 }) {
         Grid: 95px (≈25mm) | Centerline: 0 | Left: -X | Right: +X
       </div>
 
-      {/* D6: Mouse coordinate display */}
+      {/* D6: Mouse coordinate display - Centerline, Y=40px */}
       <div
-        className="absolute bottom-2 left-1/2 transform -translate-x-1/2 px-3 py-1 rounded text-[11px] font-mono"
         style={{
-          backgroundColor: 'rgba(255, 102, 0, 0.2)',
-          color: 'rgba(255, 200, 100, 1)',
-          border: '1px solid rgba(255, 102, 0, 0.5)'
+          position: 'absolute',
+          top: '40px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          color: '#00FFFF',
+          padding: '4px 8px',
+          fontFamily: 'monospace',
+          fontSize: '12px',
+          borderRadius: '4px',
+          border: '1px solid rgba(0, 255, 255, 0.4)',
+          pointerEvents: 'none',
+          zIndex: 9999
         }}
       >
         Mouse: X: {mousePos.x >= 0 ? '+' : ''}{mousePos.x} | Y: {mousePos.y}
