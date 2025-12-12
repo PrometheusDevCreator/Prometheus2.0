@@ -4,7 +4,14 @@
       "Bash(dir:*)",
       "Bash(mkdir:*)",
       "Bash(npm run build:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nMerge remote-tracking branch ''origin/main'' - resolve conflicts\n\nResolved merge conflicts keeping local rectification changes:\n- App.jsx: ScaleToFit wrapper implementation with useScaleToFit() hook\n- Login.jsx: Larger button padding (16px 24px)\n- Define.jsx: Bloom''s verb validation, smaller title font\n- Navigate.jsx: Custom label positioning, 17px GENERATE label\n\nAdditional changes from merge:\n- Slider.jsx and StatusBar.jsx component updates\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git rebase:*)",
+      "Bash(git push)",
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nURGENT: Fix header layout to match specification\n\nHeader now follows exact specification from URGENT_HEADER_FIX.md:\n\n- Logo: 60px at (20px, 10px) - NO text beside it\n- Main title: 24px, centered, vertically aligned with logo center (Y=40)\n- Info cluster: Right-aligned, grey labels (#888), values \"---\" when empty\n- Horizontal line: Y=85, full width gradient\n- Page title: Centered at Y=92, 18px font\n\nChanges:\n- Header.jsx: Complete rewrite to match spec\n- Navigate.jsx: Uses shared Header, removed duplicate header elements\n- Define.jsx: Removed duplicate page title, uses shared Header\n- App.jsx: Passes pageTitle prop to Header, removed duplicate gradient line\n\nAll pages now use identical header structure (only page title changes).\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")"
     ]
   }
 }
