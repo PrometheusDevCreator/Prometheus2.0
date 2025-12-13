@@ -15,16 +15,13 @@
 
 import { useState, useCallback } from 'react'
 import { THEME, LEVEL_OPTIONS, SENIORITY_OPTIONS, DURATION_UNITS, DURATION_MAX, DELIVERY_OPTIONS } from '../constants/theme'
-import NavWheel from '../components/NavWheel'
 import Slider from '../components/Slider'
 import GradientBorder from '../components/GradientBorder'
-import StatusBar from '../components/StatusBar'
-import PKEInterface from '../components/PKEInterface'
+import Footer from '../components/Footer'
 import pkeButton from '../assets/PKE_Button.png'
 
-function Define({ onNavigate, courseData, setCourseData, courseLoaded }) {
+function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, courseState, onSaveCountIncrement }) {
   const [isPKEActive, setIsPKEActive] = useState(false)
-  const [wheelExpanded, setWheelExpanded] = useState(false)
   const [focusedField, setFocusedField] = useState(null)
   const [hoveredField, setHoveredField] = useState(null)
 
@@ -84,7 +81,6 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded }) {
 
   // Handle navigation
   const handleNavigate = useCallback((section) => {
-    setWheelExpanded(false)
     onNavigate?.(section)
   }, [onNavigate])
 
@@ -92,7 +88,8 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded }) {
   const handleSave = useCallback(() => {
     setCourseData?.(formData)
     setIsPKEActive(false)
-  }, [formData, setCourseData])
+    onSaveCountIncrement?.()
+  }, [formData, setCourseData, onSaveCountIncrement])
 
   // Bloom's Taxonomy verbs for validation
   const bloomsVerbs = [
@@ -169,8 +166,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded }) {
           display: 'grid',
           gridTemplateColumns: '1fr 1fr 1fr',
           gap: '40px',
-          padding: '0 60px',
-          paddingBottom: '120px', // Space for bottom controls
+          padding: '20px 60px 120px 60px', // 20px top padding to move content down
           overflow: 'auto'
         }}
       >
@@ -233,28 +229,26 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded }) {
           <div style={{ display: 'flex', gap: '12px' }}>
             <div style={{ flex: 1 }}>
               <label style={labelStyle(isFieldActive('module'))}>Module</label>
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <button
                   onClick={() => updateField('module', Math.max(1, formData.module - 1))}
-                  style={smallButtonStyle}
+                  style={moduleButtonStyle}
                   disabled={formData.module <= 1}
                 >
                   −
                 </button>
-                <GradientBorder isActive={isFieldActive('module')}>
-                  <input
-                    type="number"
-                    min="1"
-                    value={formData.module}
-                    onChange={(e) => updateField('module', parseInt(e.target.value) || 1)}
-                    onFocus={() => setFocusedField('module')}
-                    onBlur={() => setFocusedField(null)}
-                    style={{ ...inputStyle, width: '60px', textAlign: 'center' }}
-                  />
-                </GradientBorder>
+                <span style={{
+                  color: THEME.AMBER,
+                  fontFamily: THEME.FONT_MONO,
+                  fontSize: '18px',
+                  minWidth: '24px',
+                  textAlign: 'center'
+                }}>
+                  {formData.module}
+                </span>
                 <button
                   onClick={() => updateField('module', formData.module + 1)}
-                  style={smallButtonStyle}
+                  style={moduleButtonStyle}
                 >
                   +
                 </button>
@@ -278,60 +272,42 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded }) {
 
           {/* Duration */}
           <div>
-            <label style={labelStyle(isFieldActive('duration'))}>Duration</label>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <div style={{ flex: 1 }}>
-                <Slider
-                  continuous
-                  value={formData.duration}
-                  min={0}
-                  max={DURATION_MAX[formData.durationUnit]}
-                  onChange={(val) => updateField('duration', val)}
-                  showBubble={false}
-                  width={180}
-                />
-              </div>
+            <label style={{ ...labelStyle(isFieldActive('duration')), marginBottom: '4px' }}>Duration</label>
+            <div style={{ display: 'flex', flexDirection: 'column', width: '320px' }}>
+              <Slider
+                continuous
+                value={formData.duration}
+                min={0}
+                max={DURATION_MAX[formData.durationUnit]}
+                onChange={(val) => updateField('duration', val)}
+                showBubble={false}
+                width={320}
+              />
               <div
                 style={{
-                  padding: '6px 12px',
-                  background: THEME.BG_INPUT,
-                  border: `1px solid ${THEME.BORDER}`,
-                  borderRadius: '3px',
-                  minWidth: '50px',
-                  textAlign: 'center'
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  marginTop: '4px'
                 }}
               >
-                <span style={{ color: THEME.AMBER, fontFamily: THEME.FONT_MONO, fontSize: '18px' }}>
+                <span style={{ color: '#d0d0d0', fontFamily: THEME.FONT_MONO, fontSize: '17px' }}>
                   {formData.duration}
                 </span>
               </div>
-              <GradientBorder isActive={isFieldActive('durationUnit')}>
-                <select
-                  value={formData.durationUnit}
-                  onChange={(e) => {
-                    updateField('durationUnit', e.target.value)
-                    updateField('duration', 0) // Reset on unit change
-                  }}
-                  onFocus={() => setFocusedField('durationUnit')}
-                  onBlur={() => setFocusedField(null)}
-                  style={{ ...inputStyle, width: '80px', cursor: 'pointer' }}
-                >
-                  {DURATION_UNITS.map(unit => (
-                    <option key={unit} value={unit}>{unit}</option>
-                  ))}
-                </select>
-              </GradientBorder>
             </div>
           </div>
 
           {/* Level */}
-          <div>
+          <div style={{ marginTop: '10px' }}>
             <label style={labelStyle(isFieldActive('level'))}>Level</label>
             <Slider
               options={LEVEL_OPTIONS}
               value={formData.level}
               onChange={(val) => updateField('level', val)}
               width={320}
+              hideStepLabels
+              alignBubble="right"
+              bubbleTransparent
             />
           </div>
 
@@ -344,6 +320,9 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded }) {
               onChange={(val) => updateField('seniority', val)}
               width={320}
               highlightLast
+              hideStepLabels
+              alignBubble="right"
+              bubbleTransparent
             />
           </div>
         </div>
@@ -550,78 +529,36 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded }) {
         </div>
       </div>
 
-      {/* Bottom Controls */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0
+      {/* Shared Footer Component */}
+      <Footer
+        currentSection="define"
+        onNavigate={handleNavigate}
+        isPKEActive={isPKEActive}
+        onPKEToggle={setIsPKEActive}
+        onSave={handleSave}
+        onClear={() => {
+          setFormData({
+            title: '',
+            thematic: '',
+            module: 1,
+            code: '',
+            duration: 0,
+            durationUnit: 'DAYS',
+            level: 'FOUNDATIONAL',
+            seniority: 'JUNIOR',
+            description: '',
+            deliveryModes: [],
+            qualification: false,
+            accredited: false,
+            certified: false,
+            learningObjectives: ['']
+          })
         }}
-      >
-        {/* Control Row */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'space-between',
-            padding: '0 40px 20px 130px', // Left padding for NavWheel
-            marginBottom: '15px'
-          }}
-        >
-          {/* Analytics Button Placeholder */}
-          <button
-            style={{
-              padding: '15px 30px',
-              fontSize: '15px',
-              letterSpacing: '3px',
-              fontFamily: THEME.FONT_PRIMARY,
-              background: 'transparent',
-              border: `1px solid ${THEME.BORDER}`,
-              borderRadius: '3px',
-              color: THEME.TEXT_DIM,
-              cursor: 'not-allowed'
-            }}
-          >
-            ANALYTICS
-          </button>
-
-          {/* Center: < + > and PKE */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <button style={navButtonStyle}>&lt;</button>
-              <span style={{ color: THEME.TEXT_DIM, fontSize: '18px' }}>+</span>
-              <button style={navButtonStyle}>&gt;</button>
-            </div>
-            <PKEInterface isActive={isPKEActive} onClose={() => setIsPKEActive(false)} />
-          </div>
-
-          {/* Right: Action buttons */}
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button style={actionButtonStyle}>DELETE</button>
-            <button style={actionButtonStyle}>CLEAR</button>
-            <button style={{ ...actionButtonStyle, ...primaryButtonStyle }} onClick={handleSave}>
-              SAVE
-            </button>
-          </div>
-        </div>
-
-        {/* Bottom Line */}
-        <div style={{ width: '100%', height: '1px', background: THEME.GRADIENT_LINE_BOTTOM }} />
-
-        {/* Status Bar */}
-        <StatusBar courseLoaded={courseLoaded} />
-      </div>
-
-      {/* Mini NavWheel */}
-      <div style={{ position: 'absolute', bottom: '100px', left: '30px' }}>
-        <NavWheel
-          currentSection="define"
-          onNavigate={handleNavigate}
-          isExpanded={wheelExpanded}
-          onToggle={() => setWheelExpanded(!wheelExpanded)}
-        />
-      </div>
+        onDelete={() => {}}
+        user={user || { name: '---' }}
+        courseState={courseState || { startDate: null, saveCount: 0 }}
+        progress={15}
+      />
     </div>
   )
 }
@@ -664,33 +601,14 @@ const smallButtonStyle = {
   transition: 'background 0.2s ease'
 }
 
-const navButtonStyle = {
+const moduleButtonStyle = {
   background: 'transparent',
   border: 'none',
-  color: THEME.TEXT_DIM,
-  fontSize: '27px',
-  cursor: 'pointer',
-  padding: '6px 12px',
-  transition: 'color 0.2s ease'
-}
-
-const actionButtonStyle = {
-  padding: '14px 36px',
-  fontSize: '15px',
-  letterSpacing: '3px',
-  fontFamily: THEME.FONT_PRIMARY,
-  background: 'transparent',
-  border: `1px solid ${THEME.BORDER}`,
-  borderRadius: '20px',
   color: THEME.TEXT_SECONDARY,
+  fontSize: '21px',
   cursor: 'pointer',
-  transition: 'all 0.2s ease'
-}
-
-const primaryButtonStyle = {
-  background: THEME.GRADIENT_BUTTON,
-  border: `1px solid ${THEME.AMBER}`,
-  color: THEME.WHITE
+  padding: '4px 8px',
+  transition: 'color 0.2s ease'
 }
 
 export default Define

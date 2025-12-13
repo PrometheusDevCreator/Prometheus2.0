@@ -10,11 +10,14 @@
  * Clicking a section navigates to that page.
  */
 
-import React, { useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
 import { THEME } from '../constants/theme'
 import Header from '../components/Header'
+import Footer from '../components/Footer'
 
-function Navigate({ onNavigate, courseData = {} }) {
+function Navigate({ onNavigate, courseData = {}, user, courseState }) {
+  const [isPKEActive, setIsPKEActive] = useState(false)
+
   // Handle navigation from wheel
   const handleWheelNavigate = useCallback((sectionId) => {
     onNavigate?.(sectionId)
@@ -32,120 +35,43 @@ function Navigate({ onNavigate, courseData = {} }) {
       }}
     >
       {/* Shared Header Component */}
-      <Header pageTitle="NAVIGATE" courseData={courseData} />
+      <Header pageTitle="NAVIGATION" courseData={courseData} />
 
-      {/* Main Content - NavWheel Centered */}
+      {/* Spacer to maintain layout */}
+      <div style={{ flex: 1 }} />
+
+      {/* NavWheel - Absolutely positioned at Y:200, X:-290 */}
       <div
+        className="fade-in-scale"
         style={{
-          flex: 1,
+          position: 'absolute',
+          top: '200px', // Y: 200
+          left: 'calc(50% - 300px)', // X: -300 (moved left 10px from -290)
+          transform: 'translate(-50%, -50%)', // Center the wheel on this point
+          width: '600px',
+          height: '600px',
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          position: 'relative'
+          zIndex: 10
         }}
       >
-        {/* NavWheel - Always expanded on this page */}
-        <div
-          className="fade-in-scale"
-          style={{
-            position: 'relative',
-            width: '600px',
-            height: '600px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          <NavigateWheel onNavigate={handleWheelNavigate} />
-        </div>
-
-        {/* Module Navigation Controls */}
-        <div
-          style={{
-            marginTop: '40px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '20px'
-          }}
-        >
-          <button
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: THEME.TEXT_DIM,
-              fontSize: '30px',
-              cursor: 'pointer',
-              padding: '8px 12px',
-              transition: 'color 0.2s ease'
-            }}
-            onMouseEnter={(e) => e.target.style.color = THEME.AMBER}
-            onMouseLeave={(e) => e.target.style.color = THEME.TEXT_DIM}
-          >
-            &lt;
-          </button>
-          <span
-            style={{
-              fontSize: '21px',
-              color: THEME.TEXT_DIM,
-              fontFamily: THEME.FONT_MONO
-            }}
-          >
-            +
-          </span>
-          <button
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: THEME.TEXT_DIM,
-              fontSize: '30px',
-              cursor: 'pointer',
-              padding: '8px 12px',
-              transition: 'color 0.2s ease'
-            }}
-            onMouseEnter={(e) => e.target.style.color = THEME.AMBER}
-            onMouseLeave={(e) => e.target.style.color = THEME.TEXT_DIM}
-          >
-            &gt;
-          </button>
-        </div>
+        <NavigateWheel onNavigate={handleWheelNavigate} />
       </div>
 
-      {/* Bottom gradient line */}
-      <div
-        style={{
-          width: '100%',
-          height: '1px',
-          background: THEME.GRADIENT_LINE_BOTTOM,
-          marginBottom: '25px'
-        }}
+      {/* Shared Footer Component */}
+      <Footer
+        currentSection="navigate"
+        onNavigate={handleWheelNavigate}
+        isPKEActive={isPKEActive}
+        onPKEToggle={setIsPKEActive}
+        onSave={() => {}}
+        onClear={() => {}}
+        onDelete={() => {}}
+        user={user || { name: '---' }}
+        courseState={courseState || { startDate: null, saveCount: 0 }}
+        progress={15}
       />
-
-      {/* Status Bar */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '12px 40px',
-          fontSize: '14px'
-        }}
-      >
-        <div style={{ display: 'flex', gap: '30px' }}>
-          <span style={{ fontFamily: THEME.FONT_MONO }}>
-            <span style={{ color: THEME.WHITE, letterSpacing: '3px' }}>OWNER</span>
-            <span style={{ color: THEME.GREEN_BRIGHT, marginLeft: '10px' }}>MATTHEW DODDS</span>
-          </span>
-          <span style={{ fontFamily: THEME.FONT_MONO }}>
-            <span style={{ color: THEME.WHITE, letterSpacing: '3px' }}>STATUS</span>
-            <span style={{ color: THEME.AMBER, marginLeft: '10px' }}>READY</span>
-          </span>
-        </div>
-
-        <div style={{ fontFamily: THEME.FONT_MONO, color: THEME.WHITE, letterSpacing: '3px' }}>
-          CLICK SECTION TO NAVIGATE
-        </div>
-      </div>
     </div>
   )
 }
@@ -170,13 +96,13 @@ function NavigateWheel({ onNavigate }) {
   // Inner dashed circle radius - increased by 40%: 210 → 294
   const innerCircleRadius = 294
 
-  // Fixed label positions
+  // Fixed label positions (adjusted per spec)
   const getLabelPosition = (sectionId) => {
     switch(sectionId) {
-      case 'define': return { x: 0, y: -180 }
-      case 'build': return { x: 0, y: 180 }
-      case 'design': return { x: 200, y: 0 }
-      case 'format': return { x: -200, y: 0 }
+      case 'define': return { x: 0, y: -190 }    // UP 10px
+      case 'build': return { x: 0, y: 190 }      // DOWN 10px
+      case 'design': return { x: 210, y: 0 }     // RIGHT 10px
+      case 'format': return { x: -210, y: 0 }    // LEFT 10px
       default: return { x: 0, y: 0 }
     }
   }

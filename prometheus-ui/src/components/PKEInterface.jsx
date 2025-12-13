@@ -46,12 +46,12 @@ function PKEInterface({ isActive = false, onClose }) {
         }}
       >
         {isActive ? (
-          <span className="text-[#BF9000] text-[14px] font-prometheus tracking-wide text-center px-4">
-            PKE Activated. Functionality coming soon.
+          <span className="text-[#BF9000] text-[15px] font-prometheus tracking-wide text-center px-4">
+            PKE ACTIVATED. FUNCTIONALITY COMING SOON.
           </span>
         ) : (
-          <span className="text-[#767171] text-[14px] font-prometheus tracking-wide">
-            PKE Interface
+          <span className="text-[#767171] text-[15px] font-prometheus tracking-wide">
+            PKE INTERFACE
           </span>
         )}
       </div>

@@ -125,6 +125,28 @@ function App() {
   })
   const [courseLoaded, setCourseLoaded] = useState(false)
 
+  // Course state for Footer (save tracking)
+  const [courseState, setCourseState] = useState({
+    startDate: null,
+    saveCount: 0
+  })
+
+  // Handle save count increment (updates status in Footer)
+  const handleSaveCountIncrement = useCallback(() => {
+    setCourseState(prev => {
+      const newState = { ...prev, saveCount: prev.saveCount + 1 }
+      // Set start date on first save
+      if (prev.saveCount === 0) {
+        const now = new Date()
+        const d = now.getDate().toString().padStart(2, '0')
+        const m = (now.getMonth() + 1).toString().padStart(2, '0')
+        const y = now.getFullYear().toString().slice(-2)
+        newState.startDate = `${d}/${m}/${y}`
+      }
+      return newState
+    })
+  }, [])
+
   // Handle login
   const handleLogin = useCallback((userData) => {
     setCurrentUser(userData)
@@ -249,12 +271,17 @@ function App() {
           <Navigate
             onNavigate={handleNavigate}
             courseData={courseData}
+            user={currentUser ? { name: currentUser.name || currentUser.username || 'User' } : { name: '---' }}
+            courseState={courseState}
           />
         </div>
         <DebugGrid isVisible={showDebugGrid} scale={scale} />
       </div>
     )
   }
+
+  // User data for Footer
+  const userData = currentUser ? { name: currentUser.name || currentUser.username || 'User' } : { name: '---' }
 
   // Render main application pages with header
   const renderPage = () => {
@@ -266,6 +293,9 @@ function App() {
             courseData={courseData}
             setCourseData={setCourseData}
             courseLoaded={courseLoaded}
+            user={userData}
+            courseState={courseState}
+            onSaveCountIncrement={handleSaveCountIncrement}
           />
         )
       case 'design':
@@ -276,6 +306,8 @@ function App() {
               onNavigate={handleNavigate}
               courseData={courseData}
               courseLoaded={courseLoaded}
+              user={userData}
+              courseState={courseState}
             />
           )
         } else {
@@ -284,6 +316,8 @@ function App() {
               onNavigate={handleNavigate}
               courseData={courseData}
               courseLoaded={courseLoaded}
+              user={userData}
+              courseState={courseState}
             />
           )
         }
@@ -292,6 +326,8 @@ function App() {
           <Build
             onNavigate={handleNavigate}
             courseLoaded={courseLoaded}
+            user={userData}
+            courseState={courseState}
           />
         )
       case 'format':
@@ -299,6 +335,8 @@ function App() {
           <Format
             onNavigate={handleNavigate}
             courseLoaded={courseLoaded}
+            user={userData}
+            courseState={courseState}
           />
         )
       case 'generate':
@@ -306,6 +344,8 @@ function App() {
           <Generate
             onNavigate={handleNavigate}
             courseLoaded={courseLoaded}
+            user={userData}
+            courseState={courseState}
           />
         )
       default:
@@ -313,6 +353,8 @@ function App() {
           <Navigate
             onNavigate={handleNavigate}
             courseData={courseData}
+            user={userData}
+            courseState={courseState}
           />
         )
     }
@@ -352,6 +394,7 @@ function App() {
             currentPage === 'build' ? 'BUILD' :
             currentPage === 'format' ? 'FORMAT' :
             currentPage === 'generate' ? 'GENERATE' :
+            currentPage === 'navigate' ? 'NAVIGATION' :
             currentPage.toUpperCase()
           }
           courseData={courseData}

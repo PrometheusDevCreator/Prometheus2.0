@@ -316,29 +316,6 @@ function NavWheel({
           </div>
         )}
 
-        {/* Mini label when collapsed */}
-        {!isExpanded && (
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '-20px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            <div
-              style={{
-                fontSize: '7px',
-                letterSpacing: '2px',
-                color: THEME.TEXT_DIM,
-                fontFamily: THEME.FONT_MONO
-              }}
-            >
-              NAVIGATE
-            </div>
-          </div>
-        )}
       </div>
     </>
   )

@@ -15,8 +15,11 @@ import logo from '../assets/burntorangelogo.png'
 import { THEME } from '../constants/theme'
 
 function Header({ pageTitle, courseData = {} }) {
-  // Determine if values should show (only when explicitly populated)
-  const hasValue = (val) => val && val !== '' && val !== '---'
+  // Default values that should display as '---' until user changes them
+  const defaultValues = ['FOUNDATIONAL', 'JUNIOR', 0, '']
+
+  // Determine if values should show (only when explicitly populated, not default)
+  const hasValue = (val) => val && val !== '' && val !== '---' && !defaultValues.includes(val)
 
   return (
     <header
@@ -28,14 +31,14 @@ function Header({ pageTitle, courseData = {} }) {
         flexShrink: 0
       }}
     >
-      {/* Logo - far left, NO text beside it */}
+      {/* Logo - moved right 20px, enlarged 10% (60px → 66px) */}
       <div
         style={{
           position: 'absolute',
-          left: '20px',
+          left: '50px',
           top: '10px',
-          width: '60px',
-          height: '60px'
+          width: '66px',
+          height: '66px'
         }}
       >
         <img
@@ -81,25 +84,25 @@ function Header({ pageTitle, courseData = {} }) {
       >
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', lineHeight: 1.4 }}>
           <span style={{ color: '#888' }}>Course:</span>
-          <span style={{ color: hasValue(courseData.title) ? THEME.AMBER : '#888', minWidth: '80px' }}>
+          <span style={{ color: '#00ff00', minWidth: '80px' }}>
             {hasValue(courseData.title) ? courseData.title : '---'}
           </span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', lineHeight: 1.4 }}>
           <span style={{ color: '#888' }}>Duration:</span>
-          <span style={{ color: hasValue(courseData.duration) ? THEME.AMBER : '#888', minWidth: '80px' }}>
+          <span style={{ color: '#00ff00', minWidth: '80px' }}>
             {hasValue(courseData.duration) ? `${courseData.duration} ${courseData.durationUnit || ''}`.trim() : '---'}
           </span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', lineHeight: 1.4 }}>
           <span style={{ color: '#888' }}>Level:</span>
-          <span style={{ color: hasValue(courseData.level) ? THEME.AMBER : '#888', minWidth: '80px' }}>
+          <span style={{ color: '#00ff00', minWidth: '80px' }}>
             {hasValue(courseData.level) ? courseData.level : '---'}
           </span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', lineHeight: 1.4 }}>
           <span style={{ color: '#888' }}>Thematic:</span>
-          <span style={{ color: hasValue(courseData.thematic) ? THEME.AMBER : '#888', minWidth: '80px' }}>
+          <span style={{ color: '#00ff00', minWidth: '80px' }}>
             {hasValue(courseData.thematic) ? courseData.thematic : '---'}
           </span>
         </div>
@@ -117,15 +120,15 @@ function Header({ pageTitle, courseData = {} }) {
         }}
       />
 
-      {/* Page Title - centered, Y=92 (7px below line) */}
+      {/* Page Title - centered, Y=102 (moved down 10px), font 21px (15% larger) */}
       <h2
         style={{
           position: 'absolute',
-          top: '92px',
+          top: '102px',
           left: '50%',
           transform: 'translateX(-50%)',
           fontFamily: THEME.FONT_PRIMARY,
-          fontSize: '18px',
+          fontSize: '21px',
           fontWeight: 500,
           color: '#f0f0f0',
           letterSpacing: '0.1em',

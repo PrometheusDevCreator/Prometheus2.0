@@ -13,22 +13,18 @@
 
 import { useState, useCallback } from 'react'
 import { THEME } from '../constants/theme'
-import NavWheel from '../components/NavWheel'
 import ScalarManager from '../components/ScalarManager'
 import ScalarViewer from '../components/ScalarViewer'
-import StatusBar from '../components/StatusBar'
-import PKEInterface from '../components/PKEInterface'
+import Footer from '../components/Footer'
 import pkeButton from '../assets/PKE_Button.png'
 
-function Scalar({ onNavigate, courseData, courseLoaded }) {
+function Scalar({ onNavigate, courseData, courseLoaded, user, courseState }) {
   const [activeTab, setActiveTab] = useState('manager') // 'manager' | 'viewer'
   const [selectedModule, setSelectedModule] = useState(1)
   const [isPKEActive, setIsPKEActive] = useState(false)
-  const [wheelExpanded, setWheelExpanded] = useState(false)
 
   // Handle navigation
   const handleNavigate = useCallback((section) => {
-    setWheelExpanded(false)
     onNavigate?.(section)
   }, [onNavigate])
 
@@ -197,78 +193,21 @@ function Scalar({ onNavigate, courseData, courseLoaded }) {
         )}
       </div>
 
-      {/* Bottom Controls */}
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'space-between',
-            padding: '0 40px 20px 130px',
-            marginBottom: '15px'
-          }}
-        >
-          <div /> {/* Spacer */}
-
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <button style={navButtonStyle}>&lt;</button>
-              <span style={{ color: THEME.TEXT_DIM, fontSize: '12px' }}>+</span>
-              <button style={navButtonStyle}>&gt;</button>
-            </div>
-            <PKEInterface isActive={isPKEActive} onClose={() => setIsPKEActive(false)} />
-          </div>
-
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button style={actionButtonStyle}>DELETE</button>
-            <button style={actionButtonStyle}>CLEAR</button>
-            <button style={{ ...actionButtonStyle, ...primaryButtonStyle }}>SAVE</button>
-          </div>
-        </div>
-
-        <div style={{ width: '100%', height: '1px', background: THEME.GRADIENT_LINE_BOTTOM }} />
-        <StatusBar courseLoaded={courseLoaded} />
-      </div>
-
-      {/* Mini NavWheel */}
-      <div style={{ position: 'absolute', bottom: '100px', left: '30px' }}>
-        <NavWheel
-          currentSection="design"
-          onNavigate={handleNavigate}
-          isExpanded={wheelExpanded}
-          onToggle={() => setWheelExpanded(!wheelExpanded)}
-        />
-      </div>
+      {/* Shared Footer Component */}
+      <Footer
+        currentSection="design"
+        onNavigate={handleNavigate}
+        isPKEActive={isPKEActive}
+        onPKEToggle={setIsPKEActive}
+        onSave={() => {}}
+        onClear={() => {}}
+        onDelete={() => {}}
+        user={user || { name: '---' }}
+        courseState={courseState || { startDate: null, saveCount: 0 }}
+        progress={15}
+      />
     </div>
   )
-}
-
-// Styles
-const navButtonStyle = {
-  background: 'transparent',
-  border: 'none',
-  color: THEME.TEXT_DIM,
-  fontSize: '18px',
-  cursor: 'pointer',
-  padding: '4px 8px'
-}
-
-const actionButtonStyle = {
-  padding: '10px 24px',
-  fontSize: '10px',
-  letterSpacing: '2px',
-  fontFamily: THEME.FONT_PRIMARY,
-  background: 'transparent',
-  border: `1px solid ${THEME.BORDER}`,
-  borderRadius: '20px',
-  color: THEME.TEXT_SECONDARY,
-  cursor: 'pointer'
-}
-
-const primaryButtonStyle = {
-  background: THEME.GRADIENT_BUTTON,
-  border: `1px solid ${THEME.AMBER}`,
-  color: THEME.WHITE
 }
 
 export default Scalar

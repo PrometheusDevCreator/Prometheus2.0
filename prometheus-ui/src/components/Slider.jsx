@@ -25,7 +25,10 @@ function Slider({
   label = '',             // Optional label text
   showBubble = true,      // Show value bubble
   width = 200,            // Slider width in pixels
-  highlightLast = false   // Highlight last option differently (e.g., "ALL" in seniority)
+  highlightLast = false,  // Highlight last option differently (e.g., "ALL" in seniority)
+  hideStepLabels = false, // Hide the text labels below slider steps
+  alignBubble = 'center', // Alignment of value bubble: 'left', 'center', 'right'
+  bubbleTransparent = false // Remove border and background from value bubble
 }) {
   const [isDragging, setIsDragging] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
@@ -229,22 +232,22 @@ function Slider({
         <div
           style={{
             display: 'flex',
-            justifyContent: 'center'
+            justifyContent: alignBubble === 'left' ? 'flex-start' : alignBubble === 'right' ? 'flex-end' : 'center'
           }}
         >
           <div
             style={{
-              padding: '4px 12px',
-              background: THEME.BG_INPUT,
-              border: `1px solid ${isActive ? THEME.AMBER : THEME.BORDER}`,
-              borderRadius: '4px',
-              fontSize: '10px',
+              padding: bubbleTransparent ? '4px 0' : '4px 12px',
+              background: bubbleTransparent ? 'transparent' : THEME.BG_INPUT,
+              border: bubbleTransparent ? 'none' : `1px solid ${isActive ? THEME.AMBER : THEME.BORDER}`,
+              borderRadius: bubbleTransparent ? '0' : '4px',
+              fontSize: bubbleTransparent ? '14px' : '10px',
               fontFamily: THEME.FONT_MONO,
               color: isActive ? THEME.AMBER : THEME.TEXT_PRIMARY,
               letterSpacing: '1px',
               transition: 'all 0.3s ease',
-              minWidth: '80px',
-              textAlign: 'center'
+              minWidth: bubbleTransparent ? 'auto' : '80px',
+              textAlign: alignBubble === 'right' ? 'right' : alignBubble === 'left' ? 'left' : 'center'
             }}
           >
             {continuous ? value : value}
@@ -253,7 +256,7 @@ function Slider({
       )}
 
       {/* Step labels (for discrete mode with few options) */}
-      {!continuous && options.length <= 5 && (
+      {!continuous && !hideStepLabels && options.length <= 5 && (
         <div
           style={{
             display: 'flex',
