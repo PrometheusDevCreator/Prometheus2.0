@@ -121,13 +121,14 @@ function Footer({
             gap: '40px' // Gap between NavWheel and ANALYTICS
           }}
         >
-          {/* Mini NavWheel - dropped down 25px, scaled 10% larger, faint white glow */}
+          {/* Mini NavWheel - dropped down 25px, scaled 10% larger when collapsed, faint white glow */}
+          {/* Note: transform only applied when collapsed to allow fixed positioning when expanded */}
           <div style={{
             position: 'relative',
             marginBottom: '-30px',
-            transform: 'scale(1.1)',
+            transform: wheelExpanded ? 'none' : 'scale(1.1)',
             transformOrigin: 'center bottom',
-            filter: 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.15))'
+            filter: wheelExpanded ? 'none' : 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.15))'
           }}>
             <NavWheel
               currentSection={currentSection}
