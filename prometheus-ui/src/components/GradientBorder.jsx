@@ -6,7 +6,7 @@
  *
  * A3 Fix: Gradient border with proper colors:
  * - 1px border thickness (flat, no bevel)
- * - Rounded corners (rounded-[4px])
+ * - Rounded corners (rounded-[20px]) — matches input border-radius
  * - Gradient: darkest #767171 at ends, lightest #FFFFFF at center
  *
  * B10: Supports isActive prop for burnt orange (#FF6600) highlight on hover/focus.
@@ -20,7 +20,7 @@ function GradientBorder({ children, className = '', isActive = false }) {
 
   return (
     <div
-      className={`p-[1px] rounded-[4px] ${className}`}
+      className={`p-[1px] rounded-[20px] ${className}`}
       style={{
         background: isActive ? activeColor : defaultGradient
       }}

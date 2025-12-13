@@ -109,8 +109,8 @@ export const THEME = {
 // ============================================
 // SLIDER CONFIGURATIONS
 // ============================================
-export const LEVEL_OPTIONS = ['AWARENESS', 'FOUNDATIONAL', 'INTERMEDIATE', 'ADVANCED', 'EXPERT']
-export const SENIORITY_OPTIONS = ['JUNIOR', 'MID MGMT', 'DIRECTOR', 'EXECUTIVE', 'ALL']
+export const LEVEL_OPTIONS = ['Awareness', 'Foundational', 'Intermediate', 'Advanced', 'Expert']
+export const SENIORITY_OPTIONS = ['Junior', 'Mid Mgmt', 'Director', 'Executive', 'All']
 export const DURATION_UNITS = ['HRS', 'DAYS', 'WKS']
 export const DURATION_MAX = { HRS: 40, DAYS: 45, WKS: 8 }
 

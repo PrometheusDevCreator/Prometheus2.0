@@ -118,7 +118,7 @@ function Slider({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '8px',
+        gap: '3px',
         width: `${width}px`
       }}
     >
@@ -241,10 +241,10 @@ function Slider({
               background: bubbleTransparent ? 'transparent' : THEME.BG_INPUT,
               border: bubbleTransparent ? 'none' : `1px solid ${isActive ? THEME.AMBER : THEME.BORDER}`,
               borderRadius: bubbleTransparent ? '0' : '4px',
-              fontSize: bubbleTransparent ? '14px' : '10px',
-              fontFamily: THEME.FONT_MONO,
-              color: isActive ? THEME.AMBER : THEME.TEXT_PRIMARY,
-              letterSpacing: '1px',
+              fontSize: bubbleTransparent ? '15px' : '10px',
+              fontFamily: bubbleTransparent ? THEME.FONT_PRIMARY : THEME.FONT_MONO,
+              color: bubbleTransparent ? THEME.TEXT_SECONDARY : (isActive ? THEME.AMBER : THEME.TEXT_PRIMARY),
+              letterSpacing: bubbleTransparent ? '0' : '1px',
               transition: 'all 0.3s ease',
               minWidth: bubbleTransparent ? 'auto' : '80px',
               textAlign: alignBubble === 'right' ? 'right' : alignBubble === 'left' ? 'left' : 'center'

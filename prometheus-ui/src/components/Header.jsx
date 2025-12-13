@@ -16,7 +16,7 @@ import { THEME } from '../constants/theme'
 
 function Header({ pageTitle, courseData = {} }) {
   // Default values that should display as '---' until user changes them
-  const defaultValues = ['FOUNDATIONAL', 'JUNIOR', 0, '']
+  const defaultValues = ['Foundational', 'Junior', 0, 1, '', 'Hours']
 
   // Determine if values should show (only when explicitly populated, not default)
   const hasValue = (val) => val && val !== '' && val !== '---' && !defaultValues.includes(val)
@@ -28,7 +28,9 @@ function Header({ pageTitle, courseData = {} }) {
         width: '100%',
         height: '120px',
         background: 'transparent',
-        flexShrink: 0
+        flexShrink: 0,
+        overflow: 'visible',
+        zIndex: 10
       }}
     >
       {/* Logo - moved right 20px, enlarged 10% (60px → 66px) */}

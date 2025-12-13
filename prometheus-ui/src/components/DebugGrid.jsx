@@ -208,6 +208,24 @@ function DebugGrid({ isVisible, scale = 1 }) {
       >
         Mouse: X: {mousePos.x >= 0 ? '+' : ''}{mousePos.x} | Y: {mousePos.y}
       </div>
+
+      {/* Center reference X marker - intersection of horizontal and vertical center */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          color: 'red',
+          fontSize: '24px',
+          fontWeight: '100',
+          fontFamily: 'monospace',
+          lineHeight: 1,
+          pointerEvents: 'none'
+        }}
+      >
+        ✕
+      </div>
     </div>
   )
 }
