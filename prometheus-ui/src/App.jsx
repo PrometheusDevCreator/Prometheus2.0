@@ -305,6 +305,7 @@ function App() {
             <OutlinePlanner
               onNavigate={handleNavigate}
               courseData={courseData}
+              setCourseData={setCourseData}
               courseLoaded={courseLoaded}
               user={userData}
               courseState={courseState}
@@ -413,7 +414,7 @@ function App() {
           {renderPage()}
         </div>
 
-        {/* Design Sub-navigation (only on design page) */}
+        {/* Design Sub-navigation (only on design page) - PLANNER removed, SCALAR only */}
         {currentPage === 'design' && (
           <div
             style={{
@@ -426,35 +427,16 @@ function App() {
             }}
           >
             <button
-              onClick={() => handleDesignSubnav('planner')}
-              style={{
-                padding: '12px 24px',
-                fontSize: '11px',
-                letterSpacing: '2px',
-                fontFamily: THEME.FONT_PRIMARY,
-                background: designSubpage === 'planner' ? 'rgba(212, 115, 12, 0.3)' : 'transparent',
-                border: `1px solid ${designSubpage === 'planner' ? THEME.AMBER : THEME.BORDER_GREY}`,
-                borderRadius: '4px',
-                color: designSubpage === 'planner' ? THEME.AMBER : THEME.TEXT_SECONDARY,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => { if (designSubpage !== 'planner') e.target.style.color = THEME.AMBER }}
-              onMouseLeave={(e) => { if (designSubpage !== 'planner') e.target.style.color = THEME.TEXT_SECONDARY }}
-            >
-              PLANNER
-            </button>
-            <button
               onClick={() => handleDesignSubnav('scalar')}
               style={{
-                padding: '12px 24px',
-                fontSize: '11px',
-                letterSpacing: '2px',
+                padding: '14px 36px',
+                fontSize: '15px',
+                letterSpacing: '3px',
                 fontFamily: THEME.FONT_PRIMARY,
-                background: designSubpage === 'scalar' ? 'rgba(212, 115, 12, 0.3)' : 'transparent',
-                border: `1px solid ${designSubpage === 'scalar' ? THEME.AMBER : THEME.BORDER_GREY}`,
-                borderRadius: '4px',
-                color: designSubpage === 'scalar' ? THEME.AMBER : THEME.TEXT_SECONDARY,
+                background: designSubpage === 'scalar' ? THEME.GRADIENT_BUTTON : 'transparent',
+                border: `1px solid ${designSubpage === 'scalar' ? THEME.AMBER : THEME.BORDER}`,
+                borderRadius: '20px',
+                color: designSubpage === 'scalar' ? THEME.WHITE : THEME.TEXT_SECONDARY,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease'
               }}

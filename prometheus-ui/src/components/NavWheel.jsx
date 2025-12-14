@@ -193,6 +193,14 @@ function NavWheel({
           const isActive = currentSection === section.id
           const isHovered = hoveredSection === section.id
 
+          // Position adjustments per user request
+          let offsetX = 0
+          let offsetY = 0
+          if (section.id === 'define') offsetY = -50 // UP 50px
+          if (section.id === 'design') offsetX = 70  // RIGHT 70px
+          if (section.id === 'build') offsetY = 50   // DOWN 50px
+          if (section.id === 'format') offsetX = -70 // LEFT 70px
+
           return (
             <div
               key={section.id}
@@ -201,8 +209,8 @@ function NavWheel({
               onMouseLeave={() => setHoveredSection(null)}
               style={{
                 position: 'absolute',
-                left: `calc(50% + ${pos.x}px)`,
-                top: `calc(50% + ${pos.y}px)`,
+                left: `calc(50% + ${pos.x + offsetX}px)`,
+                top: `calc(50% + ${pos.y + offsetY}px)`,
                 transform: 'translate(-50%, -50%)',
                 ...getSectionStyle(section),
                 fontSize: '12px',
@@ -278,12 +286,12 @@ function NavWheel({
           </div>
         )}
 
-        {/* Current section indicator (when expanded) */}
+        {/* Current section indicator (when expanded) - moved DOWN 100px, enlarged 30% */}
         {isExpanded && (
           <div
             style={{
               position: 'absolute',
-              bottom: '-45px',
+              bottom: '-145px',
               left: '50%',
               transform: 'translateX(-50%)',
               textAlign: 'center'
@@ -291,7 +299,7 @@ function NavWheel({
           >
             <div
               style={{
-                fontSize: '9px',
+                fontSize: '12px',
                 letterSpacing: '3px',
                 color: THEME.AMBER,
                 fontFamily: THEME.FONT_MONO,
@@ -305,7 +313,7 @@ function NavWheel({
             </div>
             <div
               style={{
-                fontSize: '7px',
+                fontSize: '9px',
                 letterSpacing: '2px',
                 color: THEME.TEXT_DIM,
                 fontFamily: THEME.FONT_MONO

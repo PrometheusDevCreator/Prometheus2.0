@@ -25,17 +25,29 @@ const SNAP_MINUTES = 5 // Snap to 5-minute increments
 const HOUR_WIDTH = 100 // Width of each hour column in pixels
 const DAY_HEIGHT = 50 // Height of each day row
 const DAY_LABEL_WIDTH = 60 // Width of day label column
-const TIMETABLE_TOTAL_WIDTH = 1140 // Fixed width: X:-570 to X:+570
+const TIMETABLE_TOTAL_WIDTH = 1300 // Fixed width: X:-650 to X:+650
 const NUM_DAYS_ALWAYS = 5 // Always show 5 day rows
 
-function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseState }) {
+function OutlinePlanner({ onNavigate, courseData, setCourseData, courseLoaded, user, courseState }) {
   const [isPKEActive, setIsPKEActive] = useState(false)
 
   // Module/Week navigation
   const [currentModule, setCurrentModule] = useState(1)
   const [currentWeek, setCurrentWeek] = useState(1)
   const [totalModules] = useState(1)
-  const [totalWeeks] = useState(1)
+
+  // Calculate total weeks based on course duration (5 days per week)
+  const totalWeeks = (() => {
+    const duration = courseData?.duration || 1
+    const unit = courseData?.durationUnit || ''
+    if (unit === 'Days' || unit === 'DAYS') {
+      return Math.ceil(duration / 5)
+    }
+    if (unit === 'Weeks' || unit === 'WKS') {
+      return duration
+    }
+    return 1
+  })()
 
   // Time range (in hours, 24h format)
   const [dayStartTime, setDayStartTime] = useState(8) // 0800
@@ -169,7 +181,7 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
   const handleBubbleMouseDown = (e, id, type, action) => {
     if (editingTitle) return
 
-    e.preventDefault()
+    // Don't prevent default - allow double-click to work
     e.stopPropagation()
 
     const item = type === 'lesson'
@@ -311,13 +323,18 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
     setSelectedType('break')
   }, [lessons, breaks, selectedId])
 
-  // Delete selected item
+  // Delete selected item (lessons and breaks)
   const handleDelete = useCallback((e) => {
     if (e.key === 'Delete' || e.key === 'Backspace') {
       if (editingTitle || topicEntryActive || subtopicEntryActive) return
       if (document.activeElement.tagName === 'INPUT') return
 
-      if (selectedType === 'break') {
+      if (selectedType === 'lesson' && lessons.length > 1) {
+        // Delete lesson (keep at least one)
+        const remainingLessons = lessons.filter(l => l.id !== selectedId)
+        setLessons(remainingLessons)
+        setSelectedId(remainingLessons[0]?.id || null)
+      } else if (selectedType === 'break') {
         setBreaks(prev => prev.filter(b => b.id !== selectedId))
         setSelectedId(lessons[0]?.id || null)
         setSelectedType('lesson')
@@ -347,10 +364,10 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
     }))
   }, [selectedId, selectedType])
 
-  // Update lesson title
+  // Update lesson title (preserve case as entered)
   const updateLessonTitle = useCallback((id, newTitle) => {
     setLessons(prev => prev.map(lesson =>
-      lesson.id === id ? { ...lesson, title: newTitle.toUpperCase() } : lesson
+      lesson.id === id ? { ...lesson, title: newTitle } : lesson
     ))
   }, [])
 
@@ -439,6 +456,65 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
   const handleNavigate = useCallback((section) => {
     onNavigate?.(section)
   }, [onNavigate])
+
+  // Navigate to previous lesson (left arrow)
+  const navigatePrevLesson = useCallback(() => {
+    if (selectedType !== 'lesson' || !selectedId) return
+    const sortedLessons = [...lessons].sort((a, b) => {
+      if (a.day !== b.day) return a.day - b.day
+      return a.startMinutes - b.startMinutes
+    })
+    const currentIndex = sortedLessons.findIndex(l => l.id === selectedId)
+    if (currentIndex > 0) {
+      setSelectedId(sortedLessons[currentIndex - 1].id)
+      setSelectedType('lesson')
+    }
+  }, [selectedId, selectedType, lessons])
+
+  // Navigate to next lesson (right arrow)
+  const navigateNextLesson = useCallback(() => {
+    if (selectedType !== 'lesson' || !selectedId) return
+    const sortedLessons = [...lessons].sort((a, b) => {
+      if (a.day !== b.day) return a.day - b.day
+      return a.startMinutes - b.startMinutes
+    })
+    const currentIndex = sortedLessons.findIndex(l => l.id === selectedId)
+    if (currentIndex < sortedLessons.length - 1) {
+      setSelectedId(sortedLessons[currentIndex + 1].id)
+      setSelectedType('lesson')
+    }
+  }, [selectedId, selectedType, lessons])
+
+  // Navigate to lesson on previous day (up arrow)
+  const navigateLessonUp = useCallback(() => {
+    if (!selectedLesson) return
+    const currentDay = selectedLesson.day
+    if (currentDay > 1) {
+      // Find a lesson on the previous day
+      const lessonsOnPrevDay = lessons.filter(l => l.day === currentDay - 1)
+      if (lessonsOnPrevDay.length > 0) {
+        // Select the first lesson on that day
+        const sorted = lessonsOnPrevDay.sort((a, b) => a.startMinutes - b.startMinutes)
+        setSelectedId(sorted[0].id)
+        setSelectedType('lesson')
+      }
+    }
+  }, [selectedLesson, lessons])
+
+  // Navigate to lesson on next day (down arrow)
+  const navigateLessonDown = useCallback(() => {
+    if (!selectedLesson) return
+    const currentDay = selectedLesson.day
+    if (currentDay < NUM_DAYS_ALWAYS) {
+      // Find a lesson on the next day
+      const lessonsOnNextDay = lessons.filter(l => l.day === currentDay + 1)
+      if (lessonsOnNextDay.length > 0) {
+        const sorted = lessonsOnNextDay.sort((a, b) => a.startMinutes - b.startMinutes)
+        setSelectedId(sorted[0].id)
+        setSelectedType('lesson')
+      }
+    }
+  }, [selectedLesson, lessons])
 
   // Calculate cumulative time
   const getCumulativeTime = () => {
@@ -672,8 +748,8 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
         />
       </div>
 
-      {/* Main Content Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '10px 20px', overflow: 'visible', minWidth: '1200px' }}>
+      {/* Main Content Area - removed horizontal padding to allow proper centering */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingTop: '10px', paddingBottom: '10px', overflow: 'visible', minWidth: '1200px' }}>
 
         {/* Module/Week Navigation - Centered and stacked */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', marginBottom: '12px' }}>
@@ -701,32 +777,40 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
             <button
               onClick={() => setCurrentWeek(w => Math.max(1, w - 1))}
               disabled={currentWeek <= 1}
-              style={navButtonStyle}
+              style={{
+                ...navButtonStyle,
+                color: currentWeek > 1 ? THEME.WHITE : THEME.TEXT_DIM,
+                opacity: currentWeek > 1 ? 1 : 0.5
+              }}
             >
               &lt;
             </button>
             <span style={{ color: THEME.TEXT_SECONDARY, fontSize: '15px', letterSpacing: '3px', fontFamily: THEME.FONT_PRIMARY }}>
-              WEEK {currentWeek}
+              WEEK {currentWeek}{totalWeeks > 1 ? `/${totalWeeks}` : ''}
             </span>
             <button
               onClick={() => setCurrentWeek(w => Math.min(totalWeeks, w + 1))}
               disabled={currentWeek >= totalWeeks}
-              style={navButtonStyle}
+              style={{
+                ...navButtonStyle,
+                color: currentWeek < totalWeeks ? THEME.WHITE : THEME.TEXT_DIM,
+                opacity: currentWeek < totalWeeks ? 1 : 0.5
+              }}
             >
               &gt;
             </button>
           </div>
         </div>
 
-        {/* Time Slider Row - aligned with timetable edges */}
+        {/* Time Slider Row - aligned with timetable edges (X:-650 to X:+650) */}
         <div style={{
           display: 'flex',
           justifyContent: 'center',
-          marginBottom: '8px',
-          position: 'relative'
+          marginBottom: '8px'
         }}>
           <div style={{
             width: `${TIMETABLE_TOTAL_WIDTH}px`,
+            flexShrink: 0,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between'
@@ -773,6 +857,28 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
               </button>
             </div>
 
+            {/* Center: Total Course Hours */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <span style={{
+                fontSize: '14px',
+                color: THEME.TEXT_DIM,
+                fontFamily: THEME.FONT_MONO
+              }}>
+                Total Course Hours:
+              </span>
+              <span style={{
+                fontSize: '14px',
+                color: '#00ff00',
+                fontFamily: THEME.FONT_MONO
+              }}>
+                {getCumulativeTime()}
+              </span>
+            </div>
+
             {/* Right side: End time slider */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ position: 'relative', width: '80px' }}>
@@ -790,35 +896,9 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
               </span>
             </div>
           </div>
-
-          {/* Total Course Hours - centered on vertical centerline */}
-          <div style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px'
-          }}>
-            <span style={{
-              fontSize: '14px',
-              color: THEME.TEXT_DIM,
-              fontFamily: THEME.FONT_MONO
-            }}>
-              Total Course Hours:
-            </span>
-            <span style={{
-              fontSize: '14px',
-              color: THEME.AMBER,
-              fontFamily: THEME.FONT_MONO
-            }}>
-              {getCumulativeTime()}
-            </span>
-          </div>
         </div>
 
-        {/* Timetable Grid - Centered, fixed width 950px */}
+        {/* Timetable Grid - Flex centered, X:-650 to X:+650 */}
         <div
           style={{
             display: 'flex',
@@ -830,10 +910,9 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
             ref={timetableRef}
             style={{
               width: `${TIMETABLE_TOTAL_WIDTH}px`,
-              minWidth: `${TIMETABLE_TOTAL_WIDTH}px`,
+              flexShrink: 0,
               background: 'transparent',
-              borderTop: `1px solid ${THEME.BORDER_GREY}`,
-              position: 'relative'
+              borderTop: `1px solid ${THEME.BORDER_GREY}`
             }}
           >
             {/* Hour Headers */}
@@ -880,7 +959,7 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
                     position: 'relative'
                   }}
                 >
-                  {/* Day Label */}
+                  {/* Day Label - white if within course duration, darker otherwise */}
                   <div
                     style={{
                       width: `${DAY_LABEL_WIDTH}px`,
@@ -889,7 +968,9 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
                       alignItems: 'center',
                       paddingLeft: '8px',
                       fontSize: '14px',
-                      color: THEME.TEXT_SECONDARY,
+                      color: (courseData?.durationUnit === 'Days' || courseData?.durationUnit === 'DAYS') && courseData?.duration >= day
+                        ? THEME.WHITE
+                        : THEME.TEXT_DIM,
                       fontFamily: THEME.FONT_PRIMARY,
                       borderRight: `1px solid ${THEME.BORDER_GREY}`
                     }}
@@ -934,7 +1015,7 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          padding: '0 8px',
+                          padding: '0 24px 0 8px',
                           cursor: dragState ? 'grabbing' : 'grab',
                           boxShadow: selectedId === lesson.id ? `0 0 12px rgba(212, 115, 12, 0.4)` : 'none',
                           zIndex: selectedId === lesson.id ? 10 : 1,
@@ -943,6 +1024,22 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
                         onMouseDown={(e) => handleBubbleMouseDown(e, lesson.id, 'lesson', 'move')}
                         onDoubleClick={() => setEditingTitle(lesson.id)}
                       >
+                        {/* Left resize handle */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: '12px',
+                            cursor: 'ew-resize',
+                            borderRadius: '16px 0 0 16px'
+                          }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation()
+                            handleBubbleMouseDown(e, lesson.id, 'lesson', 'resize-left')
+                          }}
+                        />
                         {editingTitle === lesson.id ? (
                           <input
                             autoFocus
@@ -953,7 +1050,7 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
                               border: 'none',
                               outline: 'none',
                               color: THEME.WHITE,
-                              fontSize: '14px',
+                              fontSize: '13px',
                               fontFamily: THEME.FONT_PRIMARY,
                               textAlign: 'center',
                               width: '100%'
@@ -973,7 +1070,7 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
                           />
                         ) : (
                           <span style={{
-                            fontSize: '14px',
+                            fontSize: '13px',
                             fontFamily: THEME.FONT_PRIMARY,
                             color: selectedId === lesson.id ? THEME.WHITE : THEME.TEXT_SECONDARY,
                             letterSpacing: '1px',
@@ -984,25 +1081,45 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
                             {lesson.title}
                           </span>
                         )}
+                        {/* + button inside bubble */}
                         {selectedId === lesson.id && (
                           <button
                             onClick={(e) => { e.stopPropagation(); addLesson() }}
                             style={{
                               position: 'absolute',
-                              right: '-12px',
-                              width: '20px',
-                              height: '20px',
+                              right: '14px',
+                              width: '18px',
+                              height: '18px',
                               borderRadius: '50%',
                               background: THEME.AMBER,
                               border: 'none',
                               color: THEME.WHITE,
-                              fontSize: '14px',
-                              cursor: 'pointer'
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
                             }}
                           >
                             +
                           </button>
                         )}
+                        {/* Right resize handle */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            right: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: '12px',
+                            cursor: 'ew-resize',
+                            borderRadius: '0 16px 16px 0'
+                          }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation()
+                            handleBubbleMouseDown(e, lesson.id, 'lesson', 'resize-right')
+                          }}
+                        />
                       </div>
                     ))}
 
@@ -1030,7 +1147,39 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
                         }}
                         onMouseDown={(e) => handleBubbleMouseDown(e, brk.id, 'break', 'move')}
                       >
+                        {/* Left resize handle */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: '10px',
+                            cursor: 'ew-resize',
+                            borderRadius: '16px 0 0 16px'
+                          }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation()
+                            handleBubbleMouseDown(e, brk.id, 'break', 'resize-left')
+                          }}
+                        />
                         <img src={breakSymbol} alt="Break" style={{ width: '16px', height: '16px', opacity: 0.8 }} />
+                        {/* Right resize handle */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            right: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: '10px',
+                            cursor: 'ew-resize',
+                            borderRadius: '0 16px 16px 0'
+                          }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation()
+                            handleBubbleMouseDown(e, brk.id, 'break', 'resize-right')
+                          }}
+                        />
                       </div>
                     ))}
                   </div>
@@ -1041,7 +1190,39 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
         </div>
 
         {/* Bottom Section - Header Row with Labels - moved down 50px */}
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden', marginTop: '50px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'visible', marginTop: '50px', position: 'relative' }}>
+
+          {/* Lesson Navigator - vertical column in left margin, below labels */}
+          <div style={{
+            position: 'absolute',
+            left: 'calc(50% - 730px)',
+            top: '80px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '2px',
+            zIndex: 20
+          }}>
+            <button style={navigatorButtonStyle} onClick={navigateLessonUp} title="Go to lesson on previous day">↑</button>
+            <div style={{ display: 'flex', gap: '2px' }}>
+              <button style={navigatorButtonStyle} onClick={navigatePrevLesson} title="Previous lesson">←</button>
+              <button
+                style={{
+                  ...navigatorButtonStyle,
+                  background: 'transparent',
+                  color: THEME.AMBER,
+                  fontSize: '20px',
+                  fontWeight: 'bold'
+                }}
+                onClick={addLesson}
+                title="Add new lesson"
+              >
+                +
+              </button>
+              <button style={navigatorButtonStyle} onClick={navigateNextLesson} title="Next lesson">→</button>
+            </div>
+            <button style={navigatorButtonStyle} onClick={navigateLessonDown} title="Go to lesson on next day">↓</button>
+          </div>
 
           {/* Header Row: LESSON | Lesson Info | LEARNING OBJECTIVES - using absolute positioning */}
           <div style={{
@@ -1049,37 +1230,6 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
             height: '30px',
             marginBottom: '0px'
           }}>
-            {/* Lesson Navigator - moved down 100px, centered '+' over LESSON label at X:-655 */}
-            <div style={{
-              position: 'absolute',
-              left: 'calc(50% - 697px)',
-              top: 'calc(50% + 100px)',
-              transform: 'translateY(-50%)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '2px'
-            }}>
-              <button style={navigatorButtonStyle}>↑</button>
-              <div style={{ display: 'flex', gap: '2px' }}>
-                <button style={navigatorButtonStyle}>←</button>
-                <button
-                  style={{
-                    ...navigatorButtonStyle,
-                    background: 'transparent',
-                    color: THEME.AMBER,
-                    fontSize: '24px',
-                    fontWeight: 'bold'
-                  }}
-                  onClick={addLesson}
-                >
-                  +
-                </button>
-                <button style={navigatorButtonStyle}>→</button>
-              </div>
-              <button style={navigatorButtonStyle}>↓</button>
-            </div>
-
             {/* LESSON label - left edge at X:-705 (moved left 40px) */}
             <span style={{
               ...secondaryHeadingStyle,
@@ -1091,20 +1241,70 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
               LESSON
             </span>
 
-            {/* Lesson number and title - moved left 30px to X:-570 */}
+            {/* Lesson number and title - moved left 30px to X:-570, clickable to edit */}
             {selectedLesson && (
-              <span style={{
+              <div style={{
                 position: 'absolute',
                 left: 'calc(50% - 570px)',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                fontSize: '15px',
-                color: THEME.AMBER,
-                fontFamily: THEME.FONT_PRIMARY,
-                letterSpacing: '2px'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
               }}>
-                {getLessonNumber(selectedLesson.id)}. {selectedLesson.title}
-              </span>
+                <span style={{
+                  fontSize: '15px',
+                  color: THEME.AMBER,
+                  fontFamily: THEME.FONT_PRIMARY,
+                  letterSpacing: '2px'
+                }}>
+                  {getLessonNumber(selectedLesson.id)}.
+                </span>
+                {editingTitle === selectedLesson.id ? (
+                  <input
+                    autoFocus
+                    type="text"
+                    defaultValue={selectedLesson.title}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      borderBottom: `1px solid ${THEME.AMBER}`,
+                      outline: 'none',
+                      color: THEME.WHITE,
+                      fontSize: '15px',
+                      fontFamily: THEME.FONT_PRIMARY,
+                      letterSpacing: '2px',
+                      width: '200px'
+                    }}
+                    onBlur={(e) => {
+                      updateLessonTitle(selectedLesson.id, e.target.value)
+                      setEditingTitle(null)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        updateLessonTitle(selectedLesson.id, e.target.value)
+                        setEditingTitle(null)
+                      } else if (e.key === 'Escape') {
+                        setEditingTitle(null)
+                      }
+                    }}
+                  />
+                ) : (
+                  <span
+                    style={{
+                      fontSize: '15px',
+                      color: THEME.AMBER,
+                      fontFamily: THEME.FONT_PRIMARY,
+                      letterSpacing: '2px',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => setEditingTitle(selectedLesson.id)}
+                    title="Click to edit title"
+                  >
+                    {selectedLesson.title}
+                  </span>
+                )}
+              </div>
             )}
 
             {/* Start-Stop time - swapped to X:-95 */}
@@ -1137,11 +1337,11 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
               </span>
             )}
 
-            {/* LO Circles - swapped to X:+95 */}
+            {/* LO Circles - LO label moved RIGHT 50px */}
             {selectedLesson && (
               <div style={{
                 position: 'absolute',
-                left: 'calc(50% + 150px)',
+                left: 'calc(50% + 200px)',
                 top: '50%',
                 transform: 'translateY(-50%)',
                 display: 'flex',
@@ -1199,39 +1399,38 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
               display: 'flex',
               flexDirection: 'column'
             }}>
-              {/* TOPICS + header with line directly below */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {/* TOPICS + header with line directly below - clickable label with hover */}
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+                onClick={() => {
+                  setTopicEntryActive(true)
+                  setTimeout(() => topicInputRef.current?.focus(), 0)
+                }}
+                onMouseEnter={() => setHoveredLabel('topics')}
+                onMouseLeave={() => setHoveredLabel(null)}
+              >
                 <span
                   style={{
                     fontSize: '15px',
                     letterSpacing: '3px',
-                    color: hoveredLabel === 'topics' || topicEntryActive ? THEME.AMBER : THEME.TEXT_DIM,
+                    color: topicEntryActive || hoveredLabel === 'topics' ? THEME.AMBER : THEME.TEXT_DIM,
                     fontFamily: THEME.FONT_PRIMARY,
                     transition: 'color 0.2s ease',
-                    cursor: 'default'
+                    cursor: 'pointer'
                   }}
-                  onMouseEnter={() => setHoveredLabel('topics')}
-                  onMouseLeave={() => setHoveredLabel(null)}
                 >
                   TOPICS
                 </span>
-                <button
-                  onClick={() => {
-                    setTopicEntryActive(true)
-                    setTimeout(() => topicInputRef.current?.focus(), 0)
-                  }}
+                <span
                   style={{
-                    background: 'transparent',
-                    border: 'none',
                     color: THEME.AMBER,
                     fontSize: '18px',
                     fontWeight: 'bold',
-                    cursor: 'pointer',
-                    padding: '0 4px'
+                    cursor: 'pointer'
                   }}
                 >
                   +
-                </button>
+                </span>
               </div>
 
               {/* Line directly below header */}
@@ -1243,7 +1442,7 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
                 marginBottom: '4px'
               }} />
 
-              {/* Entry input */}
+              {/* Entry input - locked until label clicked */}
               <input
                 ref={topicInputRef}
                 type="text"
@@ -1261,16 +1460,20 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
                     setTopicEntryActive(false)
                   }
                 }}
+                disabled={!topicEntryActive}
                 style={{
                   width: '100%',
                   background: 'transparent',
                   border: 'none',
                   outline: 'none',
-                  color: THEME.WHITE,
+                  color: topicEntryActive ? THEME.WHITE : THEME.TEXT_DIM,
                   fontSize: '14px',
                   fontFamily: THEME.FONT_PRIMARY,
-                  padding: '4px 0'
+                  padding: '4px 0',
+                  cursor: topicEntryActive ? 'text' : 'default',
+                  opacity: topicEntryActive ? 1 : 0.5
                 }}
+                placeholder={topicEntryActive ? 'Enter topic...' : ''}
               />
 
               {/* Committed topics list */}
@@ -1316,39 +1519,38 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
               display: 'flex',
               flexDirection: 'column'
             }}>
-              {/* SUBTOPICS + header with line directly below */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {/* SUBTOPICS + header with line directly below - clickable label with hover */}
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+                onClick={() => {
+                  setSubtopicEntryActive(true)
+                  setTimeout(() => subtopicInputRef.current?.focus(), 0)
+                }}
+                onMouseEnter={() => setHoveredLabel('subtopics')}
+                onMouseLeave={() => setHoveredLabel(null)}
+              >
                 <span
                   style={{
                     fontSize: '15px',
                     letterSpacing: '3px',
-                    color: hoveredLabel === 'subtopics' || subtopicEntryActive ? THEME.AMBER : THEME.TEXT_DIM,
+                    color: subtopicEntryActive || hoveredLabel === 'subtopics' ? THEME.AMBER : THEME.TEXT_DIM,
                     fontFamily: THEME.FONT_PRIMARY,
                     transition: 'color 0.2s ease',
-                    cursor: 'default'
+                    cursor: 'pointer'
                   }}
-                  onMouseEnter={() => setHoveredLabel('subtopics')}
-                  onMouseLeave={() => setHoveredLabel(null)}
                 >
                   SUBTOPICS
                 </span>
-                <button
-                  onClick={() => {
-                    setSubtopicEntryActive(true)
-                    setTimeout(() => subtopicInputRef.current?.focus(), 0)
-                  }}
+                <span
                   style={{
-                    background: 'transparent',
-                    border: 'none',
                     color: THEME.AMBER,
                     fontSize: '18px',
                     fontWeight: 'bold',
-                    cursor: 'pointer',
-                    padding: '0 4px'
+                    cursor: 'pointer'
                   }}
                 >
                   +
-                </button>
+                </span>
               </div>
 
               {/* Line directly below header */}
@@ -1360,7 +1562,7 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
                 marginBottom: '4px'
               }} />
 
-              {/* Entry input */}
+              {/* Entry input - locked until label clicked */}
               <input
                 ref={subtopicInputRef}
                 type="text"
@@ -1378,16 +1580,20 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
                     setSubtopicEntryActive(false)
                   }
                 }}
+                disabled={!subtopicEntryActive}
                 style={{
                   width: '100%',
                   background: 'transparent',
                   border: 'none',
                   outline: 'none',
-                  color: THEME.WHITE,
+                  color: subtopicEntryActive ? THEME.WHITE : THEME.TEXT_DIM,
                   fontSize: '14px',
                   fontFamily: THEME.FONT_PRIMARY,
-                  padding: '4px 0'
+                  padding: '4px 0',
+                  cursor: subtopicEntryActive ? 'text' : 'default',
+                  opacity: subtopicEntryActive ? 1 : 0.5
                 }}
+                placeholder={subtopicEntryActive ? 'Enter subtopic...' : ''}
               />
 
               {/* Committed subtopics list */}
@@ -1477,6 +1683,7 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
         onPKEToggle={setIsPKEActive}
         onSave={() => {}}
         onClear={() => {
+          // Reset lessons to initial state
           setLessons([{
             id: 'lesson-1',
             title: 'INTRODUCTION',
@@ -1489,6 +1696,33 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
           }])
           setBreaks([])
           setSelectedId('lesson-1')
+          setSelectedType('lesson')
+          // Reset week to 1
+          setCurrentWeek(1)
+          setCurrentModule(1)
+          // Reset course data (clears info cluster, LOs, etc.)
+          setCourseData?.({
+            title: '',
+            thematic: '',
+            module: 1,
+            code: '',
+            duration: 1,
+            durationUnit: 'Hours',
+            level: 'Foundational',
+            seniority: 'Junior',
+            description: '',
+            deliveryModes: [],
+            qualification: false,
+            accredited: false,
+            certified: false,
+            learningObjectives: ['']
+          })
+          // Reset entry states
+          setTopicEntryActive(false)
+          setTopicEntryValue('')
+          setSubtopicEntryActive(false)
+          setSubtopicEntryValue('')
+          setEditingTitle(null)
         }}
         onDelete={() => {
           if (selectedType === 'lesson' && lessons.length > 1) {
