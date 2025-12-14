@@ -1,178 +1,438 @@
 /**
- * OutlinePlanner Page - Slide 4 of Mockup 2.1
+ * OutlinePlanner Page - DESIGN Page (Slide 4 of Mockup 2.1)
  *
- * Layout - Two Regions:
- * - Left: OUTLINE TIMETABLE (time range, hour columns, day rows with bubbles)
- * - Right: ADD TOPICS & SUBTOPICS (lesson details, topics input, LO circles)
+ * Layout:
+ * - Top: Module/Week navigation (centered), Time sliders
+ * - Middle: Timetable grid with draggable lesson/break bubbles
+ * - Bottom Left: Lesson Planner (title, LO circles, time, topics, subtopics)
+ * - Bottom Right: Learning Objectives tote
  *
  * Features:
- * - Draggable lesson bubbles within timetable grid
- * - Time range selector
- * - Hierarchical topic/subtopic structure
+ * - Draggable/resizable lesson bubbles with 5-min snapping
+ * - Break bubbles (no title edit)
+ * - LO linking via clickable circles
+ * - Topics/Subtopics hierarchical management with commit behavior
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { THEME } from '../constants/theme'
-import LessonBubble from '../components/LessonBubble'
-import GradientBorder from '../components/GradientBorder'
 import Footer from '../components/Footer'
 import pkeButton from '../assets/PKE_Button.png'
+import breakSymbol from '../assets/Break_Symbol.png'
+
+// Constants
+const SNAP_MINUTES = 5 // Snap to 5-minute increments
+const HOUR_WIDTH = 100 // Width of each hour column in pixels
+const DAY_HEIGHT = 50 // Height of each day row
+const DAY_LABEL_WIDTH = 60 // Width of day label column
+const TIMETABLE_TOTAL_WIDTH = 1140 // Fixed width: X:-570 to X:+570
+const NUM_DAYS_ALWAYS = 5 // Always show 5 day rows
 
 function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseState }) {
   const [isPKEActive, setIsPKEActive] = useState(false)
-  const [selectedBubble, setSelectedBubble] = useState('intro')
 
-  // Time range
-  const [startTime, setStartTime] = useState(8) // 0800
-  const [endTime, setEndTime] = useState(16) // 1600
+  // Module/Week navigation
+  const [currentModule, setCurrentModule] = useState(1)
+  const [currentWeek, setCurrentWeek] = useState(1)
+  const [totalModules] = useState(1)
+  const [totalWeeks] = useState(1)
 
-  // Lesson bubbles organized by day (with duration)
-  const [lessonsByDay, setLessonsByDay] = useState({
-    1: [{ id: 'intro', name: 'INTRODUCTION', column: 0, duration: 1 }],
-    2: [],
-    3: [],
-    4: [],
-    5: []
-  })
+  // Time range (in hours, 24h format)
+  const [dayStartTime, setDayStartTime] = useState(8) // 0800
+  const [dayEndTime, setDayEndTime] = useState(16) // 1600
 
-  // Selected lesson details
-  const [lessonDetails, setLessonDetails] = useState({
-    name: 'INTRODUCTION',
-    topics: [{ id: 't1', name: '', lo: [1] }],
-    subtopics: [{ id: 'st1', name: '', parentTopic: 't1' }]
-  })
+  // Number of days - always show 5 rows
+  const numDays = NUM_DAYS_ALWAYS
 
-  // Hours array based on start/end time
-  const hours = []
-  for (let h = startTime; h < endTime; h++) {
-    hours.push(`${h.toString().padStart(2, '0')}00`)
+  // Learning Objectives from DEFINE page
+  const learningObjectives = courseData?.learningObjectives?.filter(lo => lo && lo.trim()) || [
+    'EXPLAIN the course details',
+    'ANALYSE the subject',
+    'OPERATE the system',
+    'SUPERVISE the personnel'
+  ]
+
+  // Lessons state
+  const [lessons, setLessons] = useState([
+    {
+      id: 'lesson-1',
+      title: 'INTRODUCTION',
+      day: 1,
+      startMinutes: 0,
+      durationMinutes: 60,
+      linkedLOs: [],
+      topics: [],
+      subtopics: []
+    }
+  ])
+
+  // Breaks state
+  const [breaks, setBreaks] = useState([])
+
+  // Selected item
+  const [selectedId, setSelectedId] = useState('lesson-1')
+  const [selectedType, setSelectedType] = useState('lesson')
+
+  // Editing state
+  const [editingTitle, setEditingTitle] = useState(null)
+
+  // Topic/Subtopic entry state
+  const [topicEntryActive, setTopicEntryActive] = useState(false)
+  const [subtopicEntryActive, setSubtopicEntryActive] = useState(false)
+  const [topicEntryValue, setTopicEntryValue] = useState('')
+  const [subtopicEntryValue, setSubtopicEntryValue] = useState('')
+  const [editingTopicId, setEditingTopicId] = useState(null)
+  const [editingSubtopicId, setEditingSubtopicId] = useState(null)
+
+  // Hover states for labels
+  const [hoveredLabel, setHoveredLabel] = useState(null)
+
+  // Drag state
+  const [dragState, setDragState] = useState(null)
+
+  // Refs
+  const timetableRef = useRef(null)
+  const topicInputRef = useRef(null)
+  const subtopicInputRef = useRef(null)
+
+  // Get selected lesson
+  const selectedLesson = lessons.find(l => l.id === selectedId)
+
+  // Calculate time from minutes
+  const minutesToTime = (minutes) => {
+    const totalMinutes = dayStartTime * 60 + minutes
+    const hours = Math.floor(totalMinutes / 60)
+    const mins = totalMinutes % 60
+    return `${hours.toString().padStart(2, '0')}${mins.toString().padStart(2, '0')}`
   }
 
-  // Number of days (from course duration, default 5)
-  const numDays = courseData?.duration || 5
+  // Calculate display time range
+  const getTimeDisplay = (lesson) => {
+    if (!lesson) return '----'
+    const start = minutesToTime(lesson.startMinutes)
+    const end = minutesToTime(lesson.startMinutes + lesson.durationMinutes)
+    return `${start}-${end}`
+  }
 
-  // Handle bubble selection
-  const handleSelectBubble = useCallback((id) => {
-    setSelectedBubble(id)
-    // Find bubble and update lesson details
-    Object.values(lessonsByDay).forEach(dayBubbles => {
-      const bubble = dayBubbles.find(b => b.id === id)
-      if (bubble) {
-        setLessonDetails(prev => ({ ...prev, name: bubble.name }))
+  // Generate hour columns
+  const hours = []
+  for (let h = dayStartTime; h <= dayEndTime; h++) {
+    hours.push(h)
+  }
+
+  // Snap to 5-minute increments
+  const snapToGrid = (minutes) => {
+    return Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES
+  }
+
+  // Convert pixel position to minutes
+  const pixelToMinutes = (px) => {
+    return (px / HOUR_WIDTH) * 60
+  }
+
+  // Convert minutes to pixel position
+  const minutesToPixel = (minutes) => {
+    return (minutes / 60) * HOUR_WIDTH
+  }
+
+  // Check for collision with other bubbles
+  const checkCollision = (day, startMinutes, durationMinutes, excludeId) => {
+    const endMinutes = startMinutes + durationMinutes
+    const allItems = [...lessons, ...breaks]
+
+    for (const item of allItems) {
+      if (item.id === excludeId || item.day !== day) continue
+      const itemEnd = item.startMinutes + item.durationMinutes
+
+      if (startMinutes < itemEnd && endMinutes > item.startMinutes) {
+        return item
       }
-    })
-  }, [lessonsByDay])
-
-  // Add new bubble
-  const handleAddBubble = useCallback((afterId) => {
-    const newId = `lesson-${Date.now()}`
-    const newBubble = { id: newId, name: 'NEW LESSON', column: 1, duration: 1 }
-
-    // Find which day has this bubble and add after it
-    setLessonsByDay(prev => {
-      const updated = { ...prev }
-      Object.keys(updated).forEach(day => {
-        const idx = updated[day].findIndex(b => b.id === afterId)
-        if (idx !== -1) {
-          updated[day] = [
-            ...updated[day].slice(0, idx + 1),
-            newBubble,
-            ...updated[day].slice(idx + 1)
-          ]
-        }
-      })
-      return updated
-    })
-  }, [])
-
-  // Update bubble name
-  const handleBubbleNameChange = useCallback((bubbleId, newName) => {
-    setLessonsByDay(prev => {
-      const updated = { ...prev }
-      Object.keys(updated).forEach(day => {
-        updated[day] = updated[day].map(b =>
-          b.id === bubbleId ? { ...b, name: newName } : b
-        )
-      })
-      return updated
-    })
-    // Update lesson details if this is selected bubble
-    if (selectedBubble === bubbleId) {
-      setLessonDetails(prev => ({ ...prev, name: newName }))
     }
-  }, [selectedBubble])
+    return null
+  }
 
-  // Update bubble duration
-  const handleBubbleDurationChange = useCallback((bubbleId, newDuration) => {
-    setLessonsByDay(prev => {
-      const updated = { ...prev }
-      Object.keys(updated).forEach(day => {
-        updated[day] = updated[day].map(b =>
-          b.id === bubbleId ? { ...b, duration: newDuration } : b
-        )
-      })
-      return updated
-    })
-  }, [])
+  // Find next available slot
+  const findNextAvailableSlot = (day, startMinutes, durationMinutes, excludeId) => {
+    let testStart = startMinutes
+    const maxMinutes = (dayEndTime - dayStartTime) * 60
 
-  // Handle drop on day row
-  const handleDrop = useCallback((e, targetDay) => {
+    while (testStart + durationMinutes <= maxMinutes) {
+      if (!checkCollision(day, testStart, durationMinutes, excludeId)) {
+        return testStart
+      }
+      testStart += SNAP_MINUTES
+    }
+    return startMinutes
+  }
+
+  // Handle bubble mouse down (start drag)
+  const handleBubbleMouseDown = (e, id, type, action) => {
+    if (editingTitle) return
+
     e.preventDefault()
-    const bubbleId = e.dataTransfer.getData('bubbleId')
+    e.stopPropagation()
 
-    setLessonsByDay(prev => {
-      const updated = { ...prev }
-      let movedBubble = null
+    const item = type === 'lesson'
+      ? lessons.find(l => l.id === id)
+      : breaks.find(b => b.id === id)
 
-      // Remove from current location
-      Object.keys(updated).forEach(day => {
-        const idx = updated[day].findIndex(b => b.id === bubbleId)
-        if (idx !== -1) {
-          movedBubble = updated[day][idx]
-          updated[day] = updated[day].filter(b => b.id !== bubbleId)
+    if (!item) return
+
+    setSelectedId(id)
+    setSelectedType(type)
+
+    setDragState({
+      type: action,
+      id,
+      itemType: type,
+      startX: e.clientX,
+      startY: e.clientY,
+      originalData: { ...item }
+    })
+  }
+
+  // Handle mouse move during drag
+  useEffect(() => {
+    if (!dragState) return
+
+    const handleMouseMove = (e) => {
+      const deltaX = e.clientX - dragState.startX
+      const deltaY = e.clientY - dragState.startY
+      const deltaMinutes = pixelToMinutes(deltaX)
+
+      const updateItem = dragState.itemType === 'lesson' ? setLessons : setBreaks
+
+      updateItem(prev => prev.map(item => {
+        if (item.id !== dragState.id) return item
+
+        const original = dragState.originalData
+        let newData = { ...item }
+
+        if (dragState.type === 'move') {
+          const dayDelta = Math.round(deltaY / DAY_HEIGHT)
+          let newDay = Math.max(1, Math.min(numDays, original.day + dayDelta))
+          let newStart = snapToGrid(original.startMinutes + deltaMinutes)
+          newStart = Math.max(0, newStart)
+
+          const collision = checkCollision(newDay, newStart, original.durationMinutes, item.id)
+          if (collision) {
+            newStart = findNextAvailableSlot(newDay, newStart, original.durationMinutes, item.id)
+          }
+
+          const maxStart = (dayEndTime - dayStartTime) * 60 - original.durationMinutes
+          newStart = Math.min(newStart, maxStart)
+
+          newData.day = newDay
+          newData.startMinutes = newStart
+        } else if (dragState.type === 'resize-left') {
+          let newStart = snapToGrid(original.startMinutes + deltaMinutes)
+          newStart = Math.max(0, newStart)
+          const newDuration = original.durationMinutes + (original.startMinutes - newStart)
+
+          if (newDuration >= SNAP_MINUTES) {
+            newData.startMinutes = newStart
+            newData.durationMinutes = newDuration
+          }
+        } else if (dragState.type === 'resize-right') {
+          let newDuration = snapToGrid(original.durationMinutes + deltaMinutes)
+          newDuration = Math.max(SNAP_MINUTES, newDuration)
+          const maxDuration = (dayEndTime - dayStartTime) * 60 - original.startMinutes
+          newDuration = Math.min(newDuration, maxDuration)
+          newData.durationMinutes = newDuration
         }
-      })
 
-      // Add to target day
-      if (movedBubble) {
-        updated[targetDay] = [...updated[targetDay], movedBubble]
+        return newData
+      }))
+    }
+
+    const handleMouseUp = () => {
+      setDragState(null)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [dragState, numDays, dayStartTime, dayEndTime])
+
+  // Add new lesson after selected
+  const addLesson = useCallback(() => {
+    const selected = lessons.find(l => l.id === selectedId)
+    const afterMinutes = selected
+      ? selected.startMinutes + selected.durationMinutes
+      : 0
+    const day = selected?.day || 1
+
+    const newLesson = {
+      id: `lesson-${Date.now()}`,
+      title: 'NEW LESSON',
+      day,
+      startMinutes: findNextAvailableSlot(day, afterMinutes, 60, null),
+      durationMinutes: 60,
+      linkedLOs: [],
+      topics: [],
+      subtopics: []
+    }
+
+    setLessons(prev => [...prev, newLesson])
+    setSelectedId(newLesson.id)
+    setSelectedType('lesson')
+  }, [selectedId, lessons])
+
+  // Add break after last lesson on selected day
+  const addBreak = useCallback(() => {
+    const selected = lessons.find(l => l.id === selectedId)
+    const day = selected?.day || 1
+    const allItems = [...lessons, ...breaks].filter(i => i.day === day)
+    const lastItem = allItems.sort((a, b) =>
+      (b.startMinutes + b.durationMinutes) - (a.startMinutes + a.durationMinutes)
+    )[0]
+
+    const afterMinutes = lastItem
+      ? lastItem.startMinutes + lastItem.durationMinutes
+      : 0
+
+    const newBreak = {
+      id: `break-${Date.now()}`,
+      title: 'BREAK',
+      day,
+      startMinutes: findNextAvailableSlot(day, afterMinutes, 15, null),
+      durationMinutes: 15,
+      linkedLOs: [],
+      topics: [],
+      subtopics: []
+    }
+
+    setBreaks(prev => [...prev, newBreak])
+    setSelectedId(newBreak.id)
+    setSelectedType('break')
+  }, [lessons, breaks, selectedId])
+
+  // Delete selected item
+  const handleDelete = useCallback((e) => {
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (editingTitle || topicEntryActive || subtopicEntryActive) return
+      if (document.activeElement.tagName === 'INPUT') return
+
+      if (selectedType === 'break') {
+        setBreaks(prev => prev.filter(b => b.id !== selectedId))
+        setSelectedId(lessons[0]?.id || null)
+        setSelectedType('lesson')
       }
+    }
+  }, [selectedId, selectedType, editingTitle, topicEntryActive, subtopicEntryActive, lessons])
 
-      return updated
-    })
+  useEffect(() => {
+    window.addEventListener('keydown', handleDelete)
+    return () => window.removeEventListener('keydown', handleDelete)
+  }, [handleDelete])
+
+  // Toggle LO link for selected lesson
+  const toggleLOLink = useCallback((loIndex) => {
+    if (!selectedId || selectedType !== 'lesson') return
+
+    setLessons(prev => prev.map(lesson => {
+      if (lesson.id !== selectedId) return lesson
+
+      const linked = lesson.linkedLOs.includes(loIndex)
+      return {
+        ...lesson,
+        linkedLOs: linked
+          ? lesson.linkedLOs.filter(i => i !== loIndex)
+          : [...lesson.linkedLOs, loIndex].sort((a, b) => a - b)
+      }
+    }))
+  }, [selectedId, selectedType])
+
+  // Update lesson title
+  const updateLessonTitle = useCallback((id, newTitle) => {
+    setLessons(prev => prev.map(lesson =>
+      lesson.id === id ? { ...lesson, title: newTitle.toUpperCase() } : lesson
+    ))
   }, [])
 
-  // Add topic
-  const addTopic = useCallback(() => {
-    const newTopic = { id: `t${Date.now()}`, name: '', lo: [] }
-    setLessonDetails(prev => ({
-      ...prev,
-      topics: [...prev.topics, newTopic]
+  // Commit topic entry
+  const commitTopic = useCallback(() => {
+    if (!selectedId || selectedType !== 'lesson' || !topicEntryValue.trim()) {
+      setTopicEntryActive(false)
+      setTopicEntryValue('')
+      return
+    }
+
+    setLessons(prev => prev.map(lesson => {
+      if (lesson.id !== selectedId) return lesson
+
+      const loPrefix = lesson.linkedLOs.length > 0 ? lesson.linkedLOs[0] + 1 : 1
+      const topicNum = lesson.topics.length + 1
+
+      return {
+        ...lesson,
+        topics: [...lesson.topics, {
+          id: `topic-${Date.now()}`,
+          number: `${loPrefix}.${topicNum}`,
+          title: topicEntryValue.trim()
+        }]
+      }
     }))
+
+    setTopicEntryActive(false)
+    setTopicEntryValue('')
+  }, [selectedId, selectedType, topicEntryValue])
+
+  // Commit subtopic entry
+  const commitSubtopic = useCallback(() => {
+    if (!selectedId || selectedType !== 'lesson' || !subtopicEntryValue.trim()) {
+      setSubtopicEntryActive(false)
+      setSubtopicEntryValue('')
+      return
+    }
+
+    setLessons(prev => prev.map(lesson => {
+      if (lesson.id !== selectedId) return lesson
+
+      const lastTopic = lesson.topics[lesson.topics.length - 1]
+      const topicNumber = lastTopic?.number || '1.1'
+      const subtopicNum = lesson.subtopics.filter(st =>
+        st.number.startsWith(topicNumber)
+      ).length + 1
+
+      return {
+        ...lesson,
+        subtopics: [...lesson.subtopics, {
+          id: `subtopic-${Date.now()}`,
+          number: `${topicNumber}.${subtopicNum}`,
+          title: subtopicEntryValue.trim()
+        }]
+      }
+    }))
+
+    setSubtopicEntryActive(false)
+    setSubtopicEntryValue('')
+  }, [selectedId, selectedType, subtopicEntryValue])
+
+  // Update topic title
+  const updateTopicTitle = useCallback((topicId, newTitle) => {
+    setLessons(prev => prev.map(lesson => ({
+      ...lesson,
+      topics: lesson.topics.map(topic =>
+        topic.id === topicId ? { ...topic, title: newTitle } : topic
+      )
+    })))
+    setEditingTopicId(null)
   }, [])
 
-  // Add subtopic
-  const addSubtopic = useCallback(() => {
-    const parentTopic = lessonDetails.topics[lessonDetails.topics.length - 1]?.id || 't1'
-    const newSubtopic = { id: `st${Date.now()}`, name: '', parentTopic }
-    setLessonDetails(prev => ({
-      ...prev,
-      subtopics: [...prev.subtopics, newSubtopic]
-    }))
-  }, [lessonDetails.topics])
-
-  // Toggle LO assignment
-  const toggleLO = useCallback((topicIdx, loNum) => {
-    setLessonDetails(prev => {
-      const updatedTopics = [...prev.topics]
-      const topic = updatedTopics[topicIdx]
-      if (topic.lo.includes(loNum)) {
-        topic.lo = topic.lo.filter(n => n !== loNum)
-      } else {
-        topic.lo = [...topic.lo, loNum]
-      }
-      return { ...prev, topics: updatedTopics }
-    })
+  // Update subtopic title
+  const updateSubtopicTitle = useCallback((subtopicId, newTitle) => {
+    setLessons(prev => prev.map(lesson => ({
+      ...lesson,
+      subtopics: lesson.subtopics.map(st =>
+        st.id === subtopicId ? { ...st, title: newTitle } : st
+      )
+    })))
+    setEditingSubtopicId(null)
   }, [])
 
   // Handle navigation
@@ -180,17 +440,200 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
     onNavigate?.(section)
   }, [onNavigate])
 
-  // Build structure display
-  const buildStructureText = () => {
-    const parts = [`1. ${lessonDetails.name}`]
-    lessonDetails.topics.forEach((t, ti) => {
-      if (t.name) parts.push(`→ ${ti + 1}.1 ${t.name}`)
-    })
-    lessonDetails.subtopics.forEach((st, sti) => {
-      if (st.name) parts.push(`→ 1.1.${sti + 1} ${st.name}`)
-    })
-    return parts.join(' ')
+  // Calculate cumulative time
+  const getCumulativeTime = () => {
+    const totalMinutes = lessons.reduce((sum, l) => sum + l.durationMinutes, 0)
+    const hours = Math.floor(totalMinutes / 60)
+    const mins = totalMinutes % 60
+    if (mins === 0) return `${hours} hr`
+    return `${hours}h ${mins}m`
   }
+
+  // Get lesson number based on position
+  const getLessonNumber = (lessonId) => {
+    const sortedLessons = [...lessons].sort((a, b) => {
+      if (a.day !== b.day) return a.day - b.day
+      return a.startMinutes - b.startMinutes
+    })
+    return sortedLessons.findIndex(l => l.id === lessonId) + 1
+  }
+
+  // Find last linked LO index for underline positioning
+  const getLastLinkedLO = () => {
+    if (!selectedLesson) return -1
+    return Math.max(...selectedLesson.linkedLOs, -1)
+  }
+
+  // Calculate timetable centering offset
+  const getTimetableOffset = () => {
+    const midTime = (dayStartTime + dayEndTime) / 2
+    const midHourIndex = midTime - dayStartTime
+    const midPixel = midHourIndex * HOUR_WIDTH
+    return midPixel
+  }
+
+  // Render a bubble (lesson or break)
+  const renderBubble = (item, type) => {
+    const isSelected = selectedId === item.id && selectedType === type
+    const left = minutesToPixel(item.startMinutes)
+    const width = minutesToPixel(item.durationMinutes)
+    const isBreak = type === 'break'
+
+    return (
+      <div
+        key={item.id}
+        style={{
+          position: 'absolute',
+          left: `${left}px`,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: `${Math.max(width - 4, 40)}px`,
+          height: '32px',
+          background: isBreak
+            ? (isSelected ? THEME.BG_MEDIUM : THEME.BG_INPUT)
+            : (isSelected
+                ? `linear-gradient(135deg, ${THEME.AMBER_DARK} 0%, ${THEME.AMBER_DARKEST || '#5a2d00'} 100%)`
+                : THEME.BG_MEDIUM),
+          border: `1px solid ${isSelected ? THEME.AMBER : THEME.BORDER_GREY}`,
+          borderRadius: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '4px',
+          padding: '0 8px',
+          cursor: dragState ? 'grabbing' : 'grab',
+          boxShadow: isSelected ? `0 0 12px rgba(212, 115, 12, 0.4)` : 'none',
+          zIndex: isSelected ? 10 : 1,
+          userSelect: 'none'
+        }}
+        onMouseDown={(e) => handleBubbleMouseDown(e, item.id, type, 'move')}
+        onDoubleClick={() => {
+          if (!isBreak) {
+            setEditingTitle(item.id)
+          }
+        }}
+      >
+        {/* Left resize handle */}
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: '8px',
+            cursor: 'ew-resize',
+            borderRadius: '16px 0 0 16px'
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation()
+            handleBubbleMouseDown(e, item.id, type, 'resize-left')
+          }}
+        />
+
+        {/* Break icon or Title */}
+        {isBreak ? (
+          <img
+            src={breakSymbol}
+            alt="Break"
+            style={{
+              width: '16px',
+              height: '16px',
+              opacity: 0.8
+            }}
+          />
+        ) : editingTitle === item.id ? (
+          <input
+            autoFocus
+            type="text"
+            defaultValue={item.title}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              color: THEME.WHITE,
+              fontSize: '14px',
+              fontFamily: THEME.FONT_PRIMARY,
+              textAlign: 'center',
+              width: '100%'
+            }}
+            onBlur={(e) => {
+              updateLessonTitle(item.id, e.target.value)
+              setEditingTitle(null)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                updateLessonTitle(item.id, e.target.value)
+                setEditingTitle(null)
+              } else if (e.key === 'Escape') {
+                setEditingTitle(null)
+              }
+            }}
+          />
+        ) : (
+          <span
+            style={{
+              fontSize: '14px',
+              fontFamily: THEME.FONT_PRIMARY,
+              color: isSelected ? THEME.WHITE : THEME.TEXT_SECONDARY,
+              letterSpacing: '1px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}
+          >
+            {item.title}
+          </span>
+        )}
+
+        {/* Add button (only for lessons when selected) */}
+        {isSelected && !isBreak && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              addLesson()
+            }}
+            style={{
+              position: 'absolute',
+              right: '-12px',
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              background: THEME.AMBER,
+              border: 'none',
+              color: THEME.WHITE,
+              fontSize: '14px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            +
+          </button>
+        )}
+
+        {/* Right resize handle */}
+        <div
+          style={{
+            position: 'absolute',
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: '8px',
+            cursor: 'ew-resize',
+            borderRadius: '0 16px 16px 0'
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation()
+            handleBubbleMouseDown(e, item.id, type, 'resize-right')
+          }}
+        />
+      </div>
+    )
+  }
+
+  // Calculate timetable dimensions
+  const timetableWidth = hours.length * HOUR_WIDTH
 
   return (
     <div
@@ -200,29 +643,21 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
         background: THEME.BG_DARK,
         display: 'flex',
         flexDirection: 'column',
-        position: 'relative'
+        position: 'relative',
+        overflowX: 'auto',
+        overflowY: 'hidden'
       }}
     >
-      {/* Page Title */}
+      {/* PKE Button */}
       <div
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '12px',
-          padding: '20px 0'
+          position: 'absolute',
+          top: '730px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 10
         }}
       >
-        <h1
-          style={{
-            fontSize: '20px',
-            letterSpacing: '6px',
-            color: THEME.OFF_WHITE,
-            fontFamily: THEME.FONT_PRIMARY
-          }}
-        >
-          OUTLINE PLANNER
-        </h1>
         <img
           src={pkeButton}
           alt="PKE"
@@ -231,320 +666,840 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
             width: '28px',
             height: '28px',
             cursor: 'pointer',
-            opacity: isPKEActive ? 1 : 0.7
+            opacity: isPKEActive ? 1 : 0.7,
+            transition: 'opacity 0.2s ease'
           }}
         />
       </div>
 
-      {/* Main Content - Two Panels */}
-      <div
-        style={{
-          flex: 1,
-          display: 'grid',
-          gridTemplateColumns: '2fr 1fr',
-          gap: '30px',
-          padding: '0 40px',
-          paddingBottom: '120px',
-          overflow: 'auto'
-        }}
-      >
-        {/* LEFT PANEL - OUTLINE TIMETABLE */}
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h2 style={sectionHeaderStyle}>OUTLINE TIMETABLE</h2>
-          </div>
+      {/* Main Content Area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '10px 20px', overflow: 'visible', minWidth: '1200px' }}>
 
-          {/* Time Range Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-            <span style={{ fontSize: '11px', color: THEME.TEXT_SECONDARY, fontFamily: THEME.FONT_MONO }}>
-              {startTime.toString().padStart(2, '0')}00
-            </span>
-            <input
-              type="range"
-              min={6}
-              max={10}
-              value={startTime}
-              onChange={(e) => setStartTime(parseInt(e.target.value))}
-              style={{ flex: 1, maxWidth: '200px' }}
-            />
-            <span style={{ color: THEME.TEXT_DIM }}>←→</span>
-            <input
-              type="range"
-              min={14}
-              max={20}
-              value={endTime}
-              onChange={(e) => setEndTime(parseInt(e.target.value))}
-              style={{ flex: 1, maxWidth: '200px' }}
-            />
-            <span style={{ fontSize: '11px', color: THEME.TEXT_SECONDARY, fontFamily: THEME.FONT_MONO }}>
-              {endTime.toString().padStart(2, '0')}00
-            </span>
-          </div>
-
-          {/* Timetable Grid */}
-          <div
-            style={{
-              background: THEME.BG_INPUT,
-              border: `1px solid ${THEME.BORDER}`,
-              borderRadius: '4px',
-              overflow: 'hidden'
-            }}
-          >
-            {/* Hour Headers */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: `80px repeat(${hours.length}, 1fr)`,
-                borderBottom: `1px solid ${THEME.BORDER}`
-              }}
+        {/* Module/Week Navigation - Centered and stacked */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={() => setCurrentModule(m => Math.max(1, m - 1))}
+              disabled={currentModule <= 1}
+              style={navButtonStyle}
             >
-              <div style={headerCellStyle} />
-              {hours.map(hour => (
-                <div key={hour} style={headerCellStyle}>
-                  {hour}
-                </div>
-              ))}
-            </div>
+              -
+            </button>
+            <span style={{ color: THEME.AMBER, fontSize: '15px', letterSpacing: '3px', fontFamily: THEME.FONT_PRIMARY }}>
+              Module: {currentModule}
+            </span>
+            <button
+              onClick={() => setCurrentModule(m => Math.min(totalModules, m + 1))}
+              disabled={currentModule >= totalModules}
+              style={navButtonStyle}
+            >
+              +
+            </button>
+          </div>
 
-            {/* Day Rows - Taller rows for better bubble visibility */}
-            {Array.from({ length: numDays }, (_, i) => i + 1).map(day => (
-              <div
-                key={day}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => handleDrop(e, day)}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: `80px 1fr`,
-                  minHeight: '80px',
-                  borderBottom: day < numDays ? `1px solid ${THEME.BORDER}` : 'none'
-                }}
-              >
-                <div style={dayCellStyle}>Day {day}</div>
-                <div
-                  style={{
-                    padding: '8px 12px',
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '8px',
-                    alignItems: 'center'
-                  }}
-                >
-                  {lessonsByDay[day]?.map(bubble => (
-                    <LessonBubble
-                      key={bubble.id}
-                      id={bubble.id}
-                      name={bubble.name}
-                      duration={bubble.duration || 1}
-                      isSelected={selectedBubble === bubble.id}
-                      onSelect={handleSelectBubble}
-                      onAdd={handleAddBubble}
-                      onNameChange={handleBubbleNameChange}
-                      onDurationChange={handleBubbleDurationChange}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={() => setCurrentWeek(w => Math.max(1, w - 1))}
+              disabled={currentWeek <= 1}
+              style={navButtonStyle}
+            >
+              &lt;
+            </button>
+            <span style={{ color: THEME.TEXT_SECONDARY, fontSize: '15px', letterSpacing: '3px', fontFamily: THEME.FONT_PRIMARY }}>
+              WEEK {currentWeek}
+            </span>
+            <button
+              onClick={() => setCurrentWeek(w => Math.min(totalWeeks, w + 1))}
+              disabled={currentWeek >= totalWeeks}
+              style={navButtonStyle}
+            >
+              &gt;
+            </button>
           </div>
         </div>
 
-        {/* RIGHT PANEL - ADD TOPICS & SUBTOPICS */}
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h2 style={sectionHeaderStyle}>ADD TOPICS & SUBTOPICS</h2>
-            <span style={{ fontSize: '10px', color: THEME.AMBER, fontFamily: THEME.FONT_MONO }}>
-              Module: 1
-            </span>
-          </div>
-
-          {/* Import File Picker */}
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', alignItems: 'center' }}>
-            <label
-              style={{
-                ...importButtonStyle,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                cursor: 'pointer'
-              }}
-            >
-              <input
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                  const file = e.target.files[0]
-                  if (file) {
-                    console.log('Import file:', file.name)
-                    // TODO: Handle file import
-                  }
+        {/* Time Slider Row - aligned with timetable edges */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          marginBottom: '8px',
+          position: 'relative'
+        }}>
+          <div style={{
+            width: `${TIMETABLE_TOTAL_WIDTH}px`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            {/* Left side: Start time slider + Break button */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '14px', color: THEME.TEXT_DIM, fontFamily: THEME.FONT_MONO, minWidth: '40px' }}>
+                {dayStartTime.toString().padStart(2, '0')}00
+              </span>
+              <div style={{ position: 'relative', width: '80px' }}>
+                <input
+                  type="range"
+                  min={6}
+                  max={12}
+                  value={dayStartTime}
+                  onChange={(e) => setDayStartTime(Math.min(parseInt(e.target.value), dayEndTime - 2))}
+                  style={{ width: '100%', accentColor: THEME.AMBER }}
+                />
+              </div>
+              {/* Break button - immediately right of start time slider */}
+              <button
+                onClick={addBreak}
+                title="Add Break"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: '4px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
-              />
-              IMPORT
-            </label>
-            <span style={{ fontSize: '10px', color: THEME.TEXT_DIM, fontFamily: THEME.FONT_MONO }}>
-              .xlsx, .xls, .csv
-            </span>
-          </div>
+              >
+                <img
+                  src={breakSymbol}
+                  alt="Add Break"
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    opacity: 0.8,
+                    display: 'block'
+                  }}
+                />
+              </button>
+            </div>
 
-          {/* Lesson Name */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>LESSON</label>
-            <div style={{ fontSize: '14px', color: THEME.AMBER, fontFamily: THEME.FONT_PRIMARY }}>
-              {lessonDetails.name}
+            {/* Right side: End time slider */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ position: 'relative', width: '80px' }}>
+                <input
+                  type="range"
+                  min={14}
+                  max={22}
+                  value={dayEndTime}
+                  onChange={(e) => setDayEndTime(Math.max(parseInt(e.target.value), dayStartTime + 2))}
+                  style={{ width: '100%', accentColor: THEME.AMBER }}
+                />
+              </div>
+              <span style={{ fontSize: '14px', color: THEME.TEXT_DIM, fontFamily: THEME.FONT_MONO, minWidth: '40px' }}>
+                {dayEndTime.toString().padStart(2, '0')}00
+              </span>
             </div>
           </div>
 
-          {/* Topics */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>TOPICS</label>
-            {lessonDetails.topics.map((topic, idx) => (
-              <div key={topic.id} style={{ marginBottom: '12px' }}>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
-                  <GradientBorder isActive={false} className="flex-1">
-                    <input
-                      type="text"
-                      value={topic.name}
-                      onChange={(e) => {
-                        const updated = [...lessonDetails.topics]
-                        updated[idx].name = e.target.value
-                        setLessonDetails(prev => ({ ...prev, topics: updated }))
-                      }}
-                      placeholder="Enter topic..."
-                      style={inputStyle}
-                    />
-                  </GradientBorder>
-                  {idx === lessonDetails.topics.length - 1 && (
-                    <button onClick={addTopic} style={addButtonStyle}>+</button>
-                  )}
-                </div>
-
-                {/* LO Circles */}
-                <div style={{ display: 'flex', gap: '6px', marginLeft: '8px' }}>
-                  <span style={{ fontSize: '9px', color: THEME.TEXT_DIM, marginRight: '4px' }}>LO:</span>
-                  {[1, 2, 3, 4, 5].map(lo => (
-                    <div
-                      key={lo}
-                      onClick={() => toggleLO(idx, lo)}
-                      style={{
-                        width: '16px',
-                        height: '16px',
-                        borderRadius: '50%',
-                        background: topic.lo.includes(lo) ? THEME.AMBER : 'transparent',
-                        border: `1px solid ${topic.lo.includes(lo) ? THEME.AMBER : THEME.BORDER_GREY}`,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
+          {/* Total Course Hours - centered on vertical centerline */}
+          <div style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px'
+          }}>
+            <span style={{
+              fontSize: '14px',
+              color: THEME.TEXT_DIM,
+              fontFamily: THEME.FONT_MONO
+            }}>
+              Total Course Hours:
+            </span>
+            <span style={{
+              fontSize: '14px',
+              color: THEME.AMBER,
+              fontFamily: THEME.FONT_MONO
+            }}>
+              {getCumulativeTime()}
+            </span>
           </div>
+        </div>
 
-          {/* Subtopics */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>SUBTOPICS</label>
-            {lessonDetails.subtopics.map((subtopic, idx) => (
-              <div key={subtopic.id} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
-                <GradientBorder isActive={false} className="flex-1">
-                  <input
-                    type="text"
-                    value={subtopic.name}
-                    onChange={(e) => {
-                      const updated = [...lessonDetails.subtopics]
-                      updated[idx].name = e.target.value
-                      setLessonDetails(prev => ({ ...prev, subtopics: updated }))
-                    }}
-                    placeholder="Enter subtopic..."
-                    style={inputStyle}
-                  />
-                </GradientBorder>
-                {idx === lessonDetails.subtopics.length - 1 && (
-                  <button onClick={addSubtopic} style={addButtonStyle}>+</button>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Structure Tote - Hierarchical preview */}
+        {/* Timetable Grid - Centered, fixed width 950px */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: '16px'
+          }}
+        >
           <div
+            ref={timetableRef}
             style={{
-              padding: '16px',
-              background: THEME.BG_INPUT,
-              border: `1px solid ${THEME.BORDER}`,
-              borderRadius: '4px',
-              marginTop: 'auto'
+              width: `${TIMETABLE_TOTAL_WIDTH}px`,
+              minWidth: `${TIMETABLE_TOTAL_WIDTH}px`,
+              background: 'transparent',
+              borderTop: `1px solid ${THEME.BORDER_GREY}`,
+              position: 'relative'
             }}
           >
-            <div
-              style={{
-                fontSize: '9px',
-                letterSpacing: '2px',
-                color: THEME.AMBER,
-                fontFamily: THEME.FONT_PRIMARY,
-                marginBottom: '12px',
-                paddingBottom: '8px',
-                borderBottom: `1px solid ${THEME.BORDER}`
-              }}
-            >
-              STRUCTURE TOTE
+            {/* Hour Headers */}
+            {(() => {
+              const gridWidth = TIMETABLE_TOTAL_WIDTH - DAY_LABEL_WIDTH
+              const columnWidth = gridWidth / hours.length
+              return (
+                <div style={{ display: 'flex', borderBottom: `1px solid ${THEME.BORDER_GREY}` }}>
+                  <div style={{ width: `${DAY_LABEL_WIDTH}px`, flexShrink: 0 }} />
+                  {hours.map(hour => (
+                    <div
+                      key={hour}
+                      style={{
+                        width: `${columnWidth}px`,
+                        flexShrink: 0,
+                        padding: '8px 0',
+                        fontSize: '14px',
+                        color: THEME.TEXT_DIM,
+                        fontFamily: THEME.FONT_MONO,
+                        textAlign: 'center',
+                        borderLeft: `1px solid ${THEME.BORDER_GREY}`
+                      }}
+                    >
+                      {hour.toString().padStart(2, '0')}00
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
+
+            {/* Day Rows */}
+            {(() => {
+              const gridWidth = TIMETABLE_TOTAL_WIDTH - DAY_LABEL_WIDTH
+              const columnWidth = gridWidth / hours.length
+              const pixelScale = gridWidth / ((dayEndTime - dayStartTime) * 60) // pixels per minute
+
+              return Array.from({ length: numDays }, (_, i) => i + 1).map(day => (
+                <div
+                  key={day}
+                  style={{
+                    display: 'flex',
+                    height: `${DAY_HEIGHT}px`,
+                    borderBottom: `1px solid ${THEME.BORDER_GREY}`,
+                    position: 'relative'
+                  }}
+                >
+                  {/* Day Label */}
+                  <div
+                    style={{
+                      width: `${DAY_LABEL_WIDTH}px`,
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      paddingLeft: '8px',
+                      fontSize: '14px',
+                      color: THEME.TEXT_SECONDARY,
+                      fontFamily: THEME.FONT_PRIMARY,
+                      borderRight: `1px solid ${THEME.BORDER_GREY}`
+                    }}
+                  >
+                    Day {day}
+                  </div>
+
+                  {/* Grid area for bubbles */}
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    {/* Grid columns (visual guides) */}
+                    {hours.map((hour, idx) => (
+                      <div
+                        key={hour}
+                        style={{
+                          position: 'absolute',
+                          left: `${idx * columnWidth}px`,
+                          top: 0,
+                          bottom: 0,
+                          width: `${columnWidth}px`,
+                          borderLeft: idx > 0 ? `1px solid ${THEME.BORDER_GREY}` : 'none',
+                          opacity: 0.3
+                        }}
+                      />
+                    ))}
+
+                    {/* Lesson bubbles for this day */}
+                    {lessons.filter(l => l.day === day).map(lesson => (
+                      <div
+                        key={lesson.id}
+                        style={{
+                          position: 'absolute',
+                          left: `${lesson.startMinutes * pixelScale}px`,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          width: `${Math.max(lesson.durationMinutes * pixelScale - 4, 40)}px`,
+                          height: '32px',
+                          background: selectedId === lesson.id
+                            ? `linear-gradient(135deg, ${THEME.AMBER_DARK} 0%, ${THEME.AMBER_DARKEST || '#5a2d00'} 100%)`
+                            : THEME.BG_MEDIUM,
+                          border: `1px solid ${selectedId === lesson.id ? THEME.AMBER : THEME.BORDER_GREY}`,
+                          borderRadius: '16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '0 8px',
+                          cursor: dragState ? 'grabbing' : 'grab',
+                          boxShadow: selectedId === lesson.id ? `0 0 12px rgba(212, 115, 12, 0.4)` : 'none',
+                          zIndex: selectedId === lesson.id ? 10 : 1,
+                          userSelect: 'none'
+                        }}
+                        onMouseDown={(e) => handleBubbleMouseDown(e, lesson.id, 'lesson', 'move')}
+                        onDoubleClick={() => setEditingTitle(lesson.id)}
+                      >
+                        {editingTitle === lesson.id ? (
+                          <input
+                            autoFocus
+                            type="text"
+                            defaultValue={lesson.title}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              outline: 'none',
+                              color: THEME.WHITE,
+                              fontSize: '14px',
+                              fontFamily: THEME.FONT_PRIMARY,
+                              textAlign: 'center',
+                              width: '100%'
+                            }}
+                            onBlur={(e) => {
+                              updateLessonTitle(lesson.id, e.target.value)
+                              setEditingTitle(null)
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                updateLessonTitle(lesson.id, e.target.value)
+                                setEditingTitle(null)
+                              } else if (e.key === 'Escape') {
+                                setEditingTitle(null)
+                              }
+                            }}
+                          />
+                        ) : (
+                          <span style={{
+                            fontSize: '14px',
+                            fontFamily: THEME.FONT_PRIMARY,
+                            color: selectedId === lesson.id ? THEME.WHITE : THEME.TEXT_SECONDARY,
+                            letterSpacing: '1px',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}>
+                            {lesson.title}
+                          </span>
+                        )}
+                        {selectedId === lesson.id && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); addLesson() }}
+                            style={{
+                              position: 'absolute',
+                              right: '-12px',
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '50%',
+                              background: THEME.AMBER,
+                              border: 'none',
+                              color: THEME.WHITE,
+                              fontSize: '14px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            +
+                          </button>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Break bubbles for this day */}
+                    {breaks.filter(b => b.day === day).map(brk => (
+                      <div
+                        key={brk.id}
+                        style={{
+                          position: 'absolute',
+                          left: `${brk.startMinutes * pixelScale}px`,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          width: `${Math.max(brk.durationMinutes * pixelScale - 4, 30)}px`,
+                          height: '32px',
+                          background: selectedId === brk.id ? THEME.BG_MEDIUM : THEME.BG_INPUT,
+                          border: `1px solid ${selectedId === brk.id ? THEME.AMBER : THEME.BORDER_GREY}`,
+                          borderRadius: '16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: dragState ? 'grabbing' : 'grab',
+                          boxShadow: selectedId === brk.id ? `0 0 12px rgba(212, 115, 12, 0.4)` : 'none',
+                          zIndex: selectedId === brk.id ? 10 : 1,
+                          userSelect: 'none'
+                        }}
+                        onMouseDown={(e) => handleBubbleMouseDown(e, brk.id, 'break', 'move')}
+                      >
+                        <img src={breakSymbol} alt="Break" style={{ width: '16px', height: '16px', opacity: 0.8 }} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
+            })()}
+          </div>
+        </div>
+
+        {/* Bottom Section - Header Row with Labels - moved down 50px */}
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden', marginTop: '50px' }}>
+
+          {/* Header Row: LESSON | Lesson Info | LEARNING OBJECTIVES - using absolute positioning */}
+          <div style={{
+            position: 'relative',
+            height: '30px',
+            marginBottom: '0px'
+          }}>
+            {/* Lesson Navigator - moved down 100px, centered '+' over LESSON label at X:-655 */}
+            <div style={{
+              position: 'absolute',
+              left: 'calc(50% - 697px)',
+              top: 'calc(50% + 100px)',
+              transform: 'translateY(-50%)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '2px'
+            }}>
+              <button style={navigatorButtonStyle}>↑</button>
+              <div style={{ display: 'flex', gap: '2px' }}>
+                <button style={navigatorButtonStyle}>←</button>
+                <button
+                  style={{
+                    ...navigatorButtonStyle,
+                    background: 'transparent',
+                    color: THEME.AMBER,
+                    fontSize: '24px',
+                    fontWeight: 'bold'
+                  }}
+                  onClick={addLesson}
+                >
+                  +
+                </button>
+                <button style={navigatorButtonStyle}>→</button>
+              </div>
+              <button style={navigatorButtonStyle}>↓</button>
             </div>
 
-            {/* Hierarchical tree view */}
-            <div style={{ fontSize: '10px', fontFamily: THEME.FONT_MONO, lineHeight: '1.8' }}>
-              {/* Lesson level */}
-              <div style={{ color: THEME.TEXT_PRIMARY }}>
-                <span style={{ color: THEME.AMBER }}>▸</span> {lessonDetails.name}
+            {/* LESSON label - left edge at X:-705 (moved left 40px) */}
+            <span style={{
+              ...secondaryHeadingStyle,
+              position: 'absolute',
+              left: 'calc(50% - 705px)',
+              top: '50%',
+              transform: 'translateY(-50%)'
+            }}>
+              LESSON
+            </span>
+
+            {/* Lesson number and title - moved left 30px to X:-570 */}
+            {selectedLesson && (
+              <span style={{
+                position: 'absolute',
+                left: 'calc(50% - 570px)',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                fontSize: '15px',
+                color: THEME.AMBER,
+                fontFamily: THEME.FONT_PRIMARY,
+                letterSpacing: '2px'
+              }}>
+                {getLessonNumber(selectedLesson.id)}. {selectedLesson.title}
+              </span>
+            )}
+
+            {/* Start-Stop time - swapped to X:-95 */}
+            {selectedLesson && (
+              <span style={{
+                position: 'absolute',
+                left: 'calc(50% - 95px)',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                fontSize: '14px',
+                color: THEME.AMBER,
+                fontFamily: THEME.FONT_MONO
+              }}>
+                {getTimeDisplay(selectedLesson)}
+              </span>
+            )}
+
+            {/* Duration - after time, color changed to grey */}
+            {selectedLesson && (
+              <span style={{
+                position: 'absolute',
+                left: 'calc(50% + 15px)',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                fontSize: '14px',
+                color: THEME.TEXT_DIM,
+                fontFamily: THEME.FONT_MONO
+              }}>
+                ({selectedLesson.durationMinutes} Mins)
+              </span>
+            )}
+
+            {/* LO Circles - swapped to X:+95 */}
+            {selectedLesson && (
+              <div style={{
+                position: 'absolute',
+                left: 'calc(50% + 150px)',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                display: 'flex',
+                gap: '6px',
+                alignItems: 'center'
+              }}>
+                <span style={{ fontSize: '13px', color: THEME.TEXT_DIM }}>LO</span>
+                {learningObjectives.map((_, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => toggleLOLink(idx)}
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '50%',
+                      background: selectedLesson.linkedLOs.includes(idx) ? THEME.AMBER : 'transparent',
+                      border: `1px solid ${selectedLesson.linkedLOs.includes(idx) ? THEME.AMBER : THEME.BORDER_GREY}`,
+                      cursor: 'pointer'
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* LEARNING OBJECTIVES label - right edge at X:+695 (moved right 30px) */}
+            <span style={{
+              ...secondaryHeadingStyle,
+              position: 'absolute',
+              right: 'calc(50% - 695px)',
+              top: '50%',
+              transform: 'translateY(-50%)'
+            }}>
+              LEARNING OBJECTIVES
+            </span>
+          </div>
+
+          {/* Horizontal Orange Line - spanning X:-715 to X:+715 (1430px) */}
+          <div style={{
+            width: '1430px',
+            height: '1px',
+            background: THEME.AMBER,
+            alignSelf: 'center',
+            marginBottom: '12px'
+          }} />
+
+          {/* Content Row: Topics/Subtopics | LO List - using absolute positioning */}
+          <div style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+
+            {/* TOPICS + label and entry - left edge at X:-570 */}
+            <div style={{
+              position: 'absolute',
+              left: 'calc(50% - 570px)',
+              top: '0',
+              width: '400px',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              {/* TOPICS + header with line directly below */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span
+                  style={{
+                    fontSize: '15px',
+                    letterSpacing: '3px',
+                    color: hoveredLabel === 'topics' || topicEntryActive ? THEME.AMBER : THEME.TEXT_DIM,
+                    fontFamily: THEME.FONT_PRIMARY,
+                    transition: 'color 0.2s ease',
+                    cursor: 'default'
+                  }}
+                  onMouseEnter={() => setHoveredLabel('topics')}
+                  onMouseLeave={() => setHoveredLabel(null)}
+                >
+                  TOPICS
+                </span>
+                <button
+                  onClick={() => {
+                    setTopicEntryActive(true)
+                    setTimeout(() => topicInputRef.current?.focus(), 0)
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: THEME.AMBER,
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    padding: '0 4px'
+                  }}
+                >
+                  +
+                </button>
               </div>
 
-              {/* Topics */}
-              {lessonDetails.topics.filter(t => t.name).map((topic, ti) => (
-                <div key={topic.id} style={{ marginLeft: '16px' }}>
-                  <div style={{ color: THEME.TEXT_SECONDARY }}>
-                    <span style={{ color: THEME.TEXT_DIM }}>├─</span> {topic.name}
-                    {topic.lo.length > 0 && (
-                      <span style={{ color: THEME.GREEN_LIGHT, marginLeft: '8px', fontSize: '8px' }}>
-                        LO: {topic.lo.join(', ')}
-                      </span>
+              {/* Line directly below header */}
+              <div style={{
+                height: '1px',
+                background: topicEntryActive ? '#00ff00' : THEME.BORDER_GREY,
+                transition: 'background 0.2s ease',
+                marginTop: '2px',
+                marginBottom: '4px'
+              }} />
+
+              {/* Entry input */}
+              <input
+                ref={topicInputRef}
+                type="text"
+                value={topicEntryValue}
+                onChange={(e) => setTopicEntryValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitTopic()
+                  if (e.key === 'Escape') {
+                    setTopicEntryActive(false)
+                    setTopicEntryValue('')
+                  }
+                }}
+                onBlur={() => {
+                  if (!topicEntryValue.trim()) {
+                    setTopicEntryActive(false)
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  color: THEME.WHITE,
+                  fontSize: '14px',
+                  fontFamily: THEME.FONT_PRIMARY,
+                  padding: '4px 0'
+                }}
+              />
+
+              {/* Committed topics list */}
+              <div style={{ marginTop: '8px', overflow: 'auto', maxHeight: '150px' }}>
+                {selectedLesson?.topics.map(topic => (
+                  <div
+                    key={topic.id}
+                    style={{
+                      fontSize: '14px',
+                      marginBottom: '6px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      gap: '8px'
+                    }}
+                    onDoubleClick={() => setEditingTopicId(topic.id)}
+                  >
+                    <span style={{ color: '#00ff00' }}>{topic.number}</span>
+                    {editingTopicId === topic.id ? (
+                      <input
+                        autoFocus
+                        type="text"
+                        defaultValue={topic.title}
+                        style={inlineEditStyle}
+                        onBlur={(e) => updateTopicTitle(topic.id, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') updateTopicTitle(topic.id, e.target.value)
+                        }}
+                      />
+                    ) : (
+                      <span style={{ color: THEME.OFF_WHITE }}>{topic.title}</span>
                     )}
                   </div>
+                ))}
+              </div>
+            </div>
 
-                  {/* Subtopics under this topic */}
-                  {lessonDetails.subtopics
-                    .filter(st => st.parentTopic === topic.id && st.name)
-                    .map((st, sti) => (
-                      <div key={st.id} style={{ marginLeft: '16px', color: THEME.TEXT_DIM }}>
-                        <span style={{ color: THEME.BORDER_GREY }}>└─</span> {st.name}
-                      </div>
-                    ))
+            {/* SUBTOPICS + label and entry - left edge at X:-95 */}
+            <div style={{
+              position: 'absolute',
+              left: 'calc(50% - 95px)',
+              top: '0',
+              width: '400px',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              {/* SUBTOPICS + header with line directly below */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span
+                  style={{
+                    fontSize: '15px',
+                    letterSpacing: '3px',
+                    color: hoveredLabel === 'subtopics' || subtopicEntryActive ? THEME.AMBER : THEME.TEXT_DIM,
+                    fontFamily: THEME.FONT_PRIMARY,
+                    transition: 'color 0.2s ease',
+                    cursor: 'default'
+                  }}
+                  onMouseEnter={() => setHoveredLabel('subtopics')}
+                  onMouseLeave={() => setHoveredLabel(null)}
+                >
+                  SUBTOPICS
+                </span>
+                <button
+                  onClick={() => {
+                    setSubtopicEntryActive(true)
+                    setTimeout(() => subtopicInputRef.current?.focus(), 0)
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: THEME.AMBER,
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    padding: '0 4px'
+                  }}
+                >
+                  +
+                </button>
+              </div>
+
+              {/* Line directly below header */}
+              <div style={{
+                height: '1px',
+                background: subtopicEntryActive ? '#00ff00' : THEME.BORDER_GREY,
+                transition: 'background 0.2s ease',
+                marginTop: '2px',
+                marginBottom: '4px'
+              }} />
+
+              {/* Entry input */}
+              <input
+                ref={subtopicInputRef}
+                type="text"
+                value={subtopicEntryValue}
+                onChange={(e) => setSubtopicEntryValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitSubtopic()
+                  if (e.key === 'Escape') {
+                    setSubtopicEntryActive(false)
+                    setSubtopicEntryValue('')
                   }
-                </div>
-              ))}
+                }}
+                onBlur={() => {
+                  if (!subtopicEntryValue.trim()) {
+                    setSubtopicEntryActive(false)
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  color: THEME.WHITE,
+                  fontSize: '14px',
+                  fontFamily: THEME.FONT_PRIMARY,
+                  padding: '4px 0'
+                }}
+              />
 
-              {/* Orphan subtopics (no parent topic assigned) */}
-              {lessonDetails.subtopics
-                .filter(st => st.name && !lessonDetails.topics.some(t => t.id === st.parentTopic && t.name))
-                .map(st => (
-                  <div key={st.id} style={{ marginLeft: '16px', color: THEME.TEXT_DIM }}>
-                    <span style={{ color: THEME.BORDER_GREY }}>├─</span> {st.name}
+              {/* Committed subtopics list */}
+              <div style={{ marginTop: '8px', overflow: 'auto', maxHeight: '150px' }}>
+                {selectedLesson?.subtopics.map(subtopic => (
+                  <div
+                    key={subtopic.id}
+                    style={{
+                      fontSize: '14px',
+                      marginBottom: '6px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      gap: '8px'
+                    }}
+                    onDoubleClick={() => setEditingSubtopicId(subtopic.id)}
+                  >
+                    <span style={{ color: '#00ff00' }}>{subtopic.number}</span>
+                    {editingSubtopicId === subtopic.id ? (
+                      <input
+                        autoFocus
+                        type="text"
+                        defaultValue={subtopic.title}
+                        style={inlineEditStyle}
+                        onBlur={(e) => updateSubtopicTitle(subtopic.id, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') updateSubtopicTitle(subtopic.id, e.target.value)
+                        }}
+                      />
+                    ) : (
+                      <span style={{ color: THEME.OFF_WHITE }}>{subtopic.title}</span>
+                    )}
                   </div>
-                ))
-              }
+                ))}
+              </div>
+            </div>
+
+            {/* Learning Objectives List - left edge aligned with LEARNING OBJECTIVES label left edge */}
+            {/* LEARNING OBJECTIVES label right edge is at X:+695, label width ~280px, so left edge ~X:+415 */}
+            <div style={{
+              position: 'absolute',
+              right: 'calc(50% - 695px)',
+              top: '0',
+              width: '280px',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden'
+            }}>
+              <div style={{ overflow: 'auto', maxHeight: '200px' }}>
+                {learningObjectives.map((lo, idx) => {
+                  const isLinked = selectedLesson?.linkedLOs.includes(idx)
+                  const isLastLinked = idx === getLastLinkedLO()
+
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        fontSize: '14px',
+                        color: isLinked ? THEME.WHITE : THEME.TEXT_DIM,
+                        marginBottom: '8px',
+                        paddingBottom: isLastLinked ? '4px' : 0,
+                        borderBottom: isLastLinked ? `2px solid #00ff00` : 'none',
+                        cursor: 'pointer',
+                        transition: 'color 0.2s ease'
+                      }}
+                      onDoubleClick={() => {
+                        const newTitle = prompt('Edit Learning Objective:', lo)
+                        if (newTitle !== null && newTitle.trim()) {
+                          console.log('Update LO:', idx, newTitle)
+                        }
+                      }}
+                    >
+                      {idx + 1}. {lo}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Shared Footer Component */}
+      {/* Footer */}
       <Footer
         currentSection="design"
         onNavigate={handleNavigate}
         isPKEActive={isPKEActive}
         onPKEToggle={setIsPKEActive}
         onSave={() => {}}
-        onClear={() => {}}
-        onDelete={() => {}}
+        onClear={() => {
+          setLessons([{
+            id: 'lesson-1',
+            title: 'INTRODUCTION',
+            day: 1,
+            startMinutes: 0,
+            durationMinutes: 60,
+            linkedLOs: [],
+            topics: [],
+            subtopics: []
+          }])
+          setBreaks([])
+          setSelectedId('lesson-1')
+        }}
+        onDelete={() => {
+          if (selectedType === 'lesson' && lessons.length > 1) {
+            setLessons(prev => prev.filter(l => l.id !== selectedId))
+            setSelectedId(lessons[0]?.id || null)
+          } else if (selectedType === 'break') {
+            setBreaks(prev => prev.filter(b => b.id !== selectedId))
+            setSelectedId(lessons[0]?.id || null)
+            setSelectedType('lesson')
+          }
+        }}
         user={user || { name: '---' }}
         courseState={courseState || { startDate: null, saveCount: 0 }}
         progress={15}
@@ -553,76 +1508,51 @@ function OutlinePlanner({ onNavigate, courseData, courseLoaded, user, courseStat
   )
 }
 
-// Styles
-const sectionHeaderStyle = {
-  fontSize: '12px',
-  letterSpacing: '3px',
-  color: THEME.AMBER,
+// Styles matching DEFINE page standards
+
+// Secondary Heading style (DETAILS, DESCRIPTION, LEARNING OBJECTIVES)
+const secondaryHeadingStyle = {
+  fontSize: '18px',
+  letterSpacing: '4.5px',
+  color: THEME.WHITE,
   fontFamily: THEME.FONT_PRIMARY
 }
 
-const headerCellStyle = {
-  padding: '10px 8px',
-  fontSize: '10px',
-  color: THEME.TEXT_DIM,
-  fontFamily: THEME.FONT_MONO,
-  textAlign: 'center',
-  borderRight: `1px solid ${THEME.BORDER}`
-}
-
-const dayCellStyle = {
-  padding: '10px 12px',
-  fontSize: '11px',
-  color: THEME.TEXT_SECONDARY,
-  fontFamily: THEME.FONT_PRIMARY,
-  borderRight: `1px solid ${THEME.BORDER}`,
-  display: 'flex',
-  alignItems: 'center'
-}
-
-const labelStyle = {
-  display: 'block',
-  fontSize: '10px',
-  letterSpacing: '2px',
-  color: THEME.TEXT_DIM,
-  fontFamily: THEME.FONT_PRIMARY,
-  marginBottom: '8px'
-}
-
-const inputStyle = {
-  width: '100%',
-  padding: '10px 12px',
-  background: THEME.BG_INPUT,
+// Navigation button style (no border)
+const navButtonStyle = {
+  background: 'transparent',
   border: 'none',
-  borderRadius: '4px',
-  color: THEME.TEXT_PRIMARY,
-  fontSize: '11px',
-  fontFamily: THEME.FONT_MONO,
-  outline: 'none'
+  color: THEME.TEXT_DIM,
+  fontSize: '15px',
+  cursor: 'pointer',
+  padding: '2px 8px',
+  opacity: 0.7
 }
 
-const addButtonStyle = {
+// Navigator button style (no border)
+const navigatorButtonStyle = {
+  background: 'transparent',
+  border: 'none',
   width: '28px',
   height: '28px',
-  borderRadius: '50%',
-  background: THEME.AMBER_DARK,
-  border: 'none',
-  color: THEME.WHITE,
+  color: THEME.TEXT_DIM,
   fontSize: '14px',
   cursor: 'pointer',
-  flexShrink: 0
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center'
 }
 
-const importButtonStyle = {
-  padding: '10px 20px',
-  fontSize: '10px',
-  letterSpacing: '2px',
-  fontFamily: THEME.FONT_PRIMARY,
+// Inline edit style for topics/subtopics
+const inlineEditStyle = {
   background: 'transparent',
-  border: `1px solid ${THEME.BORDER}`,
-  borderRadius: '3px',
-  color: THEME.TEXT_DIM,
-  cursor: 'pointer'
+  border: 'none',
+  borderBottom: `1px solid ${THEME.AMBER}`,
+  outline: 'none',
+  color: THEME.OFF_WHITE,
+  fontSize: '14px',
+  fontFamily: THEME.FONT_PRIMARY,
+  width: '150px'
 }
 
 export default OutlinePlanner

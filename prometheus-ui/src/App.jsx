@@ -397,11 +397,19 @@ function App() {
             currentPage === 'navigate' ? 'NAVIGATION' :
             currentPage.toUpperCase()
           }
+          sectionName={
+            currentPage === 'define' ? 'DEFINE' :
+            currentPage === 'design' ? 'DESIGN' :
+            currentPage === 'build' ? 'BUILD' :
+            currentPage === 'format' ? 'FORMAT' :
+            currentPage === 'generate' ? 'GENERATE' :
+            null
+          }
           courseData={courseData}
         />
 
         {/* Page Content */}
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, overflow: 'visible', display: 'flex', flexDirection: 'column' }}>
           {renderPage()}
         </div>
 

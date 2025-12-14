@@ -14,7 +14,7 @@
 import logo from '../assets/burntorangelogo.png'
 import { THEME } from '../constants/theme'
 
-function Header({ pageTitle, courseData = {} }) {
+function Header({ pageTitle, sectionName, courseData = {} }) {
   // Default values that should display as '---' until user changes them
   const defaultValues = ['Foundational', 'Junior', 0, 1, '', 'Hours']
 
@@ -54,12 +54,12 @@ function Header({ pageTitle, courseData = {} }) {
         />
       </div>
 
-      {/* Main Title - centered horizontally, vertically aligned with logo center */}
+      {/* Main Title - centered horizontally, nudged up 10px */}
       <h1
         style={{
           position: 'absolute',
           left: '50%',
-          top: '40px',
+          top: '30px',
           transform: 'translate(-50%, -50%)',
           fontFamily: THEME.FONT_PRIMARY,
           fontSize: '24px',
@@ -72,6 +72,26 @@ function Header({ pageTitle, courseData = {} }) {
       >
         PROMETHEUS COURSE GENERATION SYSTEM 2.0
       </h1>
+
+      {/* Section Name (Nav Wheel keyword) - centered, below title, above line */}
+      {sectionName && (
+        <h2
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '60px',
+            transform: 'translateX(-50%)',
+            fontFamily: THEME.FONT_PRIMARY,
+            fontSize: '18px',
+            fontWeight: 500,
+            color: THEME.AMBER,
+            letterSpacing: '4.5px',
+            margin: 0
+          }}
+        >
+          {sectionName}
+        </h2>
+      )}
 
       {/* Info Cluster - far right */}
       <div

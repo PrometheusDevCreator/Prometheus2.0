@@ -7,6 +7,7 @@
 import { useState, useCallback } from 'react'
 import { THEME } from '../constants/theme'
 import Footer from '../components/Footer'
+import pkeButton from '../assets/PKE_Button.png'
 
 function Generate({ onNavigate, courseLoaded, user, courseState }) {
   const [isPKEActive, setIsPKEActive] = useState(false)
@@ -26,26 +27,28 @@ function Generate({ onNavigate, courseLoaded, user, courseState }) {
         position: 'relative'
       }}
     >
-      {/* Page Title */}
+      {/* PKE Button - centered horizontally at Y:630 (matching Define page) */}
       <div
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px 0',
-          borderBottom: `1px solid ${THEME.BORDER}`
+          position: 'absolute',
+          top: '730px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 10
         }}
       >
-        <h1
+        <img
+          src={pkeButton}
+          alt="PKE"
+          onClick={() => setIsPKEActive(!isPKEActive)}
           style={{
-            fontSize: '20px',
-            letterSpacing: '6px',
-            color: THEME.OFF_WHITE,
-            fontFamily: THEME.FONT_PRIMARY
+            width: '28px',
+            height: '28px',
+            cursor: 'pointer',
+            opacity: isPKEActive ? 1 : 0.7,
+            transition: 'opacity 0.2s ease'
           }}
-        >
-          GENERATE
-        </h1>
+        />
       </div>
 
       {/* Main Content - Coming Soon */}
