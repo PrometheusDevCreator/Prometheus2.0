@@ -40,18 +40,18 @@
   --define-gap-lg: 2.08vw;        /* 40px @ 1920 */
   --define-slider-w: 16.67vw;     /* 320px @ 1920 */
 
-  /* Spacing - vertical (vh) - pending 3R.3b */
-  --define-gap-md: 16px;
-  --define-gap-sm: 12px;
+  /* Spacing - vertical (vh) */
+  --define-gap-md: 1.48vh;        /* 16px @ 1080 */
+  --define-gap-sm: 1.11vh;        /* 12px @ 1080 */
 
-  /* Padding: top right bottom left */
-  --define-pad: 40px 3.125vw 120px 3.125vw;  /* LR converted, TB pending */
+  /* Padding: top right bottom left (vh vw vh vw) */
+  --define-pad: 3.70vh 3.125vw 11.11vh 3.125vw;
 
-  /* Sizing - vertical (vh) - pending 3R.3b */
-  --define-textarea-min-h: 200px;
+  /* Sizing - vertical (vh) */
+  --define-textarea-min-h: 18.52vh;  /* 200px @ 1080 */
 
-  /* Positioning - vertical (vh) - pending 3R.3b */
-  --define-pke-top: 730px;
+  /* Positioning - vertical (vh) */
+  --define-pke-top: 67.59vh;      /* 730px @ 1080 */
 
   /* Typography - pending 3R.3c */
   --define-fs-18: 18px;
