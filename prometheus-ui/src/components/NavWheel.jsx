@@ -26,10 +26,10 @@ function NavWheel({
 }) {
   const [hoveredSection, setHoveredSection] = useState(null)
 
-  // Sizes based on expanded state
+  // Sizes based on expanded state (using ANIMATION constants for SVG calculations)
   const size = isExpanded ? ANIMATION.WHEEL_EXPANDED_SIZE : ANIMATION.WHEEL_COLLAPSED_SIZE
-  const centerSize = isExpanded ? 70 : 54
-  const labelRadius = isExpanded ? 100 : 0
+  const centerSize = isExpanded ? 70 : 54  // Used for SVG calculations
+  const labelRadius = isExpanded ? 100 : 0 // Used for SVG position calculations
 
   // Get cardinal sections (excluding center/generate)
   const cardinalSections = NAV_SECTIONS.filter(s => s.angle !== null)
@@ -68,7 +68,7 @@ function NavWheel({
 
     return {
       color: isActive || isHovered ? THEME.AMBER : THEME.TEXT_DIM,
-      textShadow: isActive ? `0 0 10px ${THEME.AMBER}` : 'none',
+      textShadow: isActive ? `0 0 0.93vh ${THEME.AMBER}` : 'none',  /* 10px @ 1080 */
       cursor: 'pointer',
       transition: 'all 0.3s ease'
     }
@@ -89,11 +89,11 @@ function NavWheel({
         className="navwheel-container"
         style={{
           position: isExpanded ? 'fixed' : 'absolute',
-          bottom: isExpanded ? '50%' : '30px',
-          left: isExpanded ? '50%' : '30px',
+          bottom: isExpanded ? '50%' : '2.78vh',        /* 30px @ 1080 */
+          left: isExpanded ? '50%' : '1.56vw',          /* 30px @ 1920 */
           transform: isExpanded ? 'translate(-50%, 50%)' : 'none',
-          width: `${size}px`,
-          height: `${size}px`,
+          width: isExpanded ? 'var(--navwheel-expanded)' : 'var(--navwheel-collapsed)',
+          height: isExpanded ? 'var(--navwheel-expanded)' : 'var(--navwheel-collapsed)',
           zIndex: 1000
         }}
       >
@@ -193,13 +193,13 @@ function NavWheel({
           const isActive = currentSection === section.id
           const isHovered = hoveredSection === section.id
 
-          // Position adjustments per user request
-          let offsetX = 0
-          let offsetY = 0
-          if (section.id === 'define') offsetY = -50 // UP 50px
-          if (section.id === 'design') offsetX = 70  // RIGHT 70px
-          if (section.id === 'build') offsetY = 50   // DOWN 50px
-          if (section.id === 'format') offsetX = -70 // LEFT 70px
+          // Position adjustments per user request (viewport units)
+          let offsetX = '0'
+          let offsetY = '0'
+          if (section.id === 'define') offsetY = '-4.63vh'  // UP 50px @ 1080
+          if (section.id === 'design') offsetX = '3.65vw'   // RIGHT 70px @ 1920
+          if (section.id === 'build') offsetY = '4.63vh'    // DOWN 50px @ 1080
+          if (section.id === 'format') offsetX = '-3.65vw'  // LEFT 70px @ 1920
 
           return (
             <div
@@ -209,17 +209,17 @@ function NavWheel({
               onMouseLeave={() => setHoveredSection(null)}
               style={{
                 position: 'absolute',
-                left: `calc(50% + ${pos.x + offsetX}px)`,
-                top: `calc(50% + ${pos.y + offsetY}px)`,
+                left: `calc(50% + ${pos.x}px + ${offsetX})`,
+                top: `calc(50% + ${pos.y}px + ${offsetY})`,
                 transform: 'translate(-50%, -50%)',
                 ...getSectionStyle(section),
-                fontSize: '12px',
+                fontSize: '1.11vh',           /* 12px @ 1080 */
                 fontFamily: THEME.FONT_PRIMARY,
-                letterSpacing: '3px',
+                letterSpacing: '0.28vh',      /* 3px @ 1080 */
                 fontWeight: isActive ? '600' : '400',
                 whiteSpace: 'nowrap',
-                padding: '8px 12px',
-                borderRadius: '4px',
+                padding: '0.74vh 1.11vh',     /* 8px 12px @ 1080 */
+                borderRadius: '0.37vh',       /* 4px @ 1080 */
                 background: isHovered ? 'rgba(212, 115, 12, 0.1)' : 'transparent'
               }}
             >
@@ -236,28 +236,28 @@ function NavWheel({
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: `${centerSize}px`,
-            height: `${centerSize}px`,
+            width: isExpanded ? 'var(--navwheel-center-lg)' : 'var(--navwheel-center-sm)',
+            height: isExpanded ? 'var(--navwheel-center-lg)' : 'var(--navwheel-center-sm)',
             borderRadius: '50%',
             background: THEME.BG_DARK,
-            border: `2px solid ${isExpanded ? THEME.AMBER : THEME.AMBER_DARK}`,
+            border: `0.19vh solid ${isExpanded ? THEME.AMBER : THEME.AMBER_DARK}`,  /* 2px @ 1080 */
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
             transition: 'all 0.4s ease',
             zIndex: 10,
-            boxShadow: isExpanded ? `0 0 20px rgba(212, 115, 12, 0.3)` : 'none'
+            boxShadow: isExpanded ? `0 0 1.85vh rgba(212, 115, 12, 0.3)` : 'none'  /* 20px @ 1080 */
           }}
         >
           <img
             src={logo}
             alt="Prometheus"
             style={{
-              width: isExpanded ? '50px' : '38px',
-              height: isExpanded ? '50px' : '38px',
+              width: isExpanded ? '4.63vh' : '3.52vh',   /* 50px/38px @ 1080 */
+              height: isExpanded ? '4.63vh' : '3.52vh',  /* 50px/38px @ 1080 */
               objectFit: 'contain',
-              filter: isExpanded ? 'drop-shadow(0 0 10px rgba(212, 115, 12, 0.5))' : 'none',
+              filter: isExpanded ? 'drop-shadow(0 0 0.93vh rgba(212, 115, 12, 0.5))' : 'none',  /* 10px @ 1080 */
               transition: 'all 0.4s ease'
             }}
           />
@@ -271,13 +271,13 @@ function NavWheel({
             onMouseLeave={() => setHoveredSection(null)}
             style={{
               position: 'absolute',
-              top: `calc(50% + ${centerSize / 2 + 15}px)`,
+              top: `calc(50% + var(--navwheel-center-lg) / 2 + 1.39vh)`,  /* centerSize/2 + 15px @ 1080 */
               left: '50%',
               transform: 'translateX(-50%)',
               ...getSectionStyle(centerSection),
-              fontSize: '10px',
+              fontSize: '0.93vh',           /* 10px @ 1080 */
               fontFamily: THEME.FONT_PRIMARY,
-              letterSpacing: '2px',
+              letterSpacing: '0.19vh',      /* 2px @ 1080 */
               whiteSpace: 'nowrap',
               opacity: hoveredSection === centerSection.id ? 1 : 0.7
             }}
@@ -291,7 +291,7 @@ function NavWheel({
           <div
             style={{
               position: 'absolute',
-              bottom: '-145px',
+              bottom: '-13.43vh',           /* -145px @ 1080 */
               left: '50%',
               transform: 'translateX(-50%)',
               textAlign: 'center'
@@ -299,11 +299,11 @@ function NavWheel({
           >
             <div
               style={{
-                fontSize: '12px',
-                letterSpacing: '3px',
+                fontSize: '1.11vh',         /* 12px @ 1080 */
+                letterSpacing: '0.28vh',    /* 3px @ 1080 */
                 color: THEME.AMBER,
                 fontFamily: THEME.FONT_MONO,
-                marginBottom: '4px'
+                marginBottom: '0.37vh'      /* 4px @ 1080 */
               }}
             >
               {hoveredSection
@@ -313,8 +313,8 @@ function NavWheel({
             </div>
             <div
               style={{
-                fontSize: '9px',
-                letterSpacing: '2px',
+                fontSize: '0.83vh',         /* 9px @ 1080 */
+                letterSpacing: '0.19vh',    /* 2px @ 1080 */
                 color: THEME.TEXT_DIM,
                 fontFamily: THEME.FONT_MONO
               }}
