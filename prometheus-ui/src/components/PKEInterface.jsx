@@ -15,8 +15,6 @@
  * - SAVE, LOAD, CLEAR, DELETE button press
  */
 
-import { LAYOUT } from '../constants/layout'
-
 function PKEInterface({
   isActive = false,
   onClose,
@@ -34,20 +32,32 @@ function PKEInterface({
   const renderDeleteContent = () => {
     if (deleteStep === 'confirm') {
       return (
-        <div className="flex items-center gap-4 px-4">
-          <span className="text-[#ff3333] text-[14px] font-prometheus tracking-wide">
+        <div className="flex items-center" style={{ gap: '1.48vh', padding: '0 1.48vh' }}>
+          <span className="font-prometheus tracking-wide" style={{ color: '#ff3333', fontSize: '1.3vh' }}>
             THIS WILL DELETE LO {deleteLoNumber}
           </span>
-          <div className="flex gap-3">
+          <div className="flex" style={{ gap: '1.11vh' }}>
             <button
               onClick={onKeep}
-              className="px-4 py-1 text-[12px] tracking-wider font-prometheus border border-[#00ff00] text-[#00ff00] bg-transparent rounded-full hover:bg-[#00ff00] hover:text-[#0d0d0d] transition-all"
+              className="font-prometheus tracking-wider bg-transparent rounded-full hover:bg-[#00ff00] hover:text-[#0d0d0d] transition-all"
+              style={{
+                padding: '0.37vh 1.48vh',
+                fontSize: '1.11vh',
+                border: '0.09vh solid #00ff00',
+                color: '#00ff00'
+              }}
             >
               KEEP
             </button>
             <button
               onClick={onDelete}
-              className="px-4 py-1 text-[12px] tracking-wider font-prometheus border border-[#ff3333] text-[#ff3333] bg-transparent rounded-full hover:bg-[#ff3333] hover:text-[#0d0d0d] transition-all"
+              className="font-prometheus tracking-wider bg-transparent rounded-full hover:bg-[#ff3333] hover:text-[#0d0d0d] transition-all"
+              style={{
+                padding: '0.37vh 1.48vh',
+                fontSize: '1.11vh',
+                border: '0.09vh solid #ff3333',
+                color: '#ff3333'
+              }}
             >
               DELETE
             </button>
@@ -56,16 +66,16 @@ function PKEInterface({
       )
     } else if (deleteStep === 'keep-confirm') {
       return (
-        <div className="flex items-center gap-4 px-4">
-          <span className="text-[#00ff00] text-[13px] font-prometheus tracking-wide text-center">
+        <div className="flex items-center" style={{ gap: '1.48vh', padding: '0 1.48vh' }}>
+          <span className="font-prometheus tracking-wide text-center" style={{ color: '#00ff00', fontSize: '1.2vh' }}>
             Topics and Subtopics will be kept and renumbered. Click wastebin again to confirm.
           </span>
         </div>
       )
     } else if (deleteStep === 'delete-confirm') {
       return (
-        <div className="flex items-center gap-4 px-4">
-          <span className="text-[#ff3333] text-[13px] font-prometheus tracking-wide text-center">
+        <div className="flex items-center" style={{ gap: '1.48vh', padding: '0 1.48vh' }}>
+          <span className="font-prometheus tracking-wide text-center" style={{ color: '#ff3333', fontSize: '1.2vh' }}>
             THIS WILL DELETE RELATED TOPICS AND SUBTOPICS. Click wastebin again to confirm.
           </span>
         </div>
@@ -81,34 +91,34 @@ function PKEInterface({
     <div
       className={`flex items-center justify-center transition-all duration-300 ${isActive ? 'pke-glow-pulse' : ''}`}
       style={{
-        width: `${LAYOUT.PKE_WIDTH}px`,   // B5: 908px (100% increase)
-        height: `${LAYOUT.PKE_HEIGHT}px`, // B5: 76px (100% increase)
-        borderRadius: `${LAYOUT.PKE_BORDER_RADIUS}px`, // Half of height for lozenge
-        padding: '1px',
+        width: 'var(--pke-w)',            /* 908px @ 1920 */
+        height: 'var(--pke-h)',           /* 76px @ 1080 */
+        borderRadius: 'var(--pke-r)',     /* 38px @ 1080 - half height for lozenge */
+        padding: '0.09vh',                /* 1px @ 1080 */
         background: isActive
           ? '#FF6600' // Burnt orange when active
           : defaultGradient, // A7: New gradient when inactive
         boxShadow: isActive
-          ? '0 0 12px 4px rgba(255, 102, 0, 0.6)' // B11: Scaled glow for larger size
+          ? '0 0 1.11vh 0.37vh rgba(255, 102, 0, 0.6)' /* 12px 4px @ 1080 */
           : 'none',
-        marginLeft: '35px' // Horizontal shift right 35px (all pages)
+        marginLeft: '1.82vw'              /* 35px @ 1920 */
       }}
     >
       <div
         className="w-full h-full flex items-center justify-center"
         style={{
           background: '#0d0d0d',
-          borderRadius: `${LAYOUT.PKE_BORDER_RADIUS - 1}px` // Slightly smaller for inner content
+          borderRadius: 'calc(var(--pke-r) - 0.09vh)'  /* 37px @ 1080 - slightly smaller for inner content */
         }}
       >
         {isDeleteWorkflow ? (
           renderDeleteContent()
         ) : isActive ? (
-          <span className="text-[#BF9000] text-[15px] font-prometheus tracking-wide text-center px-4">
+          <span className="font-prometheus tracking-wide text-center" style={{ color: '#BF9000', fontSize: '1.39vh', padding: '0 1.48vh' }}>
             PKE ACTIVATED. FUNCTIONALITY COMING SOON.
           </span>
         ) : (
-          <span className="text-[#767171] text-[15px] font-prometheus tracking-wide">
+          <span className="font-prometheus tracking-wide" style={{ color: '#767171', fontSize: '1.39vh' }}>
             PKE INTERFACE
           </span>
         )}
@@ -118,10 +128,10 @@ function PKEInterface({
       <style>{`
         @keyframes pke-glow-pulse {
           0%, 100% {
-            box-shadow: 0 0 12px 4px rgba(255, 102, 0, 0.6);
+            box-shadow: 0 0 1.11vh 0.37vh rgba(255, 102, 0, 0.6);
           }
           50% {
-            box-shadow: 0 0 18px 6px rgba(255, 102, 0, 0.8);
+            box-shadow: 0 0 1.67vh 0.56vh rgba(255, 102, 0, 0.8);
           }
         }
         .pke-glow-pulse {
