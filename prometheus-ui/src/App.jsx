@@ -47,54 +47,13 @@ import Generate from './pages/Generate'
 import Header from './components/Header'
 import DebugGrid from './components/DebugGrid'
 
-/**
- * useScaleToFit - Hook for viewport scaling
- *
- * Returns a scale factor to fit 1920×1080 content into current viewport.
- * Uses debounced resize handling to prevent excessive recalculations.
- */
-function useScaleToFit() {
-  const [scale, setScale] = useState(1)
-  const debounceRef = useRef(null)
-
-  useEffect(() => {
-    const calculateScale = () => {
-      const vw = window.innerWidth
-      const vh = window.innerHeight
-      const newScale = Math.min(vw / BASE_W, vh / BASE_H)
-      setScale(newScale)
-    }
-
-    const handleResize = () => {
-      // Debounce: clear any pending calculation
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current)
-      }
-      // Schedule new calculation after 100ms of no resize events
-      debounceRef.current = setTimeout(calculateScale, 100)
-    }
-
-    // Calculate initial scale
-    calculateScale()
-
-    // Listen for resize events
-    window.addEventListener('resize', handleResize)
-
-    return () => {
-      window.removeEventListener('resize', handleResize)
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current)
-      }
-    }
-  }, [])
-
-  // REFACTOR Phase 1: Scaling disabled - always return 1
-  return 1  // Original: return scale
-}
+// REFACTOR Phase 1: useScaleToFit hook removed
+// Original hook calculated scale = Math.min(vw/1920, vh/1080)
+// See docs/refactor-baseline/useScaleToFit_original.txt for backup
 
 function App() {
-  // Scale-to-fit hook (SINGLE source of viewport scaling)
-  const scale = useScaleToFit()
+  // REFACTOR Phase 1: Scale fixed at 1 (transform scaling removed)
+  const scale = 1
 
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false)
