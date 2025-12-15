@@ -224,11 +224,11 @@ function App() {
           backgroundColor: THEME.BG_BASE
         }}
       >
-        {/* ScaleToFit Stage Container - SINGLE transform applied here */}
+        {/* Stage Container - REFACTOR Phase 1: viewport units */}
         <div
           style={{
-            width: `${BASE_W}px`,
-            height: `${BASE_H}px`,
+            width: '100vw',
+            height: '100vh',
             flexShrink: 0,
             background: THEME.BG_BASE,
             position: 'relative',
@@ -257,11 +257,11 @@ function App() {
           backgroundColor: THEME.BG_BASE
         }}
       >
-        {/* ScaleToFit Stage Container - SINGLE transform applied here */}
+        {/* Stage Container - REFACTOR Phase 1: viewport units */}
         <div
           style={{
-            width: `${BASE_W}px`,
-            height: `${BASE_H}px`,
+            width: '100vw',
+            height: '100vh',
             flexShrink: 0,
             background: THEME.BG_BASE,
             position: 'relative',
@@ -374,11 +374,11 @@ function App() {
         backgroundColor: THEME.BG_BASE
       }}
     >
-      {/* ScaleToFit Stage Container - SINGLE transform applied here */}
+      {/* Stage Container - REFACTOR Phase 1: viewport units */}
       <div
         style={{
-          width: `${BASE_W}px`,
-          height: `${BASE_H}px`,
+          width: '100vw',
+          height: '100vh',
           flexShrink: 0,
           background: THEME.BG_DARK,
           display: 'flex',
