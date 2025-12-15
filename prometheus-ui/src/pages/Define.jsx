@@ -33,7 +33,7 @@ const D = {
   gapSm: 'var(--define-gap-sm)',
 
   // sizing
-  sliderW: 320,  // numeric for component props (convert in 3R.3)
+  sliderW: 'var(--define-slider-w)',
   textareaMinH: 'var(--define-textarea-min-h)',
 
   // positioning

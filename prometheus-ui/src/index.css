@@ -33,23 +33,27 @@
   /* ============================================
      DEFINE PAGE LAYOUT - Phase 3R
      Base design: 1920×1080
-     Step 3R.2: px baseline (will convert in 3R.3)
+     Conversion: vw = px/1920*100, vh = px/1080*100
      ============================================ */
 
-  /* Spacing */
-  --define-pad: 40px 60px 120px 60px;
-  --define-gap-lg: 40px;
+  /* Spacing - horizontal (vw) */
+  --define-gap-lg: 2.08vw;        /* 40px @ 1920 */
+  --define-slider-w: 16.67vw;     /* 320px @ 1920 */
+
+  /* Spacing - vertical (vh) - pending 3R.3b */
   --define-gap-md: 16px;
   --define-gap-sm: 12px;
 
-  /* Sizing */
-  --define-slider-w: 320px;
+  /* Padding: top right bottom left */
+  --define-pad: 40px 3.125vw 120px 3.125vw;  /* LR converted, TB pending */
+
+  /* Sizing - vertical (vh) - pending 3R.3b */
   --define-textarea-min-h: 200px;
 
-  /* Positioning */
+  /* Positioning - vertical (vh) - pending 3R.3b */
   --define-pke-top: 730px;
 
-  /* Typography */
+  /* Typography - pending 3R.3c */
   --define-fs-18: 18px;
   --define-fs-15: 15px;
   --define-fs-14: 14px;

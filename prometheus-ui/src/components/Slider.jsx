@@ -119,7 +119,7 @@ function Slider({
         display: 'flex',
         flexDirection: 'column',
         gap: '3px',
-        width: `${width}px`
+        width: typeof width === 'number' ? `${width}px` : width
       }}
     >
       {/* Label */}
