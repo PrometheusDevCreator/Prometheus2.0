@@ -26,7 +26,7 @@ function Header({ pageTitle, sectionName, courseData = {} }) {
       style={{
         position: 'relative',
         width: '100%',
-        height: '120px',
+        height: 'var(--frame-header-h)',  /* 120px @ 1080 */
         background: 'transparent',
         flexShrink: 0,
         overflow: 'visible',
@@ -37,10 +37,10 @@ function Header({ pageTitle, sectionName, courseData = {} }) {
       <div
         style={{
           position: 'absolute',
-          left: '50px',
-          top: '10px',
-          width: '66px',
-          height: '66px'
+          left: '2.6vw',       /* 50px @ 1920 */
+          top: '0.93vh',      /* 10px @ 1080 */
+          width: '6.11vh',    /* 66px @ 1080 */
+          height: '6.11vh'    /* 66px @ 1080 */
         }}
       >
         <img
@@ -59,10 +59,10 @@ function Header({ pageTitle, sectionName, courseData = {} }) {
         style={{
           position: 'absolute',
           left: '50%',
-          top: '30px',
+          top: '2.78vh',        /* 30px @ 1080 */
           transform: 'translate(-50%, -50%)',
           fontFamily: THEME.FONT_PRIMARY,
-          fontSize: '24px',
+          fontSize: '2.22vh',   /* 24px @ 1080 */
           fontWeight: 500,
           color: '#f0f0f0',
           letterSpacing: '0.15em',
@@ -79,13 +79,13 @@ function Header({ pageTitle, sectionName, courseData = {} }) {
           style={{
             position: 'absolute',
             left: '50%',
-            top: '60px',
+            top: '5.56vh',        /* 60px @ 1080 */
             transform: 'translateX(-50%)',
             fontFamily: THEME.FONT_PRIMARY,
-            fontSize: '18px',
+            fontSize: '1.67vh',   /* 18px @ 1080 */
             fontWeight: 500,
             color: THEME.AMBER,
-            letterSpacing: '4.5px',
+            letterSpacing: '0.42vh',  /* 4.5px @ 1080 */
             margin: 0
           }}
         >
@@ -97,34 +97,34 @@ function Header({ pageTitle, sectionName, courseData = {} }) {
       <div
         style={{
           position: 'absolute',
-          right: '20px',
-          top: '15px',
+          right: '1.04vw',      /* 20px @ 1920 */
+          top: '1.39vh',        /* 15px @ 1080 */
           textAlign: 'right',
           fontFamily: THEME.FONT_MONO,
-          fontSize: '12px'
+          fontSize: '1.11vh'    /* 12px @ 1080 */
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', lineHeight: 1.4 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.74vh', lineHeight: 1.4 }}>
           <span style={{ color: '#888' }}>Course:</span>
-          <span style={{ color: '#00ff00', minWidth: '80px' }}>
+          <span style={{ color: '#00ff00', minWidth: '4.17vw' }}>
             {hasValue(courseData.title) ? courseData.title : '---'}
           </span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', lineHeight: 1.4 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.74vh', lineHeight: 1.4 }}>
           <span style={{ color: '#888' }}>Duration:</span>
-          <span style={{ color: '#00ff00', minWidth: '80px' }}>
+          <span style={{ color: '#00ff00', minWidth: '4.17vw' }}>
             {hasValue(courseData.duration) ? `${courseData.duration} ${courseData.durationUnit || ''}`.trim() : '---'}
           </span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', lineHeight: 1.4 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.74vh', lineHeight: 1.4 }}>
           <span style={{ color: '#888' }}>Level:</span>
-          <span style={{ color: '#00ff00', minWidth: '80px' }}>
+          <span style={{ color: '#00ff00', minWidth: '4.17vw' }}>
             {hasValue(courseData.level) ? courseData.level : '---'}
           </span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', lineHeight: 1.4 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.74vh', lineHeight: 1.4 }}>
           <span style={{ color: '#888' }}>Thematic:</span>
-          <span style={{ color: '#00ff00', minWidth: '80px' }}>
+          <span style={{ color: '#00ff00', minWidth: '4.17vw' }}>
             {hasValue(courseData.thematic) ? courseData.thematic : '---'}
           </span>
         </div>
@@ -134,10 +134,10 @@ function Header({ pageTitle, sectionName, courseData = {} }) {
       <div
         style={{
           position: 'absolute',
-          top: '85px',
+          top: '7.87vh',       /* 85px @ 1080 */
           left: 0,
           right: 0,
-          height: '1px',
+          height: '0.09vh',   /* 1px @ 1080 */
           background: 'linear-gradient(to right, transparent 0%, #444 10%, #444 90%, transparent 100%)'
         }}
       />
@@ -146,11 +146,11 @@ function Header({ pageTitle, sectionName, courseData = {} }) {
       <h2
         style={{
           position: 'absolute',
-          top: '102px',
+          top: '9.44vh',        /* 102px @ 1080 */
           left: '50%',
           transform: 'translateX(-50%)',
           fontFamily: THEME.FONT_PRIMARY,
-          fontSize: '21px',
+          fontSize: '1.94vh',   /* 21px @ 1080 */
           fontWeight: 500,
           color: '#f0f0f0',
           letterSpacing: '0.1em',
