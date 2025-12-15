@@ -21,6 +21,30 @@ import GradientBorder from '../components/GradientBorder'
 import Footer from '../components/Footer'
 import pkeButton from '../assets/PKE_Button.png'
 
+// ============================================
+// DEFINE LAYOUT TOKENS (Phase 3R)
+// Tokenised literals for responsive conversion
+// ============================================
+const D = {
+  // spacing
+  pad: '40px 60px 120px 60px',
+  gapLg: '40px',
+  gapMd: '16px',
+  gapSm: '12px',
+
+  // sizing
+  sliderW: 320,  // numeric for component props
+  textareaMinH: '200px',
+
+  // positioning
+  pkeTop: '730px',
+
+  // typography
+  fs18: '18px',
+  fs15: '15px',
+  fs14: '14px',
+}
+
 // Bloom's Taxonomy verbs - defined at module level (static, never changes)
 const BLOOMS_CATEGORIES = [
   { name: 'REMEMBER', verbs: ['DEFINE', 'DESCRIBE', 'IDENTIFY', 'LIST', 'NAME', 'RECALL', 'RECOGNIZE', 'STATE'] },
@@ -392,7 +416,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
       <div
         style={{
           position: 'absolute',
-          top: '730px',
+          top: D.pkeTop,
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 10
@@ -418,18 +442,18 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
           flex: 1,
           display: 'grid',
           gridTemplateColumns: '1fr 1fr 1fr',
-          gap: '40px',
-          padding: '40px 60px 120px 60px', // 40px top padding to clear COURSE INFORMATION label
+          gap: D.gapLg,
+          padding: D.pad,
           overflow: 'auto'
         }}
       >
         {/* LEFT COLUMN - DETAILS */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: D.gapMd }}>
           <h2
             onMouseEnter={() => setHoveredHeader('left')}
             onMouseLeave={() => setHoveredHeader(null)}
             style={{
-              fontSize: '18px',
+              fontSize: D.fs18,
               letterSpacing: '4.5px',
               color: (activeColumn === 'left' || hoveredHeader === 'left') ? THEME.AMBER : THEME.WHITE,
               fontFamily: THEME.FONT_PRIMARY,
@@ -483,7 +507,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
           </div>
 
           {/* Module + Code */}
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: D.gapSm }}>
             <div style={{ flex: 1 }}>
               <label style={labelStyle(isFieldActive('module'))}>Module</label>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -497,7 +521,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                 <span style={{
                   color: THEME.AMBER,
                   fontFamily: THEME.FONT_MONO,
-                  fontSize: '18px',
+                  fontSize: D.fs18,
                   minWidth: '24px',
                   textAlign: 'center'
                 }}>
@@ -540,7 +564,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                 updateField('durationUnit', unit)
                 setActiveColumn('left')
               }}
-              width={320}
+              width={D.sliderW}
             />
           </div>
 
@@ -551,7 +575,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
               options={LEVEL_OPTIONS}
               value={formData.level}
               onChange={(val) => { updateField('level', val); setActiveColumn('left') }}
-              width={320}
+              width={D.sliderW}
               hideStepLabels
               alignBubble="right"
               bubbleTransparent
@@ -565,7 +589,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
               options={SENIORITY_OPTIONS}
               value={formData.seniority}
               onChange={(val) => { updateField('seniority', val); setActiveColumn('left') }}
-              width={320}
+              width={D.sliderW}
               highlightLast
               hideStepLabels
               alignBubble="right"
@@ -575,12 +599,12 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
         </div>
 
         {/* CENTER COLUMN - DESCRIPTION */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: D.gapMd }}>
           <h2
             onMouseEnter={() => setHoveredHeader('center')}
             onMouseLeave={() => setHoveredHeader(null)}
             style={{
-              fontSize: '18px',
+              fontSize: D.fs18,
               letterSpacing: '4.5px',
               color: (activeColumn === 'center' || hoveredHeader === 'center') ? THEME.AMBER : THEME.WHITE,
               fontFamily: THEME.FONT_PRIMARY,
@@ -606,7 +630,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                 onMouseLeave={() => setHoveredField(null)}
                 style={{
                   ...inputStyle,
-                  minHeight: '200px',
+                  minHeight: D.textareaMinH,
                   resize: 'vertical'
                 }}
                 placeholder="Enter course description..."
@@ -628,7 +652,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                     onClick={() => { toggleDelivery(mode); setActiveColumn('center') }}
                     style={{
                       padding: '12px 14px',
-                      fontSize: '14px',
+                      fontSize: D.fs14,
                       letterSpacing: '2px',
                       fontFamily: THEME.FONT_PRIMARY,
                       background: isSelected ? THEME.GRADIENT_BUTTON : 'transparent',
@@ -741,7 +765,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                     }}
                   />
                 </button>
-                <span style={{ fontSize: '15px', color: THEME.TEXT_SECONDARY, fontFamily: THEME.FONT_PRIMARY }}>
+                <span style={{ fontSize: D.fs15, color: THEME.TEXT_SECONDARY, fontFamily: THEME.FONT_PRIMARY }}>
                   {toggle.label}
                 </span>
               </div>
@@ -750,12 +774,12 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
         </div>
 
         {/* RIGHT COLUMN - LEARNING OBJECTIVES */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: D.gapMd }}>
           <h2
             onMouseEnter={() => setHoveredHeader('right')}
             onMouseLeave={() => setHoveredHeader(null)}
             style={{
-              fontSize: '18px',
+              fontSize: D.fs18,
               letterSpacing: '4.5px',
               color: (activeColumn === 'right' || hoveredHeader === 'right') ? THEME.AMBER : THEME.WHITE,
               fontFamily: THEME.FONT_PRIMARY,
@@ -770,7 +794,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
           </h2>
 
           {/* LO List - marginTop aligns with Title input in column 1 */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: D.gapSm, marginTop: '24px' }}>
             {formData.learningObjectives.map((lo, idx) => {
               const isValid = validateBloomsVerb(lo)
               const isPulsing = invalidLOPulse === idx
@@ -779,7 +803,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                   {/* LO number - burnt orange until confirmed ('+' or 'Save' pressed), then green */}
                   <span
                     style={{
-                      fontSize: '14px',
+                      fontSize: D.fs14,
                       fontFamily: THEME.FONT_MONO,
                       fontWeight: 600,
                       color: idx <= loConfirmedUpTo ? '#00FF00' : THEME.AMBER,
@@ -848,7 +872,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                             pointerEvents: 'none',
                             display: 'flex',
                             alignItems: 'center',
-                            fontSize: '14px',
+                            fontSize: D.fs14,
                             fontFamily: THEME.FONT_PRIMARY,
                             letterSpacing: '2px',
                             overflow: 'hidden',
@@ -884,7 +908,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
           {/* Bloom's Taxonomy expandable section */}
           <div
             style={{
-              fontSize: '14px',
+              fontSize: D.fs14,
               fontFamily: THEME.FONT_PRIMARY,
               marginTop: '8px',
               letterSpacing: '1px',
@@ -1083,7 +1107,7 @@ function WastebinIcon({ onClick, colorState = 'normal', style = {} }) {
 // Style helpers
 const labelStyle = (isActive) => ({
   display: 'block',
-  fontSize: '15px',
+  fontSize: D.fs15,
   letterSpacing: '3px',
   color: isActive ? THEME.AMBER : THEME.TEXT_DIM,
   fontFamily: THEME.FONT_PRIMARY,
@@ -1098,7 +1122,7 @@ const inputStyle = {
   border: 'none',
   borderRadius: '20px',
   color: THEME.WHITE,
-  fontSize: '14px',
+  fontSize: D.fs14,
   fontFamily: THEME.FONT_PRIMARY,
   letterSpacing: '2px',
   outline: 'none'
