@@ -88,7 +88,8 @@ function useScaleToFit() {
     }
   }, [])
 
-  return scale
+  // REFACTOR Phase 1: Scaling disabled - always return 1
+  return 1  // Original: return scale
 }
 
 function App() {
