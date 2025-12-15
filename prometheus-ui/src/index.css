@@ -10,6 +10,27 @@
   --color-accent-cyan: #06b6d4;
 }
 
+/* ============================================
+   FRAME DIMENSION VARIABLES - Phase 2 Refactor
+   Base design: 1920×1080 (1vw = 19.2px, 1vh = 10.8px)
+   ============================================ */
+:root {
+  /* Header/Footer frame heights */
+  --frame-header-h: 11.11vh;  /* 120px @ 1080 */
+  --frame-footer-h: 11.11vh;  /* 120px @ 1080 */
+
+  /* PKE Interface dimensions */
+  --pke-w: 47.29vw;           /* 908px @ 1920 */
+  --pke-h: 7.04vh;            /* 76px @ 1080 */
+  --pke-r: 3.52vh;            /* 38px @ 1080 */
+
+  /* NavWheel dimensions */
+  --navwheel-collapsed: 6.48vh;   /* 70px @ 1080 */
+  --navwheel-expanded: 25.93vh;   /* 280px @ 1080 */
+  --navwheel-center-sm: 5vh;      /* 54px @ 1080 */
+  --navwheel-center-lg: 6.48vh;   /* 70px @ 1080 */
+}
+
 /* Prometheus font family - Candara/Calibri aesthetic */
 .font-prometheus {
   font-family: Candara, Calibri, 'Segoe UI', sans-serif;
