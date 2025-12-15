@@ -330,3 +330,32 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 50%;
   box-shadow: 0 0 8px rgba(212, 115, 12, 0.5);
 }
+
+/* ============================================
+   RESPONSIVE FONT SCALING - Smaller Screens
+   Scales fonts up ~10-12% on laptop displays
+   IMPORTANT: Only font-size adjustments - NO spacing/margin/padding changes
+   ============================================ */
+
+@media (max-width: 1400px) {
+  /* Base body text: 14px → 15px (~7% increase) */
+  body {
+    font-size: 15px;
+  }
+
+  /* Labels: 12px minimum → 13px */
+  label, .label {
+    font-size: max(13px, inherit);
+  }
+
+  /* Buttons: 14px minimum → 15px */
+  button, .btn, input[type="submit"], input[type="button"] {
+    font-size: max(15px, inherit);
+  }
+
+  /* Primary/Outline buttons: 10px → 11px */
+  .btn-primary,
+  .btn-outline {
+    font-size: 11px;
+  }
+}

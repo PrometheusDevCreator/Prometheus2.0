@@ -414,7 +414,7 @@ function App() {
           {renderPage()}
         </div>
 
-        {/* Design Sub-navigation (only on design page) - PLANNER removed, SCALAR only */}
+        {/* Design Sub-navigation (only on design page) - OVERVIEW and SCALAR tabs */}
         {currentPage === 'design' && (
           <div
             style={{
@@ -426,6 +426,25 @@ function App() {
               zIndex: 100
             }}
           >
+            <button
+              onClick={() => handleDesignSubnav('planner')}
+              style={{
+                padding: '14px 36px',
+                fontSize: '15px',
+                letterSpacing: '3px',
+                fontFamily: THEME.FONT_PRIMARY,
+                background: designSubpage === 'planner' ? THEME.GRADIENT_BUTTON : 'transparent',
+                border: `1px solid ${designSubpage === 'planner' ? THEME.AMBER : THEME.BORDER}`,
+                borderRadius: '20px',
+                color: designSubpage === 'planner' ? THEME.WHITE : THEME.TEXT_SECONDARY,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => { if (designSubpage !== 'planner') e.target.style.color = THEME.AMBER }}
+              onMouseLeave={(e) => { if (designSubpage !== 'planner') e.target.style.color = THEME.TEXT_SECONDARY }}
+            >
+              OVERVIEW
+            </button>
             <button
               onClick={() => handleDesignSubnav('scalar')}
               style={{

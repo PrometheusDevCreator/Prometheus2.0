@@ -21,6 +21,19 @@ import GradientBorder from '../components/GradientBorder'
 import Footer from '../components/Footer'
 import pkeButton from '../assets/PKE_Button.png'
 
+// Bloom's Taxonomy verbs - defined at module level (static, never changes)
+const BLOOMS_CATEGORIES = [
+  { name: 'REMEMBER', verbs: ['DEFINE', 'DESCRIBE', 'IDENTIFY', 'LIST', 'NAME', 'RECALL', 'RECOGNIZE', 'STATE'] },
+  { name: 'UNDERSTAND', verbs: ['CLASSIFY', 'COMPARE', 'CONTRAST', 'EXPLAIN', 'INTERPRET', 'PARAPHRASE', 'SUMMARIZE', 'DISCUSS'] },
+  { name: 'APPLY', verbs: ['APPLY', 'DEMONSTRATE', 'EXECUTE', 'IMPLEMENT', 'OPERATE', 'PERFORM', 'SOLVE', 'USE'] },
+  { name: 'ANALYZE', verbs: ['ANALYSE', 'ANALYZE', 'DIFFERENTIATE', 'DISTINGUISH', 'EXAMINE', 'INVESTIGATE', 'ORGANIZE', 'RELATE'] },
+  { name: 'EVALUATE', verbs: ['APPRAISE', 'ASSESS', 'CRITIQUE', 'EVALUATE', 'JUDGE', 'JUSTIFY', 'RECOMMEND', 'SUPPORT'] },
+  { name: 'CREATE', verbs: ['COMPOSE', 'CONSTRUCT', 'CREATE', 'DESIGN', 'DEVELOP', 'FORMULATE', 'GENERATE', 'PRODUCE'] }
+]
+
+// Flat list of all Bloom's verbs for validation
+const BLOOMS_VERBS = BLOOMS_CATEGORIES.flatMap(cat => cat.verbs)
+
 function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, courseState, onSaveCountIncrement }) {
   const [isPKEActive, setIsPKEActive] = useState(false)
   const [focusedField, setFocusedField] = useState(null)
@@ -32,6 +45,13 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
   const [isContentTypeDragging, setIsContentTypeDragging] = useState(false) // Content Type slider drag state
   const contentTypeSliderRef = useRef(null) // Ref for Content Type slider track
   const [loConfirmedUpTo, setLoConfirmedUpTo] = useState(-1) // Track confirmed LOs (green) - index up to which are confirmed
+  const [invalidLOPulse, setInvalidLOPulse] = useState(null) // Track which LO should show red pulse
+  const loInputRefs = useRef({}) // Refs for LO inputs to handle focus
+
+  // Delete workflow state
+  const [deleteLoIndex, setDeleteLoIndex] = useState(null) // Which LO is being deleted
+  const [deleteStep, setDeleteStep] = useState(null) // 'confirm' | 'keep-confirm' | 'delete-confirm'
+  const [wastebinState, setWastebinState] = useState({}) // { [idx]: 'normal' | 'green' | 'red' }
 
   // Map field names to columns
   const getColumnForField = useCallback((field) => {
@@ -96,6 +116,13 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
     }))
   }, [])
 
+  // Check if LO starts with a Bloom's verb (uses module-level BLOOMS_VERBS)
+  const validateBloomsVerb = useCallback((text) => {
+    if (!text || text.trim().length === 0) return null // No validation for empty
+    const firstWord = text.trim().split(/\s+/)[0].toUpperCase()
+    return BLOOMS_VERBS.includes(firstWord)
+  }, [])
+
   // Learning objectives handlers
   const updateLO = useCallback((index, value) => {
     setFormData(prev => {
@@ -105,7 +132,47 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
     })
   }, [])
 
+  // Auto-capitalize first word of LO on blur/Enter
+  const capitalizeFirstWord = useCallback((index) => {
+    setFormData(prev => {
+      const newLOs = [...prev.learningObjectives]
+      const text = newLOs[index]
+      if (text && text.trim().length > 0) {
+        const words = text.trim().split(/\s+/)
+        words[0] = words[0].toUpperCase()
+        newLOs[index] = words.join(' ')
+      }
+      return { ...prev, learningObjectives: newLOs }
+    })
+  }, [])
+
+  // Validate and show red pulse if LO doesn't start with Bloom's verb
+  const validateAndPulse = useCallback((index) => {
+    const lo = formData.learningObjectives[index]
+    if (lo && lo.trim().length > 0) {
+      const isValid = validateBloomsVerb(lo)
+      if (!isValid) {
+        setInvalidLOPulse(index)
+        setTimeout(() => setInvalidLOPulse(null), 600)
+      }
+    }
+  }, [formData.learningObjectives, validateBloomsVerb])
+
   const addLO = useCallback(() => {
+    // Get the last LO to validate
+    const lastLO = formData.learningObjectives[formData.learningObjectives.length - 1]
+    const isValid = validateBloomsVerb(lastLO)
+
+    // If last LO has text but doesn't start with Bloom's verb, show red pulse and prevent adding
+    if (lastLO && lastLO.trim().length > 0 && !isValid) {
+      const lastIndex = formData.learningObjectives.length - 1
+      setInvalidLOPulse(lastIndex)
+      // Clear pulse after animation
+      setTimeout(() => setInvalidLOPulse(null), 600)
+      return
+    }
+
+    const newIndex = formData.learningObjectives.length
     setFormData(prev => {
       // Confirm all current LOs (turn green) before adding new one
       setLoConfirmedUpTo(prev.learningObjectives.length - 1)
@@ -114,7 +181,13 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
         learningObjectives: [...prev.learningObjectives, '']
       }
     })
-  }, [])
+    // Set active LO to the new one for verb insertion
+    setActiveLOIndex(newIndex)
+    // Focus the new input after render
+    setTimeout(() => {
+      loInputRefs.current[newIndex]?.focus()
+    }, 50)
+  }, [formData.learningObjectives, validateBloomsVerb])
 
   // Check if field is active
   const isFieldActive = useCallback((field) => {
@@ -127,15 +200,46 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
     onNavigate?.(section)
   }, [onNavigate, resetActiveColumn])
 
-  // Handle save (resets active column)
+  // Check if any LO has invalid content (non-empty but doesn't start with Bloom's verb)
+  const hasInvalidLOs = useCallback(() => {
+    return formData.learningObjectives.some(lo => {
+      if (!lo || lo.trim().length === 0) return false // Empty is OK
+      return !validateBloomsVerb(lo)
+    })
+  }, [formData.learningObjectives, validateBloomsVerb])
+
+  // Get indices of invalid LOs
+  const getInvalidLOIndices = useCallback(() => {
+    return formData.learningObjectives.reduce((indices, lo, idx) => {
+      if (lo && lo.trim().length > 0 && !validateBloomsVerb(lo)) {
+        indices.push(idx)
+      }
+      return indices
+    }, [])
+  }, [formData.learningObjectives, validateBloomsVerb])
+
+  // Handle save (resets active column) - blocked if invalid LOs exist
   const handleSave = useCallback(() => {
+    // Check for invalid LOs
+    const invalidIndices = getInvalidLOIndices()
+    if (invalidIndices.length > 0) {
+      // Pulse all invalid LOs sequentially
+      invalidIndices.forEach((idx, i) => {
+        setTimeout(() => {
+          setInvalidLOPulse(idx)
+          setTimeout(() => setInvalidLOPulse(null), 600)
+        }, i * 200)
+      })
+      return // Block save
+    }
+
     setCourseData?.(formData)
     setIsPKEActive(false)
     // Confirm all LOs (turn green) on save
     setLoConfirmedUpTo(formData.learningObjectives.length - 1)
     onSaveCountIncrement?.()
     resetActiveColumn()
-  }, [formData, setCourseData, onSaveCountIncrement, resetActiveColumn])
+  }, [formData, setCourseData, onSaveCountIncrement, resetActiveColumn, getInvalidLOIndices])
 
   // Handle clear (resets active column)
   const handleClear = useCallback(() => {
@@ -164,6 +268,66 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
   const handleDelete = useCallback(() => {
     resetActiveColumn()
   }, [resetActiveColumn])
+
+  // Handle wastebin click - initiates delete workflow via PKE
+  const handleWastebinClick = useCallback((idx) => {
+    if (deleteStep === null) {
+      // First click - show initial warning in PKE
+      setDeleteLoIndex(idx)
+      setDeleteStep('confirm')
+      setIsPKEActive(true)
+    } else if (deleteLoIndex === idx) {
+      // Second click on same wastebin - execute deletion
+      if (deleteStep === 'keep-confirm') {
+        // Keep topics/subtopics, delete LO only
+        deleteLO(idx, false)
+      } else if (deleteStep === 'delete-confirm') {
+        // Delete LO and related topics/subtopics
+        deleteLO(idx, true)
+      }
+      // Reset delete state
+      setDeleteLoIndex(null)
+      setDeleteStep(null)
+      setWastebinState({})
+      setIsPKEActive(false)
+    }
+  }, [deleteStep, deleteLoIndex])
+
+  // Handle KEEP selection in PKE
+  const handleKeepSelection = useCallback(() => {
+    setDeleteStep('keep-confirm')
+    setWastebinState(prev => ({ ...prev, [deleteLoIndex]: 'green' }))
+  }, [deleteLoIndex])
+
+  // Handle DELETE selection in PKE
+  const handleDeleteSelection = useCallback(() => {
+    setDeleteStep('delete-confirm')
+    setWastebinState(prev => ({ ...prev, [deleteLoIndex]: 'red' }))
+  }, [deleteLoIndex])
+
+  // Cancel delete workflow
+  const cancelDeleteWorkflow = useCallback(() => {
+    setDeleteLoIndex(null)
+    setDeleteStep(null)
+    setWastebinState({})
+    setIsPKEActive(false)
+  }, [])
+
+  // Delete LO function
+  const deleteLO = useCallback((idx, deleteRelated) => {
+    setFormData(prev => {
+      const newLOs = prev.learningObjectives.filter((_, i) => i !== idx)
+      // Ensure at least one LO remains
+      if (newLOs.length === 0) newLOs.push('')
+      return { ...prev, learningObjectives: newLOs }
+    })
+    // Adjust loConfirmedUpTo if needed
+    if (idx <= loConfirmedUpTo) {
+      setLoConfirmedUpTo(prev => Math.max(-1, prev - 1))
+    }
+    // TODO: Handle topics/subtopics based on deleteRelated flag
+    // This will integrate with the DESIGN page Scalar functionality
+  }, [loConfirmedUpTo])
 
   // Content Type slider drag handlers
   const handleContentTypeInteraction = useCallback((clientX) => {
@@ -201,26 +365,6 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
       window.removeEventListener('mouseup', handleContentTypeMouseUp)
     }
   }, [isContentTypeDragging, handleContentTypeMouseMove, handleContentTypeMouseUp])
-
-  // Bloom's Taxonomy verbs categorized
-  const bloomsCategories = [
-    { name: 'REMEMBER', verbs: ['DEFINE', 'DESCRIBE', 'IDENTIFY', 'LIST', 'NAME', 'RECALL', 'RECOGNIZE', 'STATE'] },
-    { name: 'UNDERSTAND', verbs: ['CLASSIFY', 'COMPARE', 'CONTRAST', 'EXPLAIN', 'INTERPRET', 'PARAPHRASE', 'SUMMARIZE', 'DISCUSS'] },
-    { name: 'APPLY', verbs: ['APPLY', 'DEMONSTRATE', 'EXECUTE', 'IMPLEMENT', 'OPERATE', 'PERFORM', 'SOLVE', 'USE'] },
-    { name: 'ANALYZE', verbs: ['ANALYSE', 'ANALYZE', 'DIFFERENTIATE', 'DISTINGUISH', 'EXAMINE', 'INVESTIGATE', 'ORGANIZE', 'RELATE'] },
-    { name: 'EVALUATE', verbs: ['APPRAISE', 'ASSESS', 'CRITIQUE', 'EVALUATE', 'JUDGE', 'JUSTIFY', 'RECOMMEND', 'SUPPORT'] },
-    { name: 'CREATE', verbs: ['COMPOSE', 'CONSTRUCT', 'CREATE', 'DESIGN', 'DEVELOP', 'FORMULATE', 'GENERATE', 'PRODUCE'] }
-  ]
-
-  // Flat list of all Bloom's verbs for validation
-  const bloomsVerbs = bloomsCategories.flatMap(cat => cat.verbs)
-
-  // Check if LO starts with a Bloom's verb
-  const validateBloomsVerb = useCallback((text) => {
-    if (!text || text.trim().length === 0) return null // No validation for empty
-    const firstWord = text.trim().split(/\s+/)[0].toUpperCase()
-    return bloomsVerbs.includes(firstWord)
-  }, [])
 
   // Thematic options
   const thematicOptions = [
@@ -629,6 +773,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '24px' }}>
             {formData.learningObjectives.map((lo, idx) => {
               const isValid = validateBloomsVerb(lo)
+              const isPulsing = invalidLOPulse === idx
               return (
                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {/* LO number - burnt orange until confirmed ('+' or 'Save' pressed), then green */}
@@ -646,27 +791,91 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                   >
                     {idx + 1}
                   </span>
-                  <GradientBorder isActive={isFieldActive(`lo-${idx}`)} className="flex-1">
-                    <input
-                      type="text"
-                      value={lo}
-                      onChange={(e) => updateLO(idx, e.target.value)}
-                      onFocus={() => handleFieldFocus(`lo-${idx}`)}
-                      onBlur={() => setFocusedField(null)}
-                      onMouseEnter={() => setHoveredField(`lo-${idx}`)}
-                      onMouseLeave={() => setHoveredField(null)}
-                      style={{
-                        ...inputStyle,
-                        borderLeft: isValid === false ? `3px solid ${THEME.RED_LIGHT}` : 'none'
-                      }}
-                      placeholder={idx === 0 ? "EXPLAIN something..." : "Enter learning objective..."}
-                    />
-                  </GradientBorder>
-                  {idx === formData.learningObjectives.length - 1 ? (
-                    <button onClick={addLO} style={smallButtonStyle}>+</button>
-                  ) : (
-                    <div style={{ width: '41px', flexShrink: 0 }} /> /* Placeholder to maintain consistent width */
-                  )}
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <GradientBorder
+                      isActive={isFieldActive(`lo-${idx}`)}
+                      pulseRed={isPulsing}
+                      isInvalid={isValid === false}
+                    >
+                      <input
+                        ref={el => loInputRefs.current[idx] = el}
+                        type="text"
+                        value={lo}
+                        onChange={(e) => updateLO(idx, e.target.value)}
+                        onFocus={() => handleFieldFocus(`lo-${idx}`)}
+                        onBlur={() => {
+                          capitalizeFirstWord(idx)
+                          // Validate after a short delay to allow capitalize to complete
+                          setTimeout(() => validateAndPulse(idx), 50)
+                          setFocusedField(null)
+                          // Mark this LO as confirmed on blur (if not already)
+                          if (idx > loConfirmedUpTo) {
+                            setLoConfirmedUpTo(idx)
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            capitalizeFirstWord(idx)
+                            setTimeout(() => validateAndPulse(idx), 50)
+                            // Mark as confirmed on Enter
+                            if (idx > loConfirmedUpTo) {
+                              setLoConfirmedUpTo(idx)
+                            }
+                            e.target.blur()
+                          }
+                        }}
+                        onMouseEnter={() => setHoveredField(`lo-${idx}`)}
+                        onMouseLeave={() => setHoveredField(null)}
+                        style={{
+                          ...inputStyle,
+                          // Make text transparent when showing overlay (confirmed + valid + not focused)
+                          color: (idx <= loConfirmedUpTo && isValid && focusedField !== `lo-${idx}` && lo.trim())
+                            ? 'transparent'
+                            : THEME.WHITE
+                        }}
+                        placeholder="Enter Learning Objective"
+                      />
+                      {/* Overlay for green verb display when confirmed and valid */}
+                      {idx <= loConfirmedUpTo && isValid && focusedField !== `lo-${idx}` && lo.trim() && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            padding: '14px 16px',
+                            pointerEvents: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            fontSize: '14px',
+                            fontFamily: THEME.FONT_PRIMARY,
+                            letterSpacing: '2px',
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          <span style={{ color: '#00FF00' }}>
+                            {lo.trim().split(/\s+/)[0]}
+                          </span>
+                          <span style={{ color: THEME.WHITE }}>
+                            {lo.trim().includes(' ') ? ' ' + lo.trim().split(/\s+/).slice(1).join(' ') : ''}
+                          </span>
+                        </div>
+                      )}
+                    </GradientBorder>
+                  </div>
+                  {/* Wastebin or + button - 15px gap from input */}
+                  <div style={{ width: '32px', flexShrink: 0, display: 'flex', justifyContent: 'center', marginLeft: '7px' }}>
+                    {idx === formData.learningObjectives.length - 1 ? (
+                      <button onClick={addLO} style={smallButtonStyle}>+</button>
+                    ) : (
+                      <WastebinIcon
+                        onClick={() => handleWastebinClick(idx)}
+                        colorState={wastebinState[idx] || 'normal'}
+                      />
+                    )}
+                  </div>
                 </div>
               )
             })}
@@ -675,14 +884,14 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
           {/* Bloom's Taxonomy expandable section */}
           <div
             style={{
-              fontSize: '12px',
+              fontSize: '14px',
               fontFamily: THEME.FONT_PRIMARY,
               marginTop: '8px',
               letterSpacing: '1px',
               lineHeight: '1.6'
             }}
           >
-            {/* Header - clickable to expand */}
+            {/* Header - clickable to expand (font increased by 2pts to 14px) */}
             <div
               onClick={() => setBloomsExpanded(prev => !prev)}
               style={{
@@ -716,11 +925,12 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                 paddingLeft: '8px',
                 borderLeft: `2px solid ${THEME.BORDER}`
               }}>
-                {bloomsCategories.map(category => (
+                {BLOOMS_CATEGORIES.map(category => (
                   <div key={category.name}>
+                    {/* Category heading - font 11px, color white */}
                     <div style={{
-                      fontSize: '10px',
-                      color: THEME.TEXT_DIM,
+                      fontSize: '11px',
+                      color: THEME.WHITE,
                       marginBottom: '4px',
                       letterSpacing: '2px'
                     }}>
@@ -732,12 +942,24 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                           key={verb}
                           verb={verb}
                           onInsert={() => {
-                            // Verb insertion handled in Step 7
-                            if (activeLOIndex !== null) {
+                            // Insert verb into the active LO (or the last one if none active)
+                            const targetIndex = activeLOIndex !== null ? activeLOIndex : formData.learningObjectives.length - 1
+                            if (targetIndex >= 0 && targetIndex < formData.learningObjectives.length) {
                               const currentLOs = [...formData.learningObjectives]
-                              const currentText = currentLOs[activeLOIndex] || ''
-                              currentLOs[activeLOIndex] = currentText ? `${verb} ${currentText}` : verb
+                              const currentText = currentLOs[targetIndex] || ''
+                              // Always include trailing space after verb for user to continue typing
+                              currentLOs[targetIndex] = currentText ? `${verb} ${currentText}` : `${verb} `
                               setFormData(prev => ({ ...prev, learningObjectives: currentLOs }))
+                              // Focus the target input and position cursor at end after insertion
+                              setTimeout(() => {
+                                const input = loInputRefs.current[targetIndex]
+                                if (input) {
+                                  input.focus()
+                                  // Position cursor at end of inserted text
+                                  const len = input.value.length
+                                  input.setSelectionRange(len, len)
+                                }
+                              }, 50)
                             }
                           }}
                         />
@@ -763,12 +985,19 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
         user={user || { name: '---' }}
         courseState={courseState || { startDate: null, saveCount: 0 }}
         progress={15}
+        // Delete workflow props for LO deletion
+        deleteLoNumber={deleteLoIndex !== null ? deleteLoIndex + 1 : null}
+        deleteStep={deleteStep}
+        onDeleteKeep={handleKeepSelection}
+        onDeleteConfirm={handleDeleteSelection}
+        onDeleteCancel={cancelDeleteWorkflow}
       />
     </div>
   )
 }
 
 // BloomVerbButton - Individual verb button with hover state
+// Font size 11px, color light grey (TEXT_SECONDARY), hover amber
 function BloomVerbButton({ verb, onInsert }) {
   const [isHovered, setIsHovered] = useState(false)
 
@@ -781,16 +1010,73 @@ function BloomVerbButton({ verb, onInsert }) {
         background: 'transparent',
         border: 'none',
         padding: '2px 6px',
-        fontSize: '10px',
+        fontSize: '11px',
         fontFamily: THEME.FONT_MONO,
         letterSpacing: '1px',
-        color: isHovered ? THEME.AMBER : THEME.TEXT_DIM,
+        color: isHovered ? THEME.AMBER : THEME.TEXT_SECONDARY,
         cursor: 'pointer',
         transition: 'color 0.2s ease'
       }}
     >
       {verb}
     </button>
+  )
+}
+
+// WastebinIcon - SVG wastebin for LO deletion
+// colorState: 'normal' (burnt orange), 'green', 'red'
+function WastebinIcon({ onClick, colorState = 'normal', style = {} }) {
+  const [isHovered, setIsHovered] = useState(false)
+
+  // Determine fill color based on state
+  let fillColor = THEME.AMBER // burnt orange by default
+  if (colorState === 'green') fillColor = '#00FF00'
+  else if (colorState === 'red') fillColor = '#ff3333'
+
+  // Pulse animation for green/red states
+  const isPulsing = colorState === 'green' || colorState === 'red'
+
+  return (
+    <svg
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      width="18"
+      height="20"
+      viewBox="0 0 18 20"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{
+        cursor: 'pointer',
+        opacity: isHovered ? 1 : 0.7,
+        transition: 'opacity 0.2s ease',
+        animation: isPulsing ? 'wastebinPulse 1.5s ease-in-out infinite' : 'none',
+        ...style
+      }}
+    >
+      {/* Lid */}
+      <rect x="0" y="0" width="18" height="3" rx="1" fill={fillColor} />
+      {/* Handle on lid */}
+      <rect x="6" y="-2" width="6" height="3" rx="1" fill={fillColor} />
+      {/* Body */}
+      <path
+        d="M2 4L3 18C3 19.1 3.9 20 5 20H13C14.1 20 15 19.1 15 18L16 4H2Z"
+        fill={fillColor}
+      />
+      {/* Vertical lines on body */}
+      <line x1="6" y1="7" x2="6" y2="17" stroke={THEME.BG_DARK} strokeWidth="1.5" />
+      <line x1="9" y1="7" x2="9" y2="17" stroke={THEME.BG_DARK} strokeWidth="1.5" />
+      <line x1="12" y1="7" x2="12" y2="17" stroke={THEME.BG_DARK} strokeWidth="1.5" />
+      {/* Inject pulse animation keyframes */}
+      {isPulsing && (
+        <style>{`
+          @keyframes wastebinPulse {
+            0%, 100% { opacity: 0.6; filter: drop-shadow(0 0 2px ${fillColor}); }
+            50% { opacity: 1; filter: drop-shadow(0 0 8px ${fillColor}); }
+          }
+        `}</style>
+      )}
+    </svg>
   )
 }
 

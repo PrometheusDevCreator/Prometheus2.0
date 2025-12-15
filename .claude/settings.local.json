@@ -13,7 +13,11 @@
       "Bash(git merge:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nURGENT: Fix header layout to match specification\n\nHeader now follows exact specification from URGENT_HEADER_FIX.md:\n\n- Logo: 60px at (20px, 10px) - NO text beside it\n- Main title: 24px, centered, vertically aligned with logo center (Y=40)\n- Info cluster: Right-aligned, grey labels (#888), values \"---\" when empty\n- Horizontal line: Y=85, full width gradient\n- Page title: Centered at Y=92, 18px font\n\nChanges:\n- Header.jsx: Complete rewrite to match spec\n- Navigate.jsx: Uses shared Header, removed duplicate header elements\n- Define.jsx: Removed duplicate page title, uses shared Header\n- App.jsx: Passes pageTitle prop to Header, removed duplicate gradient line\n\nAll pages now use identical header structure (only page title changes).\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git pull:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(node -e:*)",
+      "Bash(claude plugin list)",
+      "Bash(git clone:*)",
+      "Bash(npm install:*)"
     ]
   }
 }

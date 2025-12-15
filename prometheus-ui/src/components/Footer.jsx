@@ -32,7 +32,13 @@ function Footer({
     startDate: null,
     saveCount: 0
   },
-  progress = 0
+  progress = 0,
+  // Delete workflow props (for LO deletion via PKE)
+  deleteLoNumber = null,
+  deleteStep = null,
+  onDeleteKeep = null,
+  onDeleteConfirm = null,
+  onDeleteCancel = null
 }) {
   // NavWheel expansion state
   const [wheelExpanded, setWheelExpanded] = useState(false)
@@ -175,6 +181,11 @@ function Footer({
           <PKEInterface
             isActive={isPKEActive}
             onClose={() => onPKEToggle?.(false)}
+            deleteLoNumber={deleteLoNumber}
+            deleteStep={deleteStep}
+            onKeep={onDeleteKeep}
+            onDelete={onDeleteConfirm}
+            onCancel={onDeleteCancel}
           />
         </div>
 
