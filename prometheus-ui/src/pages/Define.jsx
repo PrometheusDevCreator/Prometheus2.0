@@ -23,26 +23,26 @@ import pkeButton from '../assets/PKE_Button.png'
 
 // ============================================
 // DEFINE LAYOUT TOKENS (Phase 3R)
-// Tokenised literals for responsive conversion
+// Consuming CSS variables from index.css :root
 // ============================================
 const D = {
   // spacing
-  pad: '40px 60px 120px 60px',
-  gapLg: '40px',
-  gapMd: '16px',
-  gapSm: '12px',
+  pad: 'var(--define-pad)',
+  gapLg: 'var(--define-gap-lg)',
+  gapMd: 'var(--define-gap-md)',
+  gapSm: 'var(--define-gap-sm)',
 
   // sizing
-  sliderW: 320,  // numeric for component props
-  textareaMinH: '200px',
+  sliderW: 320,  // numeric for component props (convert in 3R.3)
+  textareaMinH: 'var(--define-textarea-min-h)',
 
   // positioning
-  pkeTop: '730px',
+  pkeTop: 'var(--define-pke-top)',
 
   // typography
-  fs18: '18px',
-  fs15: '15px',
-  fs14: '14px',
+  fs18: 'var(--define-fs-18)',
+  fs15: 'var(--define-fs-15)',
+  fs14: 'var(--define-fs-14)',
 }
 
 // Bloom's Taxonomy verbs - defined at module level (static, never changes)

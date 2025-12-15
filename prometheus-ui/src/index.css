@@ -29,6 +29,30 @@
   --navwheel-expanded: 25.93vh;   /* 280px @ 1080 */
   --navwheel-center-sm: 5vh;      /* 54px @ 1080 */
   --navwheel-center-lg: 6.48vh;   /* 70px @ 1080 */
+
+  /* ============================================
+     DEFINE PAGE LAYOUT - Phase 3R
+     Base design: 1920×1080
+     Step 3R.2: px baseline (will convert in 3R.3)
+     ============================================ */
+
+  /* Spacing */
+  --define-pad: 40px 60px 120px 60px;
+  --define-gap-lg: 40px;
+  --define-gap-md: 16px;
+  --define-gap-sm: 12px;
+
+  /* Sizing */
+  --define-slider-w: 320px;
+  --define-textarea-min-h: 200px;
+
+  /* Positioning */
+  --define-pke-top: 730px;
+
+  /* Typography */
+  --define-fs-18: 18px;
+  --define-fs-15: 15px;
+  --define-fs-14: 14px;
 }
 
 /* Prometheus font family - Candara/Calibri aesthetic */
