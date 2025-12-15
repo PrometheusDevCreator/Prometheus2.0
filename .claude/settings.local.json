@@ -19,7 +19,10 @@
       "Bash(git clone:*)",
       "Bash(npm install:*)",
       "Bash(curl:*)",
-      "Bash(npx playwright:*)"
+      "Bash(npx playwright:*)",
+      "Bash(node:*)",
+      "Bash(ls:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
