@@ -53,10 +53,10 @@
   /* Positioning - vertical (vh) */
   --define-pke-top: 67.59vh;      /* 730px @ 1080 */
 
-  /* Typography - pending 3R.3c */
-  --define-fs-18: 18px;
-  --define-fs-15: 15px;
-  --define-fs-14: 14px;
+  /* Typography - clamp(min, vw_calc, max) */
+  --define-fs-18: clamp(16px, 0.94vw, 20px);   /* 18px @ 1920 */
+  --define-fs-15: clamp(14px, 0.78vw, 17px);   /* 15px @ 1920 */
+  --define-fs-14: clamp(13px, 0.73vw, 16px);   /* 14px @ 1920 */
 }
 
 /* Prometheus font family - Candara/Calibri aesthetic */
