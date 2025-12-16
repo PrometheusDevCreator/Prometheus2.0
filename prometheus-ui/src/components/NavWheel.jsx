@@ -88,12 +88,12 @@ function NavWheel({
       <div
         className="navwheel-container"
         style={{
-          position: isExpanded ? 'fixed' : 'absolute',
-          bottom: isExpanded ? '50%' : '2.78vh',        /* 30px @ 1080 */
-          left: isExpanded ? '50%' : '1.56vw',          /* 30px @ 1920 */
+          position: isExpanded ? 'fixed' : 'relative',
+          bottom: isExpanded ? '50%' : 'auto',
+          left: isExpanded ? '50%' : 'auto',
           transform: isExpanded ? 'translate(-50%, 50%)' : 'none',
-          width: isExpanded ? 'var(--navwheel-expanded)' : 'var(--navwheel-collapsed)',
-          height: isExpanded ? 'var(--navwheel-expanded)' : 'var(--navwheel-collapsed)',
+          width: isExpanded ? 'var(--navwheel-expanded)' : '100%',
+          height: isExpanded ? 'var(--navwheel-expanded)' : '100%',
           zIndex: 1000
         }}
       >

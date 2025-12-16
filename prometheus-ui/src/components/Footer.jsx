@@ -121,13 +121,14 @@ function Footer({
             gap: '3.7vh'            /* 40px @ 1080 */
           }}
         >
-          {/* Mini NavWheel - dropped down 25px, scaled 10% larger when collapsed, faint white glow */}
-          {/* Note: transform only applied when collapsed to allow fixed positioning when expanded */}
+          {/* Mini NavWheel - matches ANALYTICS size and Y position exactly */}
+          {/* Note: no transform scaling to match ANALYTICS 70px size */}
           <div style={{
-            position: 'relative',
-            marginBottom: '-2.78vh',  /* -30px @ 1080 */
-            transform: wheelExpanded ? 'none' : 'scale(1.1)',
-            transformOrigin: 'center bottom',
+            position: 'absolute',
+            left: '0',
+            bottom: '0.46vh',             /* 5px @ 1080 - same as ANALYTICS */
+            width: 'var(--navwheel-collapsed)',   /* 70px @ 1080 */
+            height: 'var(--navwheel-collapsed)',  /* 70px @ 1080 */
             filter: wheelExpanded ? 'none' : 'drop-shadow(0 0 0.74vh rgba(255, 255, 255, 0.15))'  /* 8px @ 1080 */
           }}>
             <NavWheel
@@ -138,7 +139,7 @@ function Footer({
             />
           </div>
 
-          {/* ANALYTICS Ring Button - right edge at X-470, dropped down 10px */}
+          {/* ANALYTICS Ring Button - matches NavWheel size and Y position */}
           <div
             style={{
               position: 'absolute',
