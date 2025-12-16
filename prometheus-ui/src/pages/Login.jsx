@@ -153,7 +153,7 @@ function Login({ onLogin }) {
               fontSize: '20px',
               letterSpacing: '4px',
               color: '#b0b0b0',
-              fontFamily: THEME.FONT_MONO
+              fontFamily: THEME.FONT_PRIMARY
             }}
           >
             CLICK TO LOGIN
@@ -219,7 +219,7 @@ function Login({ onLogin }) {
                   style={{
                     fontSize: '16px',
                     color: '#b0b0b0',
-                    fontFamily: THEME.FONT_MONO,
+                    fontFamily: THEME.FONT_PRIMARY,
                     cursor: 'pointer',
                     transition: 'color 0.2s ease'
                   }}
@@ -277,7 +277,7 @@ function Login({ onLogin }) {
                   style={{
                     fontSize: '16px',
                     color: '#b0b0b0',
-                    fontFamily: THEME.FONT_MONO,
+                    fontFamily: THEME.FONT_PRIMARY,
                     cursor: 'pointer',
                     transition: 'color 0.2s ease'
                   }}
