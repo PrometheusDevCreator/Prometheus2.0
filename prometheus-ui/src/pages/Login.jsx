@@ -343,12 +343,24 @@ function Login({ onLogin }) {
           position: 'absolute',
           bottom: '30px',
           left: '50%',
-          transform: 'translateX(-50%)'
+          transform: 'translateX(-50%)',
+          textAlign: 'center'
         }}
       >
+        <div
+          style={{
+            fontSize: '12px',
+            letterSpacing: '3px',
+            color: THEME.TEXT_MUTED,
+            fontFamily: THEME.FONT_MONO,
+            marginBottom: '4px'
+          }}
+        >
+          © Prometheus Training Solutions 2025
+        </div>
         <span
           style={{
-            fontSize: '8px',
+            fontSize: '12px',  /* 8px * 1.5 = 12px */
             letterSpacing: '3px',
             color: THEME.TEXT_MUTED,
             fontFamily: THEME.FONT_MONO
