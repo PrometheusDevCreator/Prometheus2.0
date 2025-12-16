@@ -598,7 +598,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
           </div>
         </div>
 
-        {/* CENTER COLUMN - DESCRIPTION */}
+        {/* CENTER COLUMN - SELECT COURSE */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: D.gapMd }}>
           <h2
             onMouseEnter={() => setHoveredHeader('center')}
@@ -615,11 +615,26 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
               transition: 'color 0.2s ease'
             }}
           >
-            DESCRIPTION
+            SELECT COURSE
           </h2>
 
-          {/* Description Textarea - marginTop aligns with Title input in column 1 */}
-          <div style={{ marginTop: '24px', width: '100%' }}>
+          {/* Course Description section - top border at Y=365, aligns with Thematic dropdown bottom */}
+          <div style={{ marginTop: '17.13vh', width: '100%' }}>  {/* 185px @ 1080 to reach Y=365 */}
+            {/* DESCRIPTION heading - turns orange when children focused */}
+            <label
+              style={{
+                display: 'block',
+                fontSize: D.fs18,
+                letterSpacing: '4.5px',
+                color: activeColumn === 'center' ? THEME.AMBER : THEME.WHITE,
+                fontFamily: THEME.FONT_PRIMARY,
+                marginBottom: '12px',
+                cursor: 'default',
+                transition: 'color 0.2s ease'
+              }}
+            >
+              DESCRIPTION
+            </label>
             <GradientBorder isActive={isFieldActive('description')}>
               <textarea
                 value={formData.description}
