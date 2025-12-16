@@ -243,7 +243,7 @@ function Slider({
               borderRadius: bubbleTransparent ? '0' : '4px',
               fontSize: bubbleTransparent ? '15px' : '10px',
               fontFamily: bubbleTransparent ? THEME.FONT_PRIMARY : THEME.FONT_MONO,
-              color: bubbleTransparent ? THEME.TEXT_SECONDARY : (isActive ? THEME.AMBER : THEME.TEXT_PRIMARY),
+              color: bubbleTransparent ? THEME.AMBER : (isActive ? THEME.AMBER : THEME.TEXT_PRIMARY),  /* burnt orange readout */
               letterSpacing: bubbleTransparent ? '0' : '1px',
               transition: 'all 0.3s ease',
               minWidth: bubbleTransparent ? 'auto' : '80px',

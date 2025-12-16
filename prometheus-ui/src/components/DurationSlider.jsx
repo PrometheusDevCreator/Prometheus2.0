@@ -239,7 +239,7 @@ function DurationSlider({
         />
       </div>
 
-      {/* Value display */}
+      {/* Value display - burnt orange readout */}
       <div
         style={{
           display: 'flex',
@@ -248,7 +248,7 @@ function DurationSlider({
         }}
       >
         <span style={{
-          color: THEME.TEXT_SECONDARY,
+          color: THEME.AMBER,
           fontFamily: THEME.FONT_PRIMARY,
           fontSize: '15px'
         }}>
