@@ -553,7 +553,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
             </div>
           </div>
 
-          {/* Duration - 15px gap from Module/Code above */}
+          {/* Duration - preserved Y position */}
           <div style={{ marginTop: '15px' }}>
             <label style={{ ...labelStyle(isFieldActive('duration')), marginBottom: '4px' }}>Duration</label>
             <DurationSlider
@@ -568,8 +568,8 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
             />
           </div>
 
-          {/* Level - reduced spacing */}
-          <div style={{ marginTop: '0px' }}>
+          {/* Level - 60px spacing */}
+          <div style={{ marginTop: '5.56vh' }}>  {/* 60px @ 1080 */}
             <label style={labelStyle(isFieldActive('level'))}>Level</label>
             <Slider
               options={LEVEL_OPTIONS}
@@ -582,8 +582,8 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
             />
           </div>
 
-          {/* Seniority - reduced spacing */}
-          <div style={{ marginTop: '-10px' }}>
+          {/* Seniority - 60px spacing */}
+          <div style={{ marginTop: '5.56vh' }}>  {/* 60px @ 1080 */}
             <label style={labelStyle(isFieldActive('seniority'))}>Seniority</label>
             <Slider
               options={SENIORITY_OPTIONS}
@@ -595,6 +595,67 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
               alignBubble="right"
               bubbleTransparent
             />
+          </div>
+
+          {/* Content Type - 60px spacing */}
+          <div style={{ marginTop: '5.56vh', width: D.sliderW }}>  {/* 60px @ 1080 */}
+            <label style={{ ...labelStyle(isFieldActive('contentType')), marginBottom: '8px', display: 'block' }}>
+              Content Type
+            </label>
+            {/* Slider track */}
+            <div
+              ref={contentTypeSliderRef}
+              onMouseDown={handleContentTypeMouseDown}
+              style={{
+                position: 'relative',
+                width: '100%',
+                height: '24px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              {/* Track background - solid grey, no fill */}
+              <div
+                style={{
+                  position: 'absolute',
+                  width: '100%',
+                  height: '4px',
+                  background: THEME.BORDER_GREY,
+                  borderRadius: '2px'
+                }}
+              />
+              {/* Thumb - 50% larger (24px) */}
+              <div
+                style={{
+                  position: 'absolute',
+                  left: `${formData.contentType}%`,
+                  transform: 'translateX(-50%)',
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '50%',
+                  background: THEME.AMBER,
+                  border: `2px solid ${THEME.BG_DARK}`,
+                  boxShadow: '0 0 6px rgba(212, 115, 12, 0.3)',
+                  zIndex: 2
+                }}
+              />
+            </div>
+            {/* Theory / Practical labels - burnt orange readouts */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginTop: '8px'
+              }}
+            >
+              <span style={{ fontSize: '13px', fontFamily: THEME.FONT_PRIMARY, color: THEME.TEXT_SECONDARY }}>
+                Theory: <span style={{ color: THEME.AMBER }}>{100 - formData.contentType}%</span>
+              </span>
+              <span style={{ fontSize: '13px', fontFamily: THEME.FONT_PRIMARY, color: THEME.TEXT_SECONDARY }}>
+                Practical: <span style={{ color: THEME.AMBER }}>{formData.contentType}%</span>
+              </span>
+            </div>
           </div>
         </div>
 
@@ -682,67 +743,6 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                   </button>
                 )
               })}
-            </div>
-          </div>
-
-          {/* Content Type Slider */}
-          <div style={{ marginTop: '20px', width: '100%' }}>
-            <label style={{ ...labelStyle(isFieldActive('contentType')), marginBottom: '8px', display: 'block' }}>
-              Content Type
-            </label>
-            {/* Slider track */}
-            <div
-              ref={contentTypeSliderRef}
-              onMouseDown={handleContentTypeMouseDown}
-              style={{
-                position: 'relative',
-                width: '100%',
-                height: '24px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center'
-              }}
-            >
-              {/* Track background - solid grey, no fill */}
-              <div
-                style={{
-                  position: 'absolute',
-                  width: '100%',
-                  height: '4px',
-                  background: THEME.BORDER_GREY,
-                  borderRadius: '2px'
-                }}
-              />
-              {/* Thumb - 50% larger (24px) */}
-              <div
-                style={{
-                  position: 'absolute',
-                  left: `${formData.contentType}%`,
-                  transform: 'translateX(-50%)',
-                  width: '24px',
-                  height: '24px',
-                  borderRadius: '50%',
-                  background: THEME.AMBER,
-                  border: `2px solid ${THEME.BG_DARK}`,
-                  boxShadow: '0 0 6px rgba(212, 115, 12, 0.3)',
-                  zIndex: 2
-                }}
-              />
-            </div>
-            {/* Theory / Practical labels */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginTop: '8px'
-              }}
-            >
-              <span style={{ fontSize: '13px', fontFamily: THEME.FONT_PRIMARY, color: THEME.TEXT_SECONDARY }}>
-                Theory: <span style={{ color: '#00FF00' }}>{100 - formData.contentType}%</span>
-              </span>
-              <span style={{ fontSize: '13px', fontFamily: THEME.FONT_PRIMARY, color: THEME.TEXT_SECONDARY }}>
-                Practical: <span style={{ color: '#00FF00' }}>{formData.contentType}%</span>
-              </span>
             </div>
           </div>
 
