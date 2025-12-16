@@ -309,7 +309,7 @@ function Login({ onLogin }) {
               type="submit"
               style={{
                 width: '100%',
-                padding: '16px 24px',
+                padding: '14px 24px',  /* Match input height exactly */
                 background: THEME.GRADIENT_BUTTON,
                 border: `1px solid ${THEME.AMBER}`,
                 borderRadius: '24px',
