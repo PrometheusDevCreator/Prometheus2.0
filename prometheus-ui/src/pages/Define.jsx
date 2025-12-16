@@ -521,7 +521,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                 <span style={{
                   color: THEME.AMBER,
                   fontFamily: THEME.FONT_MONO,
-                  fontSize: D.fs18,
+                  fontSize: 'clamp(13px, 0.75vw, 16px)',  /* D.fs18 reduced 20% */
                   minWidth: '24px',
                   textAlign: 'center'
                 }}>
@@ -1124,7 +1124,7 @@ const labelStyle = (isActive) => ({
   display: 'block',
   fontSize: D.fs15,
   letterSpacing: '3px',
-  color: isActive ? THEME.AMBER : THEME.TEXT_DIM,
+  color: isActive ? THEME.AMBER : THEME.TEXT_SECONDARY,  /* Match Delivery button style */
   fontFamily: THEME.FONT_PRIMARY,
   marginBottom: '9px',
   transition: 'color 0.2s ease'
