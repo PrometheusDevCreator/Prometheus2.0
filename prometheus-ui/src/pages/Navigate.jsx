@@ -165,7 +165,7 @@ function NavigateWheel({ onNavigate }) {
           )
         })}
 
-        {/* Direction arrows */}
+        {/* Direction arrows - CLICKABLE */}
         {sections.map((section) => {
           const angle = section.angle
           const arrowRadius = size / 2 - 35
@@ -175,7 +175,13 @@ function NavigateWheel({ onNavigate }) {
           const isHovered = hoveredSection === section.id
 
           return (
-            <g key={`arrow-${section.id}`}>
+            <g
+              key={`arrow-${section.id}`}
+              onClick={() => onNavigate?.(section.id)}
+              onMouseEnter={() => setHoveredSection(section.id)}
+              onMouseLeave={() => setHoveredSection(null)}
+              style={{ cursor: 'pointer' }}
+            >
               <circle
                 cx={x}
                 cy={y}
@@ -183,7 +189,7 @@ function NavigateWheel({ onNavigate }) {
                 fill={isHovered ? THEME.AMBER_DARK : 'transparent'}
                 stroke={isHovered ? THEME.AMBER : THEME.AMBER_DARK}
                 strokeWidth="1.5"
-                style={{ cursor: 'pointer', transition: 'all 0.3s ease' }}
+                style={{ transition: 'all 0.3s ease' }}
               />
               <text
                 x={x}
@@ -201,7 +207,7 @@ function NavigateWheel({ onNavigate }) {
         })}
       </svg>
 
-      {/* Section labels */}
+      {/* Section labels - PASSIVE (colour change only, no glow, no click) */}
       {sections.map((section) => {
         const pos = getLabelPosition(section.id)
         const isHovered = hoveredSection === section.id
@@ -215,9 +221,6 @@ function NavigateWheel({ onNavigate }) {
         return (
           <div
             key={section.id}
-            onClick={() => onNavigate?.(section.id)}
-            onMouseEnter={() => setHoveredSection(section.id)}
-            onMouseLeave={() => setHoveredSection(null)}
             style={{
               position: 'absolute',
               left: `calc(50% + ${pos.x}px)`,
@@ -228,12 +231,11 @@ function NavigateWheel({ onNavigate }) {
               letterSpacing: '5px',
               fontWeight: isHovered ? '600' : '400',
               color: isHovered ? THEME.AMBER : THEME.TEXT_SECONDARY,
-              textShadow: isHovered ? `0 0 20px ${THEME.AMBER}` : 'none',
-              cursor: 'pointer',
               padding: '12px 20px',
               borderRadius: '4px',
               background: isHovered ? 'rgba(212, 115, 12, 0.1)' : 'transparent',
-              transition: 'all 0.3s ease'
+              transition: 'all 0.3s ease',
+              pointerEvents: 'none'  /* Labels don't capture clicks */
             }}
           >
             {section.label}
