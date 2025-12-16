@@ -38,7 +38,7 @@
 
   /* Spacing - horizontal (vw) */
   --define-gap-lg: 2.08vw;        /* 40px @ 1920 */
-  --define-slider-w: 16.67vw;     /* 320px @ 1920 */
+  --define-slider-w: 20.83vw;     /* 400px @ 1920 (+25% from 320px) */
 
   /* Spacing - vertical (vh) */
   --define-gap-md: 1.48vh;        /* 16px @ 1080 */
