@@ -22,7 +22,9 @@
       "Bash(npx playwright:*)",
       "Bash(node:*)",
       "Bash(ls:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)"
     ]
   }
 }
