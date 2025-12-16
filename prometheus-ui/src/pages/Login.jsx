@@ -169,7 +169,7 @@ function Login({ onLogin }) {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              width: '350px'
+              width: '29.69vw'  /* 570px @ 1920 = ±285px from centerline */
             }}
           >
             {/* Username Field - labels 100% larger, 2 shades lighter, pill-shaped input */}
