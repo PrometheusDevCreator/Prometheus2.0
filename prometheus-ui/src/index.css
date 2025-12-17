@@ -45,7 +45,7 @@
   --define-gap-sm: 1.11vh;        /* 12px @ 1080 */
 
   /* Padding: top right bottom left (vh vw vh vw) */
-  --define-pad: 3.70vh 3.125vw 11.11vh 3.125vw;
+  --define-pad: 1.5vh 3.125vw 1.5vh 3.125vw;
 
   /* Sizing - vertical (vh) */
   --define-textarea-min-h: 18.52vh;  /* 200px @ 1080 */

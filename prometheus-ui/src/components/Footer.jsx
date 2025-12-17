@@ -95,10 +95,9 @@ function Footer({
   return (
     <div
       style={{
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
+        position: 'relative',
+        width: '100%',
+        flexShrink: 0,
         zIndex: 50
       }}
     >

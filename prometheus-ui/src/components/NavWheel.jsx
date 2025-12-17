@@ -50,16 +50,16 @@ function NavWheel({
     }
   }, [onNavigate])
 
-  // Handle center click (toggle or navigate to generate)
+  // Handle center click (navigate to hub when collapsed, or to generate when expanded)
   const handleCenterClick = useCallback(() => {
     if (isExpanded && centerSection) {
       // When expanded, clicking center navigates to GENERATE
       handleSectionClick(centerSection.id)
-    } else if (onToggle) {
-      // When collapsed, clicking expands the wheel
-      onToggle()
+    } else {
+      // When collapsed, clicking navigates to Navigation Hub
+      handleSectionClick('navigate')
     }
-  }, [isExpanded, onToggle, handleSectionClick, centerSection])
+  }, [isExpanded, handleSectionClick, centerSection])
 
   // Get section styling
   const getSectionStyle = (section) => {
@@ -254,8 +254,8 @@ function NavWheel({
             src={logo}
             alt="Prometheus"
             style={{
-              width: isExpanded ? '4.63vh' : '3.52vh',   /* 50px/38px @ 1080 */
-              height: isExpanded ? '4.63vh' : '3.52vh',  /* 50px/38px @ 1080 */
+              width: isExpanded ? '4.63vh' : '4.04vh',   /* 50px @ 1080 / 38px @ 940 (+5px from 33px) */
+              height: isExpanded ? '4.63vh' : '4.04vh',  /* 50px @ 1080 / 38px @ 940 (+5px from 33px) */
               objectFit: 'contain',
               filter: isExpanded ? 'drop-shadow(0 0 0.93vh rgba(212, 115, 12, 0.5))' : 'none',  /* 10px @ 1080 */
               transition: 'all 0.4s ease'

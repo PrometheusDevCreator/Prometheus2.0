@@ -380,7 +380,7 @@ function App() {
         />
 
         {/* Page Content */}
-        <div style={{ flex: 1, overflow: 'visible', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {renderPage()}
         </div>
 

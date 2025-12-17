@@ -405,7 +405,8 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
     <div
       style={{
         width: '100%',
-        height: '100%',
+        flex: 1,
+        minHeight: 0,
         background: THEME.BG_DARK,
         display: 'flex',
         flexDirection: 'column',
