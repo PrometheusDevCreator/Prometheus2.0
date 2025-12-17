@@ -554,106 +554,123 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
             </div>
           </div>
 
-          {/* Duration - preserved Y position */}
-          <div style={{ marginTop: '15px' }}>
-            <label style={{ ...labelStyle(isFieldActive('duration')), marginBottom: '4px' }}>Duration</label>
-            <DurationSlider
-              value={formData.duration}
-              unit={formData.durationUnit}
-              onChange={(val, unit) => {
-                updateField('duration', val)
-                updateField('durationUnit', unit)
-                setActiveColumn('left')
-              }}
-              width={D.sliderW}
-            />
-          </div>
-
-          {/* Level - 60px spacing */}
-          <div style={{ marginTop: '5.56vh' }}>  {/* 60px @ 1080 */}
-            <label style={labelStyle(isFieldActive('level'))}>Level</label>
-            <Slider
-              options={LEVEL_OPTIONS}
-              value={formData.level}
-              onChange={(val) => { updateField('level', val); setActiveColumn('left') }}
-              width={D.sliderW}
-              hideStepLabels
-              alignBubble="right"
-              bubbleTransparent
-            />
-          </div>
-
-          {/* Seniority - 60px spacing */}
-          <div style={{ marginTop: '5.56vh' }}>  {/* 60px @ 1080 */}
-            <label style={labelStyle(isFieldActive('seniority'))}>Seniority</label>
-            <Slider
-              options={SENIORITY_OPTIONS}
-              value={formData.seniority}
-              onChange={(val) => { updateField('seniority', val); setActiveColumn('left') }}
-              width={D.sliderW}
-              highlightLast
-              hideStepLabels
-              alignBubble="right"
-              bubbleTransparent
-            />
-          </div>
-
-          {/* Content Type - 60px spacing */}
-          <div style={{ marginTop: '5.56vh', width: D.sliderW }}>  {/* 60px @ 1080 */}
-            <label style={{ ...labelStyle(isFieldActive('contentType')), marginBottom: '8px', display: 'block' }}>
-              Content Type
-            </label>
-            {/* Slider track */}
-            <div
-              ref={contentTypeSliderRef}
-              onMouseDown={handleContentTypeMouseDown}
-              style={{
-                position: 'relative',
-                width: '100%',
-                height: '24px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center'
-              }}
-            >
-              {/* Track background - solid grey, no fill */}
-              <div
-                style={{
-                  position: 'absolute',
-                  width: '100%',
-                  height: '4px',
-                  background: THEME.BORDER_GREY,
-                  borderRadius: '2px'
+          {/* Duration - inline layout: Label | Slider | Readout */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '15px' }}>
+            <label style={{ ...labelStyle(isFieldActive('duration')), marginBottom: 0, minWidth: '75px', flexShrink: 0 }}>Duration</label>
+            <div style={{ flex: 1 }}>
+              <DurationSlider
+                value={formData.duration}
+                unit={formData.durationUnit}
+                onChange={(val, unit) => {
+                  updateField('duration', val)
+                  updateField('durationUnit', unit)
+                  setActiveColumn('left')
                 }}
-              />
-              {/* Thumb - 50% larger (24px) */}
-              <div
-                style={{
-                  position: 'absolute',
-                  left: `${formData.contentType}%`,
-                  transform: 'translateX(-50%)',
-                  width: '24px',
-                  height: '24px',
-                  borderRadius: '50%',
-                  background: THEME.AMBER,
-                  border: `2px solid ${THEME.BG_DARK}`,
-                  boxShadow: '0 0 6px rgba(212, 115, 12, 0.3)',
-                  zIndex: 2
-                }}
+                width="100%"
+                showValue={false}
               />
             </div>
-            {/* Theory / Practical labels - burnt orange readouts */}
+            <span style={{ color: THEME.AMBER, fontFamily: THEME.FONT_PRIMARY, fontSize: '14px', minWidth: '70px', textAlign: 'right', flexShrink: 0 }}>
+              {formData.duration} {formData.duration === 1 ? formData.durationUnit.slice(0, -1) : formData.durationUnit}
+            </span>
+          </div>
+
+          {/* Level - inline layout: Label | Slider | Readout */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '1.39vh' }}>
+            <label style={{ ...labelStyle(isFieldActive('level')), marginBottom: 0, minWidth: '75px', flexShrink: 0 }}>Level</label>
+            <div style={{ flex: 1 }}>
+              <Slider
+                options={LEVEL_OPTIONS}
+                value={formData.level}
+                onChange={(val) => { updateField('level', val); setActiveColumn('left') }}
+                width="100%"
+                hideStepLabels
+                showBubble={false}
+              />
+            </div>
+            <span style={{ color: THEME.AMBER, fontFamily: THEME.FONT_PRIMARY, fontSize: '14px', minWidth: '90px', textAlign: 'right', flexShrink: 0 }}>
+              {formData.level}
+            </span>
+          </div>
+
+          {/* Seniority - inline layout: Label | Slider | Readout */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '1.39vh' }}>
+            <label style={{ ...labelStyle(isFieldActive('seniority')), marginBottom: 0, minWidth: '75px', flexShrink: 0 }}>Seniority</label>
+            <div style={{ flex: 1 }}>
+              <Slider
+                options={SENIORITY_OPTIONS}
+                value={formData.seniority}
+                onChange={(val) => { updateField('seniority', val); setActiveColumn('left') }}
+                width="100%"
+                highlightLast
+                hideStepLabels
+                showBubble={false}
+              />
+            </div>
+            <span style={{ color: THEME.AMBER, fontFamily: THEME.FONT_PRIMARY, fontSize: '14px', minWidth: '90px', textAlign: 'right', flexShrink: 0 }}>
+              {formData.seniority}
+            </span>
+          </div>
+
+          {/* Content Type - inline layout with Theory/Practical readouts */}
+          <div style={{ marginTop: '1.39vh' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <label style={{ ...labelStyle(isFieldActive('contentType')), marginBottom: 0, minWidth: '75px', flexShrink: 0 }}>
+                Content
+              </label>
+              {/* Slider track */}
+              <div
+                ref={contentTypeSliderRef}
+                onMouseDown={handleContentTypeMouseDown}
+                style={{
+                  position: 'relative',
+                  flex: 1,
+                  height: '24px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                {/* Track background - solid grey, no fill */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    width: '100%',
+                    height: '4px',
+                    background: THEME.BORDER_GREY,
+                    borderRadius: '2px'
+                  }}
+                />
+                {/* Thumb */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: `${formData.contentType}%`,
+                    transform: 'translateX(-50%)',
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '50%',
+                    background: THEME.AMBER,
+                    border: `2px solid ${THEME.BG_DARK}`,
+                    boxShadow: '0 0 6px rgba(212, 115, 12, 0.3)',
+                    zIndex: 2
+                  }}
+                />
+              </div>
+            </div>
+            {/* Theory / Practical labels below */}
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                marginTop: '8px'
+                marginTop: '4px',
+                marginLeft: '87px'
               }}
             >
-              <span style={{ fontSize: '13px', fontFamily: THEME.FONT_PRIMARY, color: THEME.TEXT_SECONDARY }}>
+              <span style={{ fontSize: '12px', fontFamily: THEME.FONT_PRIMARY, color: THEME.TEXT_SECONDARY }}>
                 Theory: <span style={{ color: THEME.AMBER }}>{100 - formData.contentType}%</span>
               </span>
-              <span style={{ fontSize: '13px', fontFamily: THEME.FONT_PRIMARY, color: THEME.TEXT_SECONDARY }}>
+              <span style={{ fontSize: '12px', fontFamily: THEME.FONT_PRIMARY, color: THEME.TEXT_SECONDARY }}>
                 Practical: <span style={{ color: THEME.AMBER }}>{formData.contentType}%</span>
               </span>
             </div>
@@ -680,8 +697,8 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
             SELECT COURSE
           </h2>
 
-          {/* Course Description section - top border at Y=365, aligns with Thematic dropdown bottom */}
-          <div style={{ marginTop: '17.13vh', width: '100%' }}>  {/* 185px @ 1080 to reach Y=365 */}
+          {/* Course Description section - reduced spacing (Select Course moved to Nav Hub) */}
+          <div style={{ marginTop: '4.63vh', width: '100%' }}>  {/* 50px @ 1080 */}
             {/* DESCRIPTION heading - turns orange when children focused */}
             <label
               style={{

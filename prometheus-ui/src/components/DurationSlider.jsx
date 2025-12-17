@@ -71,7 +71,8 @@ function DurationSlider({
   unit = 'Hours',      // 'Hours' | 'Days' | 'Weeks'
   onChange,            // Callback: (value, unit) => void
   width = 320,         // Slider width in pixels
-  label = 'Duration'   // Label text
+  label = 'Duration',  // Label text
+  showValue = true     // Show value readout below slider
 }) {
   const [isDragging, setIsDragging] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
@@ -240,21 +241,23 @@ function DurationSlider({
       </div>
 
       {/* Value display - burnt orange readout */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          marginTop: '-1px'
-        }}
-      >
-        <span style={{
-          color: THEME.AMBER,
-          fontFamily: THEME.FONT_PRIMARY,
-          fontSize: '15px'
-        }}>
-          {value} {displayUnit}
-        </span>
-      </div>
+      {showValue && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            marginTop: '-1px'
+          }}
+        >
+          <span style={{
+            color: THEME.AMBER,
+            fontFamily: THEME.FONT_PRIMARY,
+            fontSize: '15px'
+          }}>
+            {value} {displayUnit}
+          </span>
+        </div>
+      )}
 
     </div>
   )

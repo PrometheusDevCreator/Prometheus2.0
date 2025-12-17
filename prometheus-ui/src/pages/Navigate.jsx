@@ -14,9 +14,31 @@ import React, { useState, useCallback } from 'react'
 import { THEME } from '../constants/theme'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
+import GradientBorder from '../components/GradientBorder'
 
 function Navigate({ onNavigate, courseData = {}, user, courseState }) {
   const [isPKEActive, setIsPKEActive] = useState(false)
+  const [selectedCourse, setSelectedCourse] = useState('')
+  const [isSelectFocused, setIsSelectFocused] = useState(false)
+  const [isSelectHovered, setIsSelectHovered] = useState(false)
+
+  // Mock saved courses - in production this would come from backend/state
+  const savedCourses = [
+    { id: 'new', name: '+ Create New Course' },
+    { id: 'course-1', name: 'INT-001: Introduction to Intelligence Analysis' },
+    { id: 'course-2', name: 'DEF-002: Defence Operations Overview' },
+    { id: 'course-3', name: 'POL-003: Policing Fundamentals' },
+  ]
+
+  // Handle course selection
+  const handleCourseSelect = useCallback((courseId) => {
+    setSelectedCourse(courseId)
+    if (courseId === 'new') {
+      // Navigate to Define page for new course creation
+      onNavigate?.('define')
+    }
+    // TODO: Load selected course data
+  }, [onNavigate])
 
   // Handle navigation from wheel
   const handleWheelNavigate = useCallback((sectionId) => {
@@ -44,9 +66,9 @@ function Navigate({ onNavigate, courseData = {}, user, courseState }) {
       <div
         style={{
           position: 'absolute',
-          top: '45.37vh', // Y: +50 → 490px @ 1080
-          left: '50%',    // X: 0 (centered)
-          transform: 'translate(-50%, -50%)', // Center the wheel on this point
+          top: '42vh', // Adjusted up slightly to make room for Select Course
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
           width: '600px',
           height: '600px',
           display: 'flex',
@@ -56,6 +78,74 @@ function Navigate({ onNavigate, courseData = {}, user, courseState }) {
         }}
       >
         <NavigateWheel onNavigate={handleWheelNavigate} />
+      </div>
+
+      {/* Select Course - Below NavWheel */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '75vh',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '12px',
+          zIndex: 10
+        }}
+      >
+        <label
+          style={{
+            fontSize: '14px',
+            letterSpacing: '4px',
+            color: isSelectFocused || isSelectHovered ? THEME.AMBER : THEME.TEXT_SECONDARY,
+            fontFamily: THEME.FONT_PRIMARY,
+            transition: 'color 0.2s ease'
+          }}
+        >
+          SELECT COURSE
+        </label>
+        <GradientBorder isActive={isSelectFocused || isSelectHovered}>
+          <select
+            value={selectedCourse}
+            onChange={(e) => handleCourseSelect(e.target.value)}
+            onFocus={() => setIsSelectFocused(true)}
+            onBlur={() => setIsSelectFocused(false)}
+            onMouseEnter={() => setIsSelectHovered(true)}
+            onMouseLeave={() => setIsSelectHovered(false)}
+            style={{
+              width: '400px',
+              padding: '14px 20px',
+              background: THEME.BG_INPUT,
+              border: 'none',
+              borderRadius: '20px',
+              color: selectedCourse ? THEME.WHITE : THEME.TEXT_DIM,
+              fontSize: '14px',
+              fontFamily: THEME.FONT_PRIMARY,
+              letterSpacing: '1px',
+              outline: 'none',
+              cursor: 'pointer',
+              appearance: 'none',
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 16px center'
+            }}
+          >
+            <option value="" disabled>Select a course...</option>
+            {savedCourses.map(course => (
+              <option
+                key={course.id}
+                value={course.id}
+                style={{
+                  background: THEME.BG_PANEL,
+                  color: course.id === 'new' ? THEME.AMBER : THEME.WHITE
+                }}
+              >
+                {course.name}
+              </option>
+            ))}
+          </select>
+        </GradientBorder>
       </div>
 
       {/* Shared Footer Component */}
