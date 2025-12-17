@@ -1,0 +1,38 @@
+# Playwright MCP server data
+.playwright-mcp/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
