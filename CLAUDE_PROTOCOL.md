@@ -441,6 +441,67 @@ If task cannot be fully completed:
 - ✓ Similar code patterns checked for same bug
 - ✓ Regression test for the specific bug
 
+### 7.4 Viewport & Coordinate Protocol
+
+#### 7.4.1 Implementation Viewport Baseline
+
+All UI coordinate work uses the **Implementation Viewport Baseline**:
+
+| Parameter | Value |
+|-----------|-------|
+| Width | 1890px |
+| Height | 940px |
+| Origin (0,0) | Centre of viewport (945, 470) |
+
+This represents the usable viewport after browser chrome (tabs, address bar) at the Founder's standard configuration (1920×1080 display, 100% scale, 100% zoom, Chrome maximised).
+
+#### 7.4.2 Coordinate Convention
+
+**All coordinate values supplied by the Founder or used for verification are expressed in grid units relative to the Implementation Viewport Baseline, not physical display resolution.**
+
+- X-axis: Negative left, positive right (range: -945 to +945)
+- Y-axis: Positive up, negative down (range: -470 to +470)
+- 1 Grid Unit = 1 Pixel at baseline
+
+#### 7.4.3 Unit Conversion
+
+| Conversion | Formula | Example |
+|------------|---------|---------|
+| Grid X → CSS | `left: ((945 + X) / 1890) × 100 vw` | X: -875 → 3.70vw |
+| Grid Y → CSS | `bottom: ((470 + Y) / 940) × 100 vh` | Y: -375 → 10.11vh |
+| px → vw | px ÷ 18.9 | 189px = 10vw |
+| px → vh | px ÷ 9.4 | 94px = 10vh |
+
+#### 7.4.4 Affirmation Protocol
+
+When implementing positional changes from Founder-supplied coordinates, CC must confirm:
+
+```
+Grid conversion applied: X:[value] → [value]vw, Y:[value] → [value]vh
+Implementation baseline: 1890×940
+```
+
+#### 7.4.5 Playwright Configuration
+
+Before any screenshot or coordinate measurement:
+
+1. Set viewport: `setViewportSize({ width: 1890, height: 940 })`
+2. Verify: Confirm viewport matches baseline
+3. Report: Include viewport dimensions in response
+
+```javascript
+await page.setViewportSize({ width: 1890, height: 940 });
+const vp = page.viewportSize();
+// Report: "Viewport: 1890 × 940 | Baseline: CONFIRMED"
+```
+
+#### 7.4.6 Prohibited Actions
+
+CC must NOT:
+- Use 1920×1080 for coordinate calculations (this is display resolution, not viewport)
+- Accept coordinates without confirming baseline reference
+- Proceed with screenshots if viewport verification fails
+
 ---
 
 ## INVOCATION METHODS

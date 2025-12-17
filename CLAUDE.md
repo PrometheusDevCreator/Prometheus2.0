@@ -1,10 +1,33 @@
 # CLAUDE.md - Prometheus Project Context
 
 > **⚠️ PROTOCOL REFERENCE (MANDATORY)**
-> 
+>
 > This project uses the **CLAUDE_PROTOCOL.md** standard operating procedure.
 > CC must read and follow `CLAUDE_PROTOCOL.md` before executing any task.
 > Reference: `/CLAUDE_PROTOCOL.md` (Project Root)
+
+> **⚠️ UI DOCTRINE (MANDATORY)**
+>
+> Immutable frame elements are defined in **UI_DOCTRINE.md**.
+> CC must not modify doctrinal elements without Founder approval.
+> Reference: `/UI_DOCTRINE.md` (Project Root)
+
+> **⚠️ PLAYWRIGHT CONFIGURATION (MANDATORY)**
+>
+> All Playwright/browser operations must follow `PLAYWRIGHT_CONFIG.md`
+>
+> **Implementation Baseline:** 1890 × 940 (usable viewport)
+>
+> Before ANY screenshot or coordinate measurement:
+> 1. Set viewport: `setViewportSize({ width: 1890, height: 940 })`
+> 2. Verify dimensions match
+> 3. Report viewport in response
+>
+> **Conversion factors (1890×940):**
+> - Horizontal: 1vw = 18.9px
+> - Vertical: 1vh = 9.4px
+>
+> Reference: `/PLAYWRIGHT_CONFIG.md` (Project Root)
 
 ---
 

@@ -40,11 +40,11 @@ function Navigate({ onNavigate, courseData = {}, user, courseState }) {
       {/* Spacer to maintain layout */}
       <div style={{ flex: 1 }} />
 
-      {/* NavWheel - Centre at Y=410, X=0 (screen center) */}
+      {/* NavWheel - Centre at X:0, Y:+50 (slightly above screen center) */}
       <div
         style={{
           position: 'absolute',
-          top: '37.96vh', // Y: 410 @ 1080
+          top: '45.37vh', // Y: +50 → 490px @ 1080
           left: '50%',    // X: 0 (centered)
           transform: 'translate(-50%, -50%)', // Center the wheel on this point
           width: '600px',

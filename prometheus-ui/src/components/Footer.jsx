@@ -102,6 +102,38 @@ function Footer({
         zIndex: 50
       }}
     >
+      {/* Collapsed NavWheel - center at X:-875, Y:-375 (for 1890×940 actual viewport) */}
+      <div style={{
+        position: 'absolute',
+        left: '3.70vw',              /* X:-875 → 70px @ 1890 */
+        bottom: '10.11vh',           /* Y:-375 → 95px @ 940 */
+        transform: 'translate(-50%, 50%)',  /* Center on this point */
+        width: '7.45vh',             /* 70px @ 940 (radius 35px) */
+        height: '7.45vh',
+        zIndex: 100,
+        filter: wheelExpanded ? 'none' : 'drop-shadow(0 0 0.85vh rgba(255, 255, 255, 0.15))'
+      }}>
+        <NavWheel
+          currentSection={currentSection}
+          onNavigate={handleNavigate}
+          isExpanded={wheelExpanded}
+          onToggle={handleWheelToggle}
+        />
+      </div>
+
+      {/* Analytics Ring Button - center at X:-775, Y:-375 (for 1890×940 actual viewport) */}
+      <div style={{
+        position: 'absolute',
+        left: '8.99vw',              /* X:-775 → 170px @ 1890 */
+        bottom: '10.11vh',           /* Y:-375 → 95px @ 940 */
+        transform: 'translate(-50%, 50%)',  /* Center on this point */
+        width: '7.45vh',             /* 70px @ 940 (radius 35px) */
+        height: '7.45vh',
+        zIndex: 100
+      }}>
+        <AnalyticsRing />
+      </div>
+
       {/* Controls Row - positioned so PKE bottom is at Y=710 (just above line at Y=715) */}
       <div
         style={{
@@ -110,48 +142,6 @@ function Footer({
           marginBottom: '0.46vh'            /* 5px @ 1080 */
         }}
       >
-        {/* Left Section: NavWheel + ANALYTICS */}
-        <div
-          style={{
-            position: 'absolute',
-            left: '1.04vw',         /* 20px @ 1920 */
-            bottom: '0px',
-            display: 'flex',
-            alignItems: 'flex-end',
-            gap: '3.7vh'            /* 40px @ 1080 */
-          }}
-        >
-          {/* Mini NavWheel - matches ANALYTICS size and Y position exactly */}
-          {/* Note: no transform scaling to match ANALYTICS 70px size */}
-          <div style={{
-            position: 'absolute',
-            left: '0',
-            bottom: '0.46vh',             /* 5px @ 1080 - same as ANALYTICS */
-            width: 'var(--navwheel-collapsed)',   /* 70px @ 1080 */
-            height: 'var(--navwheel-collapsed)',  /* 70px @ 1080 */
-            filter: wheelExpanded ? 'none' : 'drop-shadow(0 0 0.74vh rgba(255, 255, 255, 0.15))'  /* 8px @ 1080 */
-          }}>
-            <NavWheel
-              currentSection={currentSection}
-              onNavigate={handleNavigate}
-              isExpanded={wheelExpanded}
-              onToggle={handleWheelToggle}
-            />
-          </div>
-
-          {/* ANALYTICS Ring Button - matches NavWheel size and Y position */}
-          <div
-            style={{
-              position: 'absolute',
-              left: '7.29vw',               /* 140px @ 1920 */
-              bottom: '0.46vh',             /* 5px @ 1080 */
-              width: 'var(--navwheel-collapsed)',   /* 70px @ 1080 */
-              height: 'var(--navwheel-collapsed)'   /* 70px @ 1080 */
-            }}
-          >
-            <AnalyticsRing />
-          </div>
-        </div>
 
         {/* Center Section: < + > and PKE Interface - moved up 10px */}
         <div
@@ -289,9 +279,9 @@ function Footer({
             position: 'absolute',
             left: '50%',
             transform: 'translateX(-50%)',
-            color: '#00ff00',
+            color: THEME.AMBER,          /* Burnt Orange #d4730c */
             fontFamily: "'Rajdhani', 'Candara', sans-serif",
-            fontSize: '1.48vh',          /* 16px @ 1080 */
+            fontSize: '1.70vh',          /* 18.4px @ 1080 (+15% from 16px) */
             letterSpacing: '0.09vh'      /* 1px @ 1080 */
           }}
         >
