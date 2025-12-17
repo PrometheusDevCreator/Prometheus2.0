@@ -39,8 +39,10 @@ function CourseSelector({
 
   // Constants
   const VISIBLE_COURSES = 5
-  const COURSE_ITEM_HEIGHT = 40
-  const maxScroll = Math.max(0, (courses.length - VISIBLE_COURSES) * COURSE_ITEM_HEIGHT)
+  const COURSE_ITEM_HEIGHT = 34  // Reduced from 40 to fit smaller list
+  const LIST_HEIGHT = 170  // Reduced by 30px (was 200px)
+  const EXPANDED_WHEEL_SIZE = Math.round(size * 0.85)  // 15% smaller wheel in expanded state
+  const maxScroll = Math.max(0, (courses.length * COURSE_ITEM_HEIGHT) - LIST_HEIGHT)
 
   // Handle wheel click (expand/collapse)
   const handleWheelClick = useCallback(() => {
@@ -189,56 +191,77 @@ function CourseSelector({
           flexDirection: 'column',
           alignItems: 'center',
           gap: '16px',
+          marginTop: '50px',  // Moved down 50px
           animation: 'fadeIn 0.3s ease-out'
         }}
       >
-        {/* Course name */}
-        <span
-          style={{
-            fontSize: '16px',
-            letterSpacing: '3px',
-            color: THEME.AMBER,
-            fontFamily: THEME.FONT_PRIMARY
-          }}
-        >
-          {selectedCourse?.title || selectedCourse?.name || 'Loading...'}
-        </span>
-
-        {/* Progress bar or loaded message */}
-        {state === 'loading' ? (
-          <div
-            style={{
-              width: '400px',
-              height: '12px',
-              background: THEME.BG_INPUT,
-              borderRadius: '6px',
-              overflow: 'hidden',
-              border: `1px solid ${THEME.BORDER}`
-            }}
-          >
+        {/* Loading: Course name above progress bar */}
+        {state === 'loading' && (
+          <>
+            <span
+              style={{
+                fontSize: '24px',  // 50% larger (16px * 1.5)
+                letterSpacing: '3px',
+                color: THEME.GREEN_BRIGHT,  // Luminous green for course name
+                fontFamily: THEME.FONT_PRIMARY,
+                textTransform: 'uppercase',  // Capitalize course name
+                whiteSpace: 'nowrap'  // Prevent text wrap
+              }}
+            >
+              {selectedCourse?.title || selectedCourse?.name || 'Loading...'}
+            </span>
             <div
               style={{
-                width: `${loadProgress}%`,
-                height: '100%',
-                background: `linear-gradient(to right, ${THEME.AMBER_DARK}, ${THEME.AMBER})`,
+                width: '400px',
+                height: '12px',
+                background: THEME.BG_INPUT,
                 borderRadius: '6px',
-                transition: 'width 0.05s linear',
-                boxShadow: '0 0 20px rgba(212, 115, 12, 0.5)'
+                overflow: 'hidden',
+                border: `1px solid ${THEME.BORDER}`
               }}
-            />
-          </div>
-        ) : (
-          <span
-            style={{
-              fontSize: '14px',
-              letterSpacing: '4px',
-              color: THEME.GREEN_BRIGHT,
-              fontFamily: THEME.FONT_PRIMARY,
-              animation: 'fadeIn 0.3s ease-out'
-            }}
-          >
-            COURSE LOADED
-          </span>
+            >
+              <div
+                style={{
+                  width: `${loadProgress}%`,
+                  height: '100%',
+                  background: `linear-gradient(to right, ${THEME.AMBER_DARK}, ${THEME.AMBER})`,
+                  borderRadius: '6px',
+                  transition: 'width 0.05s linear',
+                  boxShadow: '0 0 20px rgba(212, 115, 12, 0.5)'
+                }}
+              />
+            </div>
+          </>
+        )}
+
+        {/* Loaded: "Course Loaded" above course name (swapped positions & colors) */}
+        {state === 'loaded' && (
+          <>
+            <span
+              style={{
+                fontSize: '14px',
+                letterSpacing: '4px',
+                color: THEME.AMBER,  // Burnt orange for "Course Loaded"
+                fontFamily: THEME.FONT_PRIMARY,
+                animation: 'fadeIn 0.3s ease-out'
+              }}
+            >
+              Course Loaded
+            </span>
+            <span
+              style={{
+                fontSize: '24px',  // 50% larger (16px * 1.5)
+                letterSpacing: '3px',
+                color: THEME.GREEN_BRIGHT,  // Luminous green for course name
+                fontFamily: THEME.FONT_PRIMARY,
+                textTransform: 'uppercase',  // Capitalize course name
+                whiteSpace: 'nowrap',  // Prevent text wrap
+                animation: 'fadeIn 0.3s ease-out'
+              }}
+            >
+              {selectedCourse?.title || selectedCourse?.name}
+            </span>
+          </>
         )}
       </div>
     )
@@ -256,20 +279,22 @@ function CourseSelector({
         zIndex: 200
       }}
     >
-      {/* Wheel (slides left in expanded state) */}
+      {/* Wheel (slides left in expanded state) - 15% smaller */}
       <div
         ref={wheelRef}
         onMouseDown={handleDragStart}
         onTouchStart={handleDragStart}
         style={{
-          width: `${size}px`,
-          height: `${size}px`,
+          width: `${EXPANDED_WHEEL_SIZE}px`,
+          height: `${EXPANDED_WHEEL_SIZE}px`,
           borderRadius: '50%',
           background: THEME.BG_DARK,
           border: `3px solid ${THEME.AMBER}`,
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
+          gap: '4px',
           cursor: isDragging ? 'grabbing' : 'grab',
           transition: isDragging ? 'none' : `all ${ANIMATION.DURATION_NORMAL} ${ANIMATION.EASE_SMOOTH}`,
           boxShadow: '0 0 30px rgba(212, 115, 12, 0.3)',
@@ -280,8 +305,8 @@ function CourseSelector({
       >
         {/* Rotation indicator lines */}
         <svg
-          width={size}
-          height={size}
+          width={EXPANDED_WHEEL_SIZE}
+          height={EXPANDED_WHEEL_SIZE}
           style={{
             position: 'absolute',
             top: 0,
@@ -293,12 +318,12 @@ function CourseSelector({
           {/* Tick marks around the wheel */}
           {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => {
             const radians = (angle - 90) * (Math.PI / 180)
-            const innerR = size / 2 - 15
-            const outerR = size / 2 - 5
-            const x1 = size / 2 + Math.cos(radians) * innerR
-            const y1 = size / 2 + Math.sin(radians) * innerR
-            const x2 = size / 2 + Math.cos(radians) * outerR
-            const y2 = size / 2 + Math.sin(radians) * outerR
+            const innerR = EXPANDED_WHEEL_SIZE / 2 - 12
+            const outerR = EXPANDED_WHEEL_SIZE / 2 - 4
+            const x1 = EXPANDED_WHEEL_SIZE / 2 + Math.cos(radians) * innerR
+            const y1 = EXPANDED_WHEEL_SIZE / 2 + Math.sin(radians) * innerR
+            const x2 = EXPANDED_WHEEL_SIZE / 2 + Math.cos(radians) * outerR
+            const y2 = EXPANDED_WHEEL_SIZE / 2 + Math.sin(radians) * outerR
 
             return (
               <line
@@ -314,34 +339,58 @@ function CourseSelector({
           })}
         </svg>
 
-        {/* Center text */}
+        {/* Center content: Up arrow, SELECT, Down arrow */}
         <span
           style={{
-            fontSize: '11px',
-            letterSpacing: '1px',
+            fontSize: '14px',
+            color: THEME.AMBER_DARK,
+            zIndex: 1,
+            lineHeight: 1
+          }}
+        >
+          ▲
+        </span>
+        <span
+          style={{
+            fontSize: '10px',
+            letterSpacing: '2px',
             color: THEME.TEXT_DIM,
             fontFamily: THEME.FONT_PRIMARY,
-            textAlign: 'center',
             zIndex: 1
           }}
         >
-          DRAG TO<br/>SCROLL
+          SELECT
+        </span>
+        <span
+          style={{
+            fontSize: '14px',
+            color: THEME.AMBER_DARK,
+            zIndex: 1,
+            lineHeight: 1
+          }}
+        >
+          ▼
         </span>
       </div>
 
-      {/* Course list */}
+      {/* Course list with brightness fade (brightest center, fading edges) */}
       <div
         style={{
           width: '300px',
-          height: `${VISIBLE_COURSES * COURSE_ITEM_HEIGHT}px`,
+          height: `${LIST_HEIGHT}px`,
           overflow: 'hidden',
-          position: 'relative'
+          position: 'relative',
+          // Brightness fade: mask from transparent edges to opaque center
+          maskImage: 'linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%)'
         }}
       >
         <div
           style={{
             transform: `translateY(-${scrollPosition}px)`,
-            transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+            transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+            paddingTop: '15px',  // Account for fade area
+            paddingBottom: '15px'
           }}
         >
           {courses.map((course, index) => {
@@ -357,13 +406,14 @@ function CourseSelector({
                   alignItems: 'center',
                   padding: '0 16px',
                   cursor: 'pointer',
-                  color: isSelected ? THEME.GREEN_BRIGHT : THEME.TEXT_SECONDARY,
+                  // Only text color changes - no background box
+                  color: isSelected ? THEME.AMBER : THEME.TEXT_SECONDARY,
                   fontFamily: THEME.FONT_PRIMARY,
                   fontSize: '14px',
                   letterSpacing: '1px',
-                  background: isSelected ? 'rgba(0, 255, 0, 0.1)' : 'transparent',
-                  borderLeft: isSelected ? `3px solid ${THEME.GREEN_BRIGHT}` : '3px solid transparent',
-                  transition: 'all 0.2s ease',
+                  background: 'transparent',
+                  borderLeft: '3px solid transparent',
+                  transition: 'color 0.2s ease',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis'
@@ -371,13 +421,11 @@ function CourseSelector({
                 onMouseEnter={(e) => {
                   if (!isSelected) {
                     e.currentTarget.style.color = THEME.AMBER
-                    e.currentTarget.style.background = 'rgba(212, 115, 12, 0.1)'
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!isSelected) {
                     e.currentTarget.style.color = THEME.TEXT_SECONDARY
-                    e.currentTarget.style.background = 'transparent'
                   }
                 }}
               >
