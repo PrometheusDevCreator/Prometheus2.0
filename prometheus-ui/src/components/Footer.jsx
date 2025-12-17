@@ -38,7 +38,9 @@ function Footer({
   deleteStep = null,
   onDeleteKeep = null,
   onDeleteConfirm = null,
-  onDeleteCancel = null
+  onDeleteCancel = null,
+  // PKE visibility (hidden on Navigation Hub)
+  hidePKE = false
 }) {
   // NavWheel expansion state
   const [wheelExpanded, setWheelExpanded] = useState(false)
@@ -142,36 +144,38 @@ function Footer({
         }}
       >
 
-        {/* Center Section: < + > and PKE Interface - moved up 10px */}
-        <div
-          style={{
-            position: 'absolute',
-            left: 'calc(50% - 0.52vw)',  /* nudged 10px left @ 1920 */
-            transform: 'translateX(-50%)',
-            bottom: '1.39vh',            /* 15px @ 1080 */
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center'
-          }}
-        >
-          {/* Navigation arrows - 5px above PKE, nudged 20px right */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.48vh', marginBottom: '0.46vh', marginLeft: '1.04vw' }}>
-            <button style={navArrowStyle}>&lt;</button>
-            <span style={{ color: THEME.TEXT_DIM, fontSize: '1.67vh' }}>+</span>
-            <button style={navArrowStyle}>&gt;</button>
-          </div>
+        {/* Center Section: < + > and PKE Interface - hidden on Navigation Hub */}
+        {!hidePKE && (
+          <div
+            style={{
+              position: 'absolute',
+              left: 'calc(50% - 0.52vw)',  /* nudged 10px left @ 1920 */
+              transform: 'translateX(-50%)',
+              bottom: '1.39vh',            /* 15px @ 1080 */
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center'
+            }}
+          >
+            {/* Navigation arrows - 5px above PKE, nudged 20px right */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.48vh', marginBottom: '0.46vh', marginLeft: '1.04vw' }}>
+              <button style={navArrowStyle}>&lt;</button>
+              <span style={{ color: THEME.TEXT_DIM, fontSize: '1.67vh' }}>+</span>
+              <button style={navArrowStyle}>&gt;</button>
+            </div>
 
-          {/* PKE Interface */}
-          <PKEInterface
-            isActive={isPKEActive}
-            onClose={() => onPKEToggle?.(false)}
-            deleteLoNumber={deleteLoNumber}
-            deleteStep={deleteStep}
-            onKeep={onDeleteKeep}
-            onDelete={onDeleteConfirm}
-            onCancel={onDeleteCancel}
-          />
-        </div>
+            {/* PKE Interface */}
+            <PKEInterface
+              isActive={isPKEActive}
+              onClose={() => onPKEToggle?.(false)}
+              deleteLoNumber={deleteLoNumber}
+              deleteStep={deleteStep}
+              onKeep={onDeleteKeep}
+              onDelete={onDeleteConfirm}
+              onCancel={onDeleteCancel}
+            />
+          </div>
+        )}
 
         {/* Right Section: Action Buttons */}
         <div

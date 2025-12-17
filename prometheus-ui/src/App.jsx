@@ -238,8 +238,10 @@ function App() {
           <Navigate
             onNavigate={handleNavigate}
             courseData={courseData}
+            setCourseData={setCourseData}
             user={currentUser ? { name: currentUser.name || currentUser.username || 'User' } : { name: '---' }}
             courseState={courseState}
+            setCourseState={setCourseState}
           />
         </div>
         <DebugGridController isVisible={showDebugGrid} onEscapeWhenNoPins={handleEscapeNavigation} />
@@ -321,8 +323,10 @@ function App() {
           <Navigate
             onNavigate={handleNavigate}
             courseData={courseData}
+            setCourseData={setCourseData}
             user={userData}
             courseState={courseState}
+            setCourseState={setCourseState}
           />
         )
     }

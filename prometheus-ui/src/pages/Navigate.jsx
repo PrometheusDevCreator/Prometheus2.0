@@ -14,31 +14,123 @@ import React, { useState, useCallback } from 'react'
 import { THEME } from '../constants/theme'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
-import GradientBorder from '../components/GradientBorder'
+import CourseSelector from '../components/CourseSelector'
 
-function Navigate({ onNavigate, courseData = {}, user, courseState }) {
+function Navigate({ onNavigate, courseData = {}, setCourseData, user, courseState, setCourseState }) {
   const [isPKEActive, setIsPKEActive] = useState(false)
-  const [selectedCourse, setSelectedCourse] = useState('')
-  const [isSelectFocused, setIsSelectFocused] = useState(false)
-  const [isSelectHovered, setIsSelectHovered] = useState(false)
+  const [loadedCourseData, setLoadedCourseData] = useState(null)
 
   // Mock saved courses - in production this would come from backend/state
   const savedCourses = [
-    { id: 'new', name: '+ Create New Course' },
-    { id: 'course-1', name: 'INT-001: Introduction to Intelligence Analysis' },
-    { id: 'course-2', name: 'DEF-002: Defence Operations Overview' },
-    { id: 'course-3', name: 'POL-003: Policing Fundamentals' },
+    {
+      id: 'course-1',
+      name: 'INT-001: Introduction to Intelligence Analysis',
+      title: 'Introduction to Intelligence Analysis',
+      duration: 8,
+      durationUnit: 'Hours',
+      level: 'Foundational',
+      thematic: 'Intelligence',
+      owner: 'J. Smith',
+      startDate: '10/12/25',
+      status: 'IN PROGRESS',
+      progress: 45,
+      approved: 'N'
+    },
+    {
+      id: 'course-2',
+      name: 'DEF-002: Defence Operations Overview',
+      title: 'Defence Operations Overview',
+      duration: 3,
+      durationUnit: 'Days',
+      level: 'Intermediate',
+      thematic: 'Defence & Security',
+      owner: 'M. Jones',
+      startDate: '05/12/25',
+      status: 'IN PROGRESS',
+      progress: 72,
+      approved: 'N'
+    },
+    {
+      id: 'course-3',
+      name: 'POL-003: Policing Fundamentals',
+      title: 'Policing Fundamentals',
+      duration: 2,
+      durationUnit: 'Weeks',
+      level: 'Awareness',
+      thematic: 'Policing',
+      owner: 'S. Wilson',
+      startDate: '01/12/25',
+      status: 'COMMENCED',
+      progress: 15,
+      approved: 'N'
+    },
+    {
+      id: 'course-4',
+      name: 'LED-004: Executive Leadership',
+      title: 'Executive Leadership',
+      duration: 5,
+      durationUnit: 'Days',
+      level: 'Advanced',
+      thematic: 'Leadership & Management',
+      owner: 'R. Brown',
+      startDate: '28/11/25',
+      status: 'IN PROGRESS',
+      progress: 88,
+      approved: 'Y'
+    },
+    {
+      id: 'course-5',
+      name: 'CRI-005: Crisis Response Planning',
+      title: 'Crisis Response Planning',
+      duration: 4,
+      durationUnit: 'Hours',
+      level: 'Intermediate',
+      thematic: 'Crisis Response',
+      owner: 'K. Davis',
+      startDate: '15/11/25',
+      status: 'IN PROGRESS',
+      progress: 60,
+      approved: 'N'
+    },
+    {
+      id: 'course-6',
+      name: 'RES-006: Organizational Resilience',
+      title: 'Organizational Resilience',
+      duration: 1,
+      durationUnit: 'Weeks',
+      level: 'Expert',
+      thematic: 'Resilience',
+      owner: 'A. Taylor',
+      startDate: '20/11/25',
+      status: 'COMMENCED',
+      progress: 25,
+      approved: 'N'
+    }
   ]
 
-  // Handle course selection
-  const handleCourseSelect = useCallback((courseId) => {
-    setSelectedCourse(courseId)
-    if (courseId === 'new') {
-      // Navigate to Define page for new course creation
-      onNavigate?.('define')
+  // Handle course load from CourseSelector
+  const handleCourseLoad = useCallback((course) => {
+    setLoadedCourseData(course)
+
+    // Update parent state if callbacks provided
+    if (setCourseData) {
+      setCourseData(prev => ({
+        ...prev,
+        title: course.title,
+        duration: course.duration,
+        durationUnit: course.durationUnit,
+        level: course.level,
+        thematic: course.thematic
+      }))
     }
-    // TODO: Load selected course data
-  }, [onNavigate])
+
+    if (setCourseState) {
+      setCourseState({
+        startDate: course.startDate,
+        saveCount: course.status === 'COMMENCED' ? 1 : 2
+      })
+    }
+  }, [setCourseData, setCourseState])
 
   // Handle navigation from wheel
   const handleWheelNavigate = useCallback((sectionId) => {
@@ -80,75 +172,27 @@ function Navigate({ onNavigate, courseData = {}, user, courseState }) {
         <NavigateWheel onNavigate={handleWheelNavigate} />
       </div>
 
-      {/* Select Course - Below NavWheel */}
+      {/* Course Selector - Below NavWheel */}
       <div
         style={{
           position: 'absolute',
-          top: '75vh',
+          top: '76vh',
           left: '50%',
           transform: 'translateX(-50%)',
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
-          gap: '12px',
-          zIndex: 10
+          justifyContent: 'center',
+          zIndex: 150
         }}
       >
-        <label
-          style={{
-            fontSize: '14px',
-            letterSpacing: '4px',
-            color: isSelectFocused || isSelectHovered ? THEME.AMBER : THEME.TEXT_SECONDARY,
-            fontFamily: THEME.FONT_PRIMARY,
-            transition: 'color 0.2s ease'
-          }}
-        >
-          SELECT COURSE
-        </label>
-        <GradientBorder isActive={isSelectFocused || isSelectHovered}>
-          <select
-            value={selectedCourse}
-            onChange={(e) => handleCourseSelect(e.target.value)}
-            onFocus={() => setIsSelectFocused(true)}
-            onBlur={() => setIsSelectFocused(false)}
-            onMouseEnter={() => setIsSelectHovered(true)}
-            onMouseLeave={() => setIsSelectHovered(false)}
-            style={{
-              width: '400px',
-              padding: '14px 20px',
-              background: THEME.BG_INPUT,
-              border: 'none',
-              borderRadius: '20px',
-              color: selectedCourse ? THEME.WHITE : THEME.TEXT_DIM,
-              fontSize: '14px',
-              fontFamily: THEME.FONT_PRIMARY,
-              letterSpacing: '1px',
-              outline: 'none',
-              cursor: 'pointer',
-              appearance: 'none',
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-              backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'right 16px center'
-            }}
-          >
-            <option value="" disabled>Select a course...</option>
-            {savedCourses.map(course => (
-              <option
-                key={course.id}
-                value={course.id}
-                style={{
-                  background: THEME.BG_PANEL,
-                  color: course.id === 'new' ? THEME.AMBER : THEME.WHITE
-                }}
-              >
-                {course.name}
-              </option>
-            ))}
-          </select>
-        </GradientBorder>
+        <CourseSelector
+          courses={savedCourses}
+          onCourseLoad={handleCourseLoad}
+          size={135}
+        />
       </div>
 
-      {/* Shared Footer Component */}
+      {/* Shared Footer Component - PKE hidden on Navigation Hub */}
       <Footer
         currentSection="navigate"
         onNavigate={handleWheelNavigate}
@@ -157,9 +201,10 @@ function Navigate({ onNavigate, courseData = {}, user, courseState }) {
         onSave={() => {}}
         onClear={() => {}}
         onDelete={() => {}}
-        user={user || { name: '---' }}
-        courseState={courseState || { startDate: null, saveCount: 0 }}
-        progress={15}
+        user={loadedCourseData ? { name: loadedCourseData.owner } : (user || { name: '---' })}
+        courseState={loadedCourseData ? { startDate: loadedCourseData.startDate, saveCount: loadedCourseData.status === 'COMMENCED' ? 1 : 2 } : (courseState || { startDate: null, saveCount: 0 })}
+        progress={loadedCourseData?.progress || 0}
+        hidePKE={true}
       />
     </div>
   )
