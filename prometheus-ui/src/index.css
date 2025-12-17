@@ -57,6 +57,33 @@
   --define-fs-18: clamp(16px, 0.94vw, 20px);   /* 18px @ 1920 */
   --define-fs-15: clamp(14px, 0.78vw, 17px);   /* 15px @ 1920 */
   --define-fs-14: clamp(13px, 0.73vw, 16px);   /* 14px @ 1920 */
+
+  /* ============================================
+     DEBUG GRID - DevTools Theming
+     Used by components/DevTools/*
+     ============================================ */
+
+  /* Grid line colors */
+  --grid-primary-line: rgba(0, 255, 255, 0.25);
+  --grid-secondary-line: rgba(0, 255, 255, 0.12);
+  --grid-center-line: rgba(0, 255, 255, 0.5);
+  --grid-label: rgba(0, 255, 255, 0.8);
+  --grid-origin: #FF4444;
+
+  /* Panel colors */
+  --grid-panel-bg: rgba(13, 13, 13, 0.95);
+  --grid-panel-border: rgba(0, 255, 255, 0.3);
+  --grid-panel-text: #00FFFF;
+
+  /* Pin colors */
+  --grid-pin-1: #FF6B6B;
+  --grid-pin-2: #4ECDC4;
+  --grid-distance: #FFE66D;
+
+  /* Measurement colors */
+  --grid-measure-fill: rgba(255, 165, 0, 0.3);
+  --grid-measure-border: rgba(255, 165, 0, 0.8);
+  --grid-measure-text: #FFA500;
 }
 
 /* Prometheus font family - Candara/Calibri aesthetic */

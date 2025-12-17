@@ -40,13 +40,12 @@ function Navigate({ onNavigate, courseData = {}, user, courseState }) {
       {/* Spacer to maintain layout */}
       <div style={{ flex: 1 }} />
 
-      {/* NavWheel - Centre at Y=410, X=-300 */}
+      {/* NavWheel - Centre at Y=410, X=0 (screen center) */}
       <div
-        className="fade-in-scale"
         style={{
           position: 'absolute',
           top: '37.96vh', // Y: 410 @ 1080
-          left: 'calc(50% - 300px)', // X: -300
+          left: '50%',    // X: 0 (centered)
           transform: 'translate(-50%, -50%)', // Center the wheel on this point
           width: '600px',
           height: '600px',

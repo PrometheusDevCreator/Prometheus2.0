@@ -45,7 +45,7 @@ import Generate from './pages/Generate'
 
 // Components
 import Header from './components/Header'
-import DebugGrid from './components/DebugGrid'
+import DebugGridController from './components/DevTools'
 
 // REFACTOR Phase 1: useScaleToFit hook removed
 // Original hook calculated scale = Math.min(vw/1920, vh/1080)
@@ -146,28 +146,29 @@ function App() {
     setDesignSubpage(subpage)
   }, [])
 
-  // Keyboard shortcuts
+  // Navigation via Escape (when grid has no pins)
+  // Grid toggle is now handled by DebugGridController (G key)
+  const handleEscapeNavigation = useCallback(() => {
+    if (isAuthenticated && currentPage !== 'navigate') {
+      setCurrentPage('navigate')
+    }
+  }, [isAuthenticated, currentPage])
+
+  // Keyboard shortcuts (non-grid)
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Ctrl+G: Toggle debug grid
-      if (e.ctrlKey && e.code === 'KeyG') {
-        e.preventDefault()
-        setShowDebugGrid(prev => !prev)
-      }
       // Ctrl+Space: Toggle to Navigate page
       if (e.ctrlKey && e.code === 'Space' && isAuthenticated) {
         e.preventDefault()
         setCurrentPage('navigate')
       }
-      // Escape: Go to Navigate (from any page except login)
-      if (e.code === 'Escape' && isAuthenticated && currentPage !== 'navigate') {
-        setCurrentPage('navigate')
-      }
+      // Note: Escape is now handled contextually by DebugGridController
+      // It calls handleEscapeNavigation when grid has no pins
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isAuthenticated, currentPage])
+  }, [isAuthenticated])
 
   // Render Login page (before authentication)
   if (!isAuthenticated) {
@@ -191,13 +192,16 @@ function App() {
             flexShrink: 0,
             background: THEME.BG_BASE,
             position: 'relative',
-            transform: `scale(${scale})`,
-            transformOrigin: 'center center'
+            // Only apply transform when scale !== 1 to avoid breaking position:fixed descendants
+            ...(scale !== 1 && {
+              transform: `scale(${scale})`,
+              transformOrigin: 'center center'
+            })
           }}
         >
           <Login onLogin={handleLogin} />
         </div>
-        <DebugGrid isVisible={showDebugGrid} scale={scale} />
+        <DebugGridController isVisible={showDebugGrid} onEscapeWhenNoPins={handleEscapeNavigation} />
       </div>
     )
   }
@@ -224,8 +228,11 @@ function App() {
             flexShrink: 0,
             background: THEME.BG_BASE,
             position: 'relative',
-            transform: `scale(${scale})`,
-            transformOrigin: 'center center'
+            // Only apply transform when scale !== 1 to avoid breaking position:fixed descendants
+            ...(scale !== 1 && {
+              transform: `scale(${scale})`,
+              transformOrigin: 'center center'
+            })
           }}
         >
           <Navigate
@@ -235,7 +242,7 @@ function App() {
             courseState={courseState}
           />
         </div>
-        <DebugGrid isVisible={showDebugGrid} scale={scale} />
+        <DebugGridController isVisible={showDebugGrid} onEscapeWhenNoPins={handleEscapeNavigation} />
       </div>
     )
   }
@@ -343,8 +350,11 @@ function App() {
           display: 'flex',
           flexDirection: 'column',
           position: 'relative',
-          transform: `scale(${scale})`,
-          transformOrigin: 'center center'
+          // Only apply transform when scale !== 1 to avoid breaking position:fixed descendants
+          ...(scale !== 1 && {
+            transform: `scale(${scale})`,
+            transformOrigin: 'center center'
+          })
         }}
       >
         {/* Header - includes horizontal line and page title */}
@@ -427,7 +437,7 @@ function App() {
           </div>
         )}
       </div>
-      <DebugGrid isVisible={showDebugGrid} scale={scale} />
+      <DebugGridController isVisible={showDebugGrid} onEscapeWhenNoPins={handleEscapeNavigation} />
     </div>
   )
 }
