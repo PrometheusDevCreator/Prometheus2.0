@@ -17,7 +17,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { THEME, ANIMATION } from '../constants/theme'
-import buttonImage from '../assets/buttonhires.png'
+import buttonImage from '../assets/button_best.png'
 
 function CourseSelector({
   courses = [],
@@ -38,6 +38,29 @@ function CourseSelector({
 
   // Refs
   const wheelRef = useRef(null)
+  const containerRef = useRef(null)
+
+  // Click-away collapse: when user clicks outside expanded selector, collapse it
+  useEffect(() => {
+    if (state !== 'expanded' && state !== 'selected') return
+
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setState('collapsed')
+        setSelectedCourse(null)
+      }
+    }
+
+    // Add listener with slight delay to avoid immediate collapse
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside)
+    }, 100)
+
+    return () => {
+      clearTimeout(timeoutId)
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [state])
 
   // Button size for collapsed state
   const BUTTON_SIZE = 50
@@ -320,6 +343,7 @@ function CourseSelector({
   // Render expanded state (with course list)
   return (
     <div
+      ref={containerRef}
       style={{
         display: 'flex',
         alignItems: 'center',

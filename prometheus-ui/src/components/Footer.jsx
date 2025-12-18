@@ -15,8 +15,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { THEME } from '../constants/theme'
-import NavWheel from './NavWheel'
 import PKEInterface from './PKEInterface'
+import silverButtonImage from '../assets/Silver_Button.png'
 
 function Footer({
   currentSection = 'define',
@@ -42,9 +42,6 @@ function Footer({
   // PKE visibility (hidden on Navigation Hub)
   hidePKE = false
 }) {
-  // NavWheel expansion state
-  const [wheelExpanded, setWheelExpanded] = useState(false)
-
   // Realtime clock state
   const [currentTime, setCurrentTime] = useState(new Date())
 
@@ -85,14 +82,8 @@ function Footer({
 
   // Handle navigation
   const handleNavigate = useCallback((section) => {
-    setWheelExpanded(false)
     onNavigate?.(section)
   }, [onNavigate])
-
-  // Handle wheel toggle
-  const handleWheelToggle = useCallback(() => {
-    setWheelExpanded(prev => !prev)
-  }, [])
 
   return (
     <div
@@ -103,24 +94,8 @@ function Footer({
         zIndex: 50
       }}
     >
-      {/* Collapsed NavWheel - center at X:-875, Y:-375 (for 1890×940 actual viewport) */}
-      <div style={{
-        position: 'absolute',
-        left: '3.70vw',              /* X:-875 → 70px @ 1890 */
-        bottom: '10.11vh',           /* Y:-375 → 95px @ 940 */
-        transform: 'translate(-50%, 50%)',  /* Center on this point */
-        width: '7.45vh',             /* 70px @ 940 (radius 35px) */
-        height: '7.45vh',
-        zIndex: 100,
-        filter: wheelExpanded ? 'none' : 'drop-shadow(0 0 0.85vh rgba(255, 255, 255, 0.15))'
-      }}>
-        <NavWheel
-          currentSection={currentSection}
-          onNavigate={handleNavigate}
-          isExpanded={wheelExpanded}
-          onToggle={handleWheelToggle}
-        />
-      </div>
+      {/* Home Button (Silver) - 100px left of ANALYTICS, same size */}
+      <HomeButton onNavigate={handleNavigate} />
 
       {/* Analytics Ring Button - center at X:-775, Y:-375 (for 1890×940 actual viewport) */}
       <div style={{
@@ -296,6 +271,56 @@ function Footer({
           <span style={{ color: '#f0f0f0' }}>APPROVED Y/N:</span>
           <span style={{ color: '#00ff00' }}>--</span>
         </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * HomeButton - Silver button for Navigation Hub
+ *
+ * Positioned 100px left of ANALYTICS, same size (70px)
+ * Uses Silver_Button.png image
+ * Hover: burnt orange glow effect
+ */
+function HomeButton({ onNavigate }) {
+  const [isHovered, setIsHovered] = useState(false)
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: '3.70vw',              /* 100px left of ANALYTICS (8.99vw - 5.29vw) */
+        bottom: '10.11vh',           /* Same Y as ANALYTICS */
+        transform: 'translate(-50%, 50%)',
+        width: '7.45vh',             /* Same size as ANALYTICS (70px @ 940) */
+        height: '7.45vh',
+        zIndex: 100
+      }}
+    >
+      <div
+        onClick={() => onNavigate?.('navigate')}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        style={{
+          width: '100%',
+          height: '100%',
+          borderRadius: '50%',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          filter: isHovered ? 'drop-shadow(0 0 12px rgba(212, 115, 12, 0.6))' : 'none'
+        }}
+      >
+        <img
+          src={silverButtonImage}
+          alt="Navigation Hub"
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            borderRadius: '50%'
+          }}
+        />
       </div>
     </div>
   )

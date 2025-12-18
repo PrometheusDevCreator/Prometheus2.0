@@ -216,6 +216,9 @@ function Navigate({ onNavigate, courseData = {}, setCourseData, user, courseStat
  */
 function NavigateWheel({ onNavigate }) {
   const [hoveredSection, setHoveredSection] = React.useState(null)
+  const [isInOuterRing, setIsInOuterRing] = React.useState(false)
+  const [isPulsing, setIsPulsing] = React.useState(false)
+  const wheelRef = React.useRef(null)
 
   const sections = [
     { id: 'define', label: 'DEFINE', angle: 0 },      // North
@@ -229,6 +232,35 @@ function NavigateWheel({ onNavigate }) {
   const size = 525
   // Inner dashed circle radius - increased by 40%: 210 → 294
   const innerCircleRadius = 294
+  // Green arc radius (just outside outer ring)
+  const greenArcRadius = size / 2 + 8
+  // Arc extent: 22.5 degrees each side = 45 degrees total
+  const arcExtent = 22.5
+
+  // Track mouse position to detect if cursor is in outer ring area
+  const handleMouseMove = React.useCallback((e) => {
+    if (!wheelRef.current) return
+    const rect = wheelRef.current.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+    const dx = e.clientX - centerX
+    const dy = e.clientY - centerY
+    const distance = Math.sqrt(dx * dx + dy * dy)
+
+    // Check if cursor is within outer ring area (between inner circle and outer edge + buffer)
+    const innerBound = innerCircleRadius - 20
+    const outerBound = size / 2 + 30
+    setIsInOuterRing(distance >= innerBound && distance <= outerBound)
+  }, [size, innerCircleRadius])
+
+  // Handle arrow click with pulse animation
+  const handleArrowClick = React.useCallback((sectionId) => {
+    setIsPulsing(true)
+    setTimeout(() => {
+      setIsPulsing(false)
+      onNavigate?.(sectionId)
+    }, 300) // Pulse duration before navigation
+  }, [onNavigate])
 
   // Fixed label positions (adjusted per spec)
   const getLabelPosition = (sectionId) => {
@@ -241,14 +273,80 @@ function NavigateWheel({ onNavigate }) {
     }
   }
 
+  // Calculate arc path for green indicator
+  const getArcPath = (centerAngle) => {
+    const startAngle = (centerAngle - arcExtent - 90) * (Math.PI / 180)
+    const endAngle = (centerAngle + arcExtent - 90) * (Math.PI / 180)
+    const cx = size / 2
+    const cy = size / 2
+    const r = greenArcRadius
+
+    const x1 = cx + r * Math.cos(startAngle)
+    const y1 = cy + r * Math.sin(startAngle)
+    const x2 = cx + r * Math.cos(endAngle)
+    const y2 = cy + r * Math.sin(endAngle)
+
+    return `M ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2}`
+  }
+
+  // Get the angle for the hovered section
+  const getHoveredAngle = () => {
+    const section = sections.find(s => s.id === hoveredSection)
+    return section ? section.angle : null
+  }
+
+  const hoveredAngle = getHoveredAngle()
+
   return (
     <div
+      ref={wheelRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => setIsInOuterRing(false)}
       style={{
         position: 'relative',
         width: `${size}px`,
         height: `${size}px`
       }}
     >
+      {/* Green arc indicator - outside outer ring */}
+      {hoveredAngle !== null && (
+        <svg
+          width={size + 40}
+          height={size + 40}
+          style={{
+            position: 'absolute',
+            top: -20,
+            left: -20,
+            pointerEvents: 'none'
+          }}
+        >
+          <defs>
+            <filter id="greenGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <path
+            d={getArcPath(hoveredAngle)}
+            fill="none"
+            stroke="#00FF00"
+            strokeWidth="2"
+            strokeDasharray="8 4"
+            strokeLinecap="round"
+            transform={`translate(20, 20)`}
+            style={{
+              filter: isInOuterRing ? 'url(#greenGlow)' : 'none',
+              opacity: isPulsing ? 1 : 0.8,
+              transition: 'opacity 0.15s ease',
+              animation: isPulsing ? 'greenPulse 0.3s ease-out' : 'none'
+            }}
+          />
+        </svg>
+      )}
+
       {/* Outer ring */}
       <svg width={size} height={size} style={{ position: 'absolute', top: 0, left: 0 }}>
         <defs>
@@ -311,7 +409,7 @@ function NavigateWheel({ onNavigate }) {
           return (
             <g
               key={`arrow-${section.id}`}
-              onClick={() => onNavigate?.(section.id)}
+              onClick={() => handleArrowClick(section.id)}
               onMouseEnter={() => setHoveredSection(section.id)}
               onMouseLeave={() => setHoveredSection(null)}
               style={{

@@ -253,6 +253,22 @@ textarea::placeholder {
   to { transform: rotate(360deg); }
 }
 
+/* Green pulse - NavWheel arc indicator */
+@keyframes greenPulse {
+  0% {
+    opacity: 0.8;
+    filter: drop-shadow(0 0 4px #00FF00);
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 12px #00FF00) drop-shadow(0 0 20px #00FF00);
+  }
+  100% {
+    opacity: 0.8;
+    filter: drop-shadow(0 0 4px #00FF00);
+  }
+}
+
 /* Animation utility classes */
 .fade-in {
   animation: fadeIn 0.5s ease-out forwards;
