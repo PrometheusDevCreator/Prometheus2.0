@@ -326,7 +326,8 @@ function CourseSelector({
         gap: '24px',
         animation: 'fadeIn 0.3s ease-out',
         position: 'relative',
-        zIndex: 200
+        zIndex: 200,
+        marginTop: '-50px'  // Move expanded state up 50px from inactive position
       }}
     >
       {/* Wheel (slides left in expanded state) - 15% smaller */}
