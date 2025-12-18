@@ -24,7 +24,29 @@
       "Bash(ls:*)",
       "Bash(git commit:*)",
       "Bash(git checkout:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(cat:*)",
+      "Bash(claude mcp list:*)",
+      "Bash(claude mcp add:*)",
+      "Bash(npm run dev)",
+      "mcp__playwright__browser_resize",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_press_key",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_run_code",
+      "mcp__playwright__browser_fill_form",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: Implement enhanced DevTools grid system with pin placement\n\n- Add DevTools components: GridOverlay, CoordinatePanel, PinSystem, MeasurementMode\n- Centre-origin Cartesian coordinate system (1px = 1 grid unit)\n- Pin placement with arrow key adjustment (1px/10px)\n- Distance measurement between two pins (X, Y, Euclidean)\n- Draggable coordinate panel with opacity controls\n- Keyboard shortcuts: G (toggle grid), M (measure), Esc/Del (remove pins)\n- Right-click context menu for coordinate copying\n- Fix NavWheel vertical position (remove conflicting animation class)\n- Reorganize refactor-baseline screenshots into phase folders\n- Add Phase 4 diagnostic reports and founder audits\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_evaluate",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd //c \"taskkill /F /PID 27516\")",
+      "mcp__playwright__browser_close",
+      "mcp__playwright__browser_hover"
     ]
   }
 }
