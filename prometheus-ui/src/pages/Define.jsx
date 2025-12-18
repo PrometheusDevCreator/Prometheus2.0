@@ -71,6 +71,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
   const [loConfirmedUpTo, setLoConfirmedUpTo] = useState(-1) // Track confirmed LOs (green) - index up to which are confirmed
   const [invalidLOPulse, setInvalidLOPulse] = useState(null) // Track which LO should show red pulse
   const loInputRefs = useRef({}) // Refs for LO inputs to handle focus
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(true) // Track if form has unsaved changes (starts true until first save)
 
   // Delete workflow state
   const [deleteLoIndex, setDeleteLoIndex] = useState(null) // Which LO is being deleted
@@ -128,6 +129,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
   // Update form field
   const updateField = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+    setHasUnsavedChanges(true) // Mark as having unsaved changes
   }, [])
 
   // Toggle delivery mode
@@ -138,6 +140,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
         ? prev.deliveryModes.filter(m => m !== mode)
         : [...prev.deliveryModes, mode]
     }))
+    setHasUnsavedChanges(true) // Mark as having unsaved changes
   }, [])
 
   // Check if LO starts with a Bloom's verb (uses module-level BLOOMS_VERBS)
@@ -154,6 +157,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
       newLOs[index] = value
       return { ...prev, learningObjectives: newLOs }
     })
+    setHasUnsavedChanges(true) // Mark as having unsaved changes
   }, [])
 
   // Auto-capitalize first word of LO on blur/Enter
@@ -263,6 +267,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
     setLoConfirmedUpTo(formData.learningObjectives.length - 1)
     onSaveCountIncrement?.()
     resetActiveColumn()
+    setHasUnsavedChanges(false) // Clear unsaved changes flag - enables navigation arrows
   }, [formData, setCourseData, onSaveCountIncrement, resetActiveColumn, getInvalidLOIndices])
 
   // Handle clear (resets active column)
@@ -458,11 +463,11 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
               letterSpacing: '4.5px',
               color: (activeColumn === 'left' || hoveredHeader === 'left') ? THEME.AMBER : THEME.WHITE,
               fontFamily: THEME.FONT_PRIMARY,
-              borderBottom: `1px solid ${THEME.BORDER}`,
+              borderBottom: `1px solid ${activeColumn === 'left' ? THEME.WHITE : THEME.BORDER}`,
               paddingBottom: '8px',
               marginBottom: '8px',
               cursor: 'default',
-              transition: 'color 0.2s ease'
+              transition: 'color 0.2s ease, border-color 0.2s ease'
             }}
           >
             DETAILS
@@ -677,7 +682,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
           </div>
         </div>
 
-        {/* CENTER COLUMN - SELECT COURSE */}
+        {/* CENTER COLUMN - DESCRIPTION */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: D.gapMd }}>
           <h2
             onMouseEnter={() => setHoveredHeader('center')}
@@ -687,33 +692,18 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
               letterSpacing: '4.5px',
               color: (activeColumn === 'center' || hoveredHeader === 'center') ? THEME.AMBER : THEME.WHITE,
               fontFamily: THEME.FONT_PRIMARY,
-              borderBottom: `1px solid ${THEME.BORDER}`,
+              borderBottom: `1px solid ${activeColumn === 'center' ? THEME.WHITE : THEME.BORDER}`,
               paddingBottom: '8px',
               marginBottom: '8px',
               cursor: 'default',
-              transition: 'color 0.2s ease'
+              transition: 'color 0.2s ease, border-color 0.2s ease'
             }}
           >
-            SELECT COURSE
+            Description
           </h2>
 
-          {/* Course Description section - reduced spacing (Select Course moved to Nav Hub) */}
-          <div style={{ marginTop: '4.63vh', width: '100%' }}>  {/* 50px @ 1080 */}
-            {/* DESCRIPTION heading - turns orange when children focused */}
-            <label
-              style={{
-                display: 'block',
-                fontSize: D.fs18,
-                letterSpacing: '4.5px',
-                color: activeColumn === 'center' ? THEME.AMBER : THEME.WHITE,
-                fontFamily: THEME.FONT_PRIMARY,
-                marginBottom: '12px',
-                cursor: 'default',
-                transition: 'color 0.2s ease'
-              }}
-            >
-              DESCRIPTION
-            </label>
+          {/* Description textarea - aligned with Title in left column */}
+          <div style={{ marginTop: '-5px', width: '100%' }}>  {/* Aligned with Title nudge */}
             <GradientBorder isActive={isFieldActive('description')}>
               <textarea
                 value={formData.description}
@@ -735,7 +725,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
           {/* Delivery Mode Buttons */}
           <div>
             <label style={{ ...labelStyle(false), marginBottom: '12px', display: 'block' }}>
-              Delivery
+              Delivery Method
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
               {DELIVERY_OPTIONS.map(mode => {
@@ -816,11 +806,11 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
               letterSpacing: '4.5px',
               color: (activeColumn === 'right' || hoveredHeader === 'right') ? THEME.AMBER : THEME.WHITE,
               fontFamily: THEME.FONT_PRIMARY,
-              borderBottom: `1px solid ${THEME.BORDER}`,
+              borderBottom: `1px solid ${activeColumn === 'right' ? THEME.WHITE : THEME.BORDER}`,
               paddingBottom: '8px',
               marginBottom: '8px',
               cursor: 'default',
-              transition: 'color 0.2s ease'
+              transition: 'color 0.2s ease, border-color 0.2s ease'
             }}
           >
             LEARNING OBJECTIVES
@@ -1048,6 +1038,8 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
         onDeleteKeep={handleKeepSelection}
         onDeleteConfirm={handleDeleteSelection}
         onDeleteCancel={cancelDeleteWorkflow}
+        // Navigation arrow props
+        hasUnsavedChanges={hasUnsavedChanges}
       />
     </div>
   )

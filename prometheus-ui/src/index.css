@@ -55,7 +55,7 @@
 
   /* Typography - clamp(min, vw_calc, max) */
   --define-fs-18: clamp(16px, 0.94vw, 20px);   /* 18px @ 1920 */
-  --define-fs-15: clamp(14px, 0.78vw, 17px);   /* 15px @ 1920 */
+  --define-fs-15: clamp(12px, 0.68vw, 15px);   /* 13px @ 1920 (-2px from original) */
   --define-fs-14: clamp(13px, 0.73vw, 16px);   /* 14px @ 1920 */
 
   /* ============================================

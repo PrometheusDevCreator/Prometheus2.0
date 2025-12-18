@@ -18,6 +18,9 @@ import { THEME } from '../constants/theme'
 import PKEInterface from './PKEInterface'
 import silverButtonImage from '../assets/Silver_Button.png'
 
+// Navigation order for < > arrows (Format excluded - only via Navigation Hub)
+const NAV_ORDER = ['navigate', 'define', 'design', 'build', 'generate']
+
 function Footer({
   currentSection = 'define',
   onNavigate,
@@ -40,7 +43,9 @@ function Footer({
   onDeleteConfirm = null,
   onDeleteCancel = null,
   // PKE visibility (hidden on Navigation Hub)
-  hidePKE = false
+  hidePKE = false,
+  // Navigation arrow props (grey until SAVE pressed, revert on changes)
+  hasUnsavedChanges = true
 }) {
   // Realtime clock state
   const [currentTime, setCurrentTime] = useState(new Date())
@@ -84,6 +89,25 @@ function Footer({
   const handleNavigate = useCallback((section) => {
     onNavigate?.(section)
   }, [onNavigate])
+
+  // Navigation arrow handlers (prev/next page)
+  const canNavigate = !hasUnsavedChanges // Only allow navigation when saved
+
+  const handlePrevPage = useCallback(() => {
+    if (!canNavigate) return
+    const currentIndex = NAV_ORDER.indexOf(currentSection)
+    if (currentIndex > 0) {
+      onNavigate?.(NAV_ORDER[currentIndex - 1])
+    }
+  }, [canNavigate, currentSection, onNavigate])
+
+  const handleNextPage = useCallback(() => {
+    if (!canNavigate) return
+    const currentIndex = NAV_ORDER.indexOf(currentSection)
+    if (currentIndex < NAV_ORDER.length - 1) {
+      onNavigate?.(NAV_ORDER[currentIndex + 1])
+    }
+  }, [canNavigate, currentSection, onNavigate])
 
   return (
     <div
@@ -133,10 +157,33 @@ function Footer({
             }}
           >
             {/* Navigation arrows - 5px above PKE, nudged 20px right */}
+            {/* Arrows are grey by default, turn white after SAVE, revert to grey on any change */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.48vh', marginBottom: '0.46vh', marginLeft: '1.04vw' }}>
-              <button style={navArrowStyle}>&lt;</button>
+              <button
+                onClick={handlePrevPage}
+                style={{
+                  ...navArrowStyle,
+                  color: canNavigate ? THEME.WHITE : THEME.TEXT_DIM,
+                  cursor: canNavigate ? 'pointer' : 'default',
+                  opacity: canNavigate ? 1 : 0.5
+                }}
+                disabled={!canNavigate}
+              >
+                &lt;
+              </button>
               <span style={{ color: THEME.TEXT_DIM, fontSize: '1.67vh' }}>+</span>
-              <button style={navArrowStyle}>&gt;</button>
+              <button
+                onClick={handleNextPage}
+                style={{
+                  ...navArrowStyle,
+                  color: canNavigate ? THEME.WHITE : THEME.TEXT_DIM,
+                  cursor: canNavigate ? 'pointer' : 'default',
+                  opacity: canNavigate ? 1 : 0.5
+                }}
+                disabled={!canNavigate}
+              >
+                &gt;
+              </button>
             </div>
 
             {/* PKE Interface */}
