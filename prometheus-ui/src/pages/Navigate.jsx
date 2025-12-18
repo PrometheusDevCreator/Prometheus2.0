@@ -172,11 +172,11 @@ function Navigate({ onNavigate, courseData = {}, setCourseData, user, courseStat
         <NavigateWheel onNavigate={handleWheelNavigate} />
       </div>
 
-      {/* Course Selector - Below NavWheel, moved down 75px */}
+      {/* Course Selector - Below NavWheel, centered at Y:-300 */}
       <div
         style={{
           position: 'absolute',
-          top: 'calc(76vh + 75px)',
+          top: 'calc(76vh + 40px)',
           left: '50%',
           transform: 'translateX(-50%)',
           display: 'flex',
