@@ -366,7 +366,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
     const x = clientX - rect.left
     const percentage = (x / rect.width) * 100
     updateField('contentType', Math.round(Math.max(0, Math.min(100, percentage))))
-    setActiveColumn('center')
+    setActiveColumn('left')  // Content slider is in DETAILS (left) column
     setActiveSlider('content')
   }, [updateField])
 
