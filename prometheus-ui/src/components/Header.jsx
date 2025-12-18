@@ -74,7 +74,8 @@ function Header({ pageTitle, sectionName, courseData = {}, isNavigationHub = fal
       </h1>
 
       {/* Section Name (Nav Wheel keyword) - centered, below title, above line */}
-      {sectionName && (
+      {/* For Navigation Hub, the page title displays here instead */}
+      {(sectionName || isNavigationHub) && (
         <h2
           style={{
             position: 'absolute',
@@ -89,7 +90,7 @@ function Header({ pageTitle, sectionName, courseData = {}, isNavigationHub = fal
             margin: 0
           }}
         >
-          {sectionName}
+          {isNavigationHub ? pageTitle : sectionName}
         </h2>
       )}
 
@@ -143,23 +144,25 @@ function Header({ pageTitle, sectionName, courseData = {}, isNavigationHub = fal
       />
 
       {/* Page Title - centered, Y=102 (moved down 10px), font 21px (15% larger) */}
-      {/* Navigation Hub uses burnt orange color */}
-      <h2
-        style={{
-          position: 'absolute',
-          top: '9.44vh',        /* 102px @ 1080 */
-          left: '50%',
-          transform: 'translateX(-50%)',
-          fontFamily: THEME.FONT_PRIMARY,
-          fontSize: '1.94vh',   /* 21px @ 1080 */
-          fontWeight: 500,
-          color: isNavigationHub ? THEME.AMBER : '#f0f0f0',
-          letterSpacing: '0.1em',
-          margin: 0
-        }}
-      >
-        {pageTitle}
-      </h2>
+      {/* Navigation Hub title is shown above the line, so hide it here */}
+      {!isNavigationHub && (
+        <h2
+          style={{
+            position: 'absolute',
+            top: '9.44vh',        /* 102px @ 1080 */
+            left: '50%',
+            transform: 'translateX(-50%)',
+            fontFamily: THEME.FONT_PRIMARY,
+            fontSize: '1.94vh',   /* 21px @ 1080 */
+            fontWeight: 500,
+            color: '#f0f0f0',
+            letterSpacing: '0.1em',
+            margin: 0
+          }}
+        >
+          {pageTitle}
+        </h2>
+      )}
     </header>
   )
 }

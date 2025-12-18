@@ -172,11 +172,11 @@ function Navigate({ onNavigate, courseData = {}, setCourseData, user, courseStat
         <NavigateWheel onNavigate={handleWheelNavigate} />
       </div>
 
-      {/* Course Selector - Below NavWheel */}
+      {/* Course Selector - Below NavWheel, moved down 75px */}
       <div
         style={{
           position: 'absolute',
-          top: '76vh',
+          top: 'calc(76vh + 75px)',
           left: '50%',
           transform: 'translateX(-50%)',
           display: 'flex',
@@ -299,7 +299,7 @@ function NavigateWheel({ onNavigate }) {
           )
         })}
 
-        {/* Direction arrows - CLICKABLE */}
+        {/* Direction arrows - CLICKABLE with glow on hover */}
         {sections.map((section) => {
           const angle = section.angle
           const arrowRadius = size / 2 - 35
@@ -314,7 +314,11 @@ function NavigateWheel({ onNavigate }) {
               onClick={() => onNavigate?.(section.id)}
               onMouseEnter={() => setHoveredSection(section.id)}
               onMouseLeave={() => setHoveredSection(null)}
-              style={{ cursor: 'pointer' }}
+              style={{
+                cursor: 'pointer',
+                filter: isHovered ? 'drop-shadow(0 0 8px rgba(212, 115, 12, 0.8))' : 'none',
+                transition: 'filter 0.3s ease'
+              }}
             >
               <circle
                 cx={x}
@@ -341,7 +345,7 @@ function NavigateWheel({ onNavigate }) {
         })}
       </svg>
 
-      {/* Section labels - PASSIVE (colour change only, no glow, no click) */}
+      {/* Section labels - PASSIVE (colour change only, no glow, no bold, no click) */}
       {sections.map((section) => {
         const pos = getLabelPosition(section.id)
         const isHovered = hoveredSection === section.id
@@ -363,12 +367,12 @@ function NavigateWheel({ onNavigate }) {
               fontSize: '18px',
               fontFamily: THEME.FONT_PRIMARY,
               letterSpacing: '5px',
-              fontWeight: isHovered ? '600' : '400',
+              fontWeight: '400',  // No bold on hover
               color: isHovered ? THEME.AMBER : THEME.TEXT_SECONDARY,
               padding: '12px 20px',
               borderRadius: '4px',
-              background: isHovered ? 'rgba(212, 115, 12, 0.1)' : 'transparent',
-              transition: 'all 0.3s ease',
+              background: 'transparent',  // No orange glow on hover
+              transition: 'color 0.3s ease',
               pointerEvents: 'none'  /* Labels don't capture clicks */
             }}
           >

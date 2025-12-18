@@ -398,7 +398,7 @@ function CourseSelector({
             lineHeight: 1
           }}
         >
-          ▲
+          →
         </span>
         <span
           style={{
@@ -419,7 +419,7 @@ function CourseSelector({
             lineHeight: 1
           }}
         >
-          ▼
+          ←
         </span>
       </div>
 
