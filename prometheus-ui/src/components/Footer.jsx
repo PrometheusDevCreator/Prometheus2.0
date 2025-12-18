@@ -103,8 +103,8 @@ function Footer({
         left: '8.99vw',              /* X:-775 → 170px @ 1890 */
         bottom: '10.11vh',           /* Y:-375 → 95px @ 940 */
         transform: 'translate(-50%, 50%)',  /* Center on this point */
-        width: '7.45vh',             /* 70px @ 940 (radius 35px) */
-        height: '7.45vh',
+        width: '6.02vh',             /* 65px @ 1080 - matches HomeButton */
+        height: '6.02vh',
         zIndex: 100
       }}>
         <AnalyticsRing />
@@ -279,7 +279,7 @@ function Footer({
 /**
  * HomeButton - Silver button for Navigation Hub
  *
- * Positioned 100px left of ANALYTICS, same size (70px)
+ * Positioned 100px left of ANALYTICS, same size (65px diameter)
  * Uses Silver_Button.png image
  * Hover: burnt orange glow effect
  */
@@ -293,8 +293,8 @@ function HomeButton({ onNavigate }) {
         left: '3.70vw',              /* 100px left of ANALYTICS (8.99vw - 5.29vw) */
         bottom: '10.11vh',           /* Same Y as ANALYTICS */
         transform: 'translate(-50%, 50%)',
-        width: '7.45vh',             /* Same size as ANALYTICS (70px @ 940) */
-        height: '7.45vh',
+        width: '6.02vh',             /* 65px @ 1080 - matches ANALYTICS */
+        height: '6.02vh',
         zIndex: 100
       }}
     >
@@ -305,7 +305,6 @@ function HomeButton({ onNavigate }) {
         style={{
           width: '100%',
           height: '100%',
-          borderRadius: '50%',
           cursor: 'pointer',
           transition: 'all 0.2s ease',
           filter: isHovered ? 'drop-shadow(0 0 12px rgba(212, 115, 12, 0.6))' : 'none'
@@ -317,8 +316,7 @@ function HomeButton({ onNavigate }) {
           style={{
             width: '100%',
             height: '100%',
-            objectFit: 'cover',
-            borderRadius: '50%'
+            objectFit: 'contain'
           }}
         />
       </div>
