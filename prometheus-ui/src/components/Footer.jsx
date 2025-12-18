@@ -97,14 +97,14 @@ function Footer({
       {/* Home Button (Silver) - 100px left of ANALYTICS, same size */}
       <HomeButton onNavigate={handleNavigate} />
 
-      {/* Analytics Ring Button - moved down 25px from original position */}
+      {/* Analytics Ring Button */}
       <div style={{
         position: 'absolute',
         left: '8.99vw',              /* X:-775 → 170px @ 1890 */
-        bottom: '7.8vh',             /* Moved down 25px (was 10.11vh) */
+        bottom: '8.26vh',            /* Moved up 5px from 7.8vh */
         transform: 'translate(-50%, 50%)',  /* Center on this point */
         width: '6.02vh',             /* 65px @ 1080 */
-        height: '6.02vh',
+        height: '5.83vh',            /* Reduced 2px vertically (was 6.02vh) */
         zIndex: 100
       }}>
         <AnalyticsRing />
@@ -291,10 +291,10 @@ function HomeButton({ onNavigate }) {
       style={{
         position: 'absolute',
         left: '3.70vw',              /* 100px left of ANALYTICS */
-        bottom: '7.8vh',             /* Aligned with ANALYTICS centerline */
+        bottom: '7.34vh',            /* Moved down 5px from 7.8vh */
         transform: 'translate(-50%, 50%)',
         width: '9vh',                /* Sized to match ANALYTICS visually (image has padding) */
-        height: '9vh',
+        height: '9.75vh',            /* Stretched 8px total vertically (was 9vh) */
         zIndex: 100
       }}
     >
