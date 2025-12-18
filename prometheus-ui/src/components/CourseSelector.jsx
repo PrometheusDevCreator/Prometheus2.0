@@ -17,6 +17,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { THEME, ANIMATION } from '../constants/theme'
+import buttonImage from '../assets/buttonhires.png'
 
 function CourseSelector({
   courses = [],
@@ -29,13 +30,17 @@ function CourseSelector({
   const [scrollPosition, setScrollPosition] = useState(0)
   const [loadProgress, setLoadProgress] = useState(0)
 
-  // Drag state
+  // Drag state for circular rotation
   const [isDragging, setIsDragging] = useState(false)
-  const dragStartY = useRef(0)
-  const scrollStartPos = useRef(0)
+  const dragStartAngle = useRef(0)
+  const rotationStartPos = useRef(0)
+  const wheelCenter = useRef({ x: 0, y: 0 })
 
   // Refs
   const wheelRef = useRef(null)
+
+  // Button size for collapsed state
+  const BUTTON_SIZE = 50
 
   // Constants
   const VISIBLE_COURSES = 5
@@ -51,27 +56,55 @@ function CourseSelector({
     }
   }, [state])
 
-  // Handle drag start
+  // Calculate angle from center of wheel to mouse position
+  const getAngleFromCenter = useCallback((clientX, clientY) => {
+    const dx = clientX - wheelCenter.current.x
+    const dy = clientY - wheelCenter.current.y
+    return Math.atan2(dy, dx) * (180 / Math.PI)
+  }, [])
+
+  // Handle drag start - circular rotation
   const handleDragStart = useCallback((e) => {
     if (state !== 'expanded' && state !== 'selected') return
+    if (!wheelRef.current) return
+
+    // Get wheel center position
+    const rect = wheelRef.current.getBoundingClientRect()
+    wheelCenter.current = {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2
+    }
+
+    const clientX = e.clientX || e.touches?.[0]?.clientX || 0
+    const clientY = e.clientY || e.touches?.[0]?.clientY || 0
 
     setIsDragging(true)
-    dragStartY.current = e.clientY || e.touches?.[0]?.clientY || 0
-    scrollStartPos.current = scrollPosition
+    dragStartAngle.current = getAngleFromCenter(clientX, clientY)
+    rotationStartPos.current = scrollPosition
 
     e.preventDefault()
-  }, [state, scrollPosition])
+  }, [state, scrollPosition, getAngleFromCenter])
 
-  // Handle drag move
+  // Handle drag move - circular rotation
   const handleDragMove = useCallback((e) => {
     if (!isDragging) return
 
+    const clientX = e.clientX || e.touches?.[0]?.clientX || 0
     const clientY = e.clientY || e.touches?.[0]?.clientY || 0
-    const deltaY = dragStartY.current - clientY
-    const newScroll = Math.max(0, Math.min(maxScroll, scrollStartPos.current + deltaY))
+
+    const currentAngle = getAngleFromCenter(clientX, clientY)
+    let angleDelta = currentAngle - dragStartAngle.current
+
+    // Handle wrap-around at 180/-180
+    if (angleDelta > 180) angleDelta -= 360
+    if (angleDelta < -180) angleDelta += 360
+
+    // Convert angle delta to scroll position (clockwise = scroll down)
+    const scrollDelta = (angleDelta / 360) * maxScroll * 2
+    const newScroll = Math.max(0, Math.min(maxScroll, rotationStartPos.current + scrollDelta))
 
     setScrollPosition(newScroll)
-  }, [isDragging, maxScroll])
+  }, [isDragging, maxScroll, getAngleFromCenter])
 
   // Handle drag end
   const handleDragEnd = useCallback(() => {
@@ -140,33 +173,50 @@ function CourseSelector({
   // Calculate wheel rotation based on scroll position
   const wheelRotation = (scrollPosition / maxScroll) * 360 || 0
 
-  // Render collapsed wheel
+  // Render collapsed state - button image with SELECT COURSE text below
   if (state === 'collapsed') {
     return (
       <div
         onClick={handleWheelClick}
         style={{
-          width: `${size}px`,
-          height: `${size}px`,
-          borderRadius: '50%',
-          background: THEME.BG_DARK,
-          border: `3px solid ${THEME.AMBER_DARK}`,
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
+          gap: '8px',
           cursor: 'pointer',
-          transition: `all ${ANIMATION.DURATION_NORMAL} ${ANIMATION.EASE_SMOOTH}`,
-          boxShadow: '0 0 20px rgba(212, 115, 12, 0.2)'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = THEME.AMBER
-          e.currentTarget.style.boxShadow = '0 0 30px rgba(212, 115, 12, 0.4)'
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = THEME.AMBER_DARK
-          e.currentTarget.style.boxShadow = '0 0 20px rgba(212, 115, 12, 0.2)'
+          transition: `all ${ANIMATION.DURATION_NORMAL} ${ANIMATION.EASE_SMOOTH}`
         }}
       >
+        {/* Button image - 50px diameter */}
+        <div
+          style={{
+            width: `${BUTTON_SIZE}px`,
+            height: `${BUTTON_SIZE}px`,
+            borderRadius: '50%',
+            overflow: 'hidden',
+            transition: 'transform 0.2s ease, filter 0.2s ease',
+            filter: 'drop-shadow(0 0 10px rgba(212, 115, 12, 0.3))'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.1)'
+            e.currentTarget.style.filter = 'drop-shadow(0 0 20px rgba(212, 115, 12, 0.6))'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)'
+            e.currentTarget.style.filter = 'drop-shadow(0 0 10px rgba(212, 115, 12, 0.3))'
+          }}
+        >
+          <img
+            src={buttonImage}
+            alt="Select Course"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover'
+            }}
+          />
+        </div>
+        {/* SELECT COURSE text label */}
         <span
           style={{
             fontSize: '12px',
@@ -176,7 +226,7 @@ function CourseSelector({
             textAlign: 'center'
           }}
         >
-          SELECT<br/>COURSE
+          SELECT COURSE
         </span>
       </div>
     )
@@ -315,7 +365,7 @@ function CourseSelector({
             transition: isDragging ? 'none' : 'transform 0.1s ease-out'
           }}
         >
-          {/* Tick marks around the wheel */}
+          {/* Tick marks around the wheel - 12 o'clock tab is luminous green */}
           {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => {
             const radians = (angle - 90) * (Math.PI / 180)
             const innerR = EXPANDED_WHEEL_SIZE / 2 - 12
@@ -332,7 +382,7 @@ function CourseSelector({
                 y1={y1}
                 x2={x2}
                 y2={y2}
-                stroke={angle === 0 ? THEME.AMBER : THEME.AMBER_DARK}
+                stroke={angle === 0 ? THEME.GREEN_BRIGHT : THEME.AMBER_DARK}
                 strokeWidth={angle === 0 ? 3 : 2}
               />
             )

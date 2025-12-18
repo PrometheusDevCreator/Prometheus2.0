@@ -14,7 +14,7 @@
 import logo from '../assets/burntorangelogo.png'
 import { THEME } from '../constants/theme'
 
-function Header({ pageTitle, sectionName, courseData = {} }) {
+function Header({ pageTitle, sectionName, courseData = {}, isNavigationHub = false }) {
   // Default values that should display as '---' until user changes them
   const defaultValues = ['Foundational', 'Junior', 0, 1, '', 'Hours']
 
@@ -143,6 +143,7 @@ function Header({ pageTitle, sectionName, courseData = {} }) {
       />
 
       {/* Page Title - centered, Y=102 (moved down 10px), font 21px (15% larger) */}
+      {/* Navigation Hub uses burnt orange color */}
       <h2
         style={{
           position: 'absolute',
@@ -152,7 +153,7 @@ function Header({ pageTitle, sectionName, courseData = {} }) {
           fontFamily: THEME.FONT_PRIMARY,
           fontSize: '1.94vh',   /* 21px @ 1080 */
           fontWeight: 500,
-          color: '#f0f0f0',
+          color: isNavigationHub ? THEME.AMBER : '#f0f0f0',
           letterSpacing: '0.1em',
           margin: 0
         }}

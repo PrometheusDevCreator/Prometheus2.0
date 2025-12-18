@@ -149,7 +149,7 @@ function Navigate({ onNavigate, courseData = {}, setCourseData, user, courseStat
       }}
     >
       {/* Shared Header Component */}
-      <Header pageTitle="NAVIGATION" courseData={courseData} />
+      <Header pageTitle="NAVIGATION HUB" courseData={courseData} isNavigationHub={true} />
 
       {/* Spacer to maintain layout */}
       <div style={{ flex: 1 }} />
