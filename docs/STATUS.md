@@ -1,7 +1,15 @@
 # Prometheus System Status
 
-**Last Updated:** 2025-12-17  
-**Branch:** refactor/responsive-ui  
+> **📋 AUTHORITATIVE STATUS FILE**
+>
+> This is the **single source of truth** for Prometheus project status.
+> All other status files are either deprecated or historical snapshots.
+> Update this file to reflect current project state.
+
+**Last Updated:** 2025-12-18
+**Maintainer:** Project Team
+
+---
 
 ## Overall State
 UI: Stable (grid system implemented)  
