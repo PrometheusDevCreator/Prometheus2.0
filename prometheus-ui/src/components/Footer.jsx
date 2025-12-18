@@ -90,24 +90,23 @@ function Footer({
     onNavigate?.(section)
   }, [onNavigate])
 
-  // Navigation arrow handlers (prev/next page)
-  const canNavigate = !hasUnsavedChanges // Only allow navigation when saved
+  // Navigation arrow handlers (prev/next page) - permanently active
+  const [prevHovered, setPrevHovered] = useState(false)
+  const [nextHovered, setNextHovered] = useState(false)
 
   const handlePrevPage = useCallback(() => {
-    if (!canNavigate) return
     const currentIndex = NAV_ORDER.indexOf(currentSection)
     if (currentIndex > 0) {
       onNavigate?.(NAV_ORDER[currentIndex - 1])
     }
-  }, [canNavigate, currentSection, onNavigate])
+  }, [currentSection, onNavigate])
 
   const handleNextPage = useCallback(() => {
-    if (!canNavigate) return
     const currentIndex = NAV_ORDER.indexOf(currentSection)
     if (currentIndex < NAV_ORDER.length - 1) {
       onNavigate?.(NAV_ORDER[currentIndex + 1])
     }
-  }, [canNavigate, currentSection, onNavigate])
+  }, [currentSection, onNavigate])
 
   return (
     <div
@@ -156,31 +155,32 @@ function Footer({
               alignItems: 'center'
             }}
           >
-            {/* Navigation arrows - 5px above PKE, nudged 20px right */}
-            {/* Arrows are grey by default, turn white after SAVE, revert to grey on any change */}
+            {/* Navigation arrows - permanently active, burnt orange on hover */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.48vh', marginBottom: '0.46vh', marginLeft: '1.04vw' }}>
               <button
                 onClick={handlePrevPage}
+                onMouseEnter={() => setPrevHovered(true)}
+                onMouseLeave={() => setPrevHovered(false)}
                 style={{
                   ...navArrowStyle,
-                  color: canNavigate ? THEME.WHITE : THEME.TEXT_DIM,
-                  cursor: canNavigate ? 'pointer' : 'default',
-                  opacity: canNavigate ? 1 : 0.5
+                  color: prevHovered ? THEME.AMBER : THEME.WHITE,
+                  cursor: 'pointer',
+                  opacity: 1
                 }}
-                disabled={!canNavigate}
               >
                 &lt;
               </button>
               <span style={{ color: THEME.TEXT_DIM, fontSize: '1.67vh' }}>+</span>
               <button
                 onClick={handleNextPage}
+                onMouseEnter={() => setNextHovered(true)}
+                onMouseLeave={() => setNextHovered(false)}
                 style={{
                   ...navArrowStyle,
-                  color: canNavigate ? THEME.WHITE : THEME.TEXT_DIM,
-                  cursor: canNavigate ? 'pointer' : 'default',
-                  opacity: canNavigate ? 1 : 0.5
+                  color: nextHovered ? THEME.AMBER : THEME.WHITE,
+                  cursor: 'pointer',
+                  opacity: 1
                 }}
-                disabled={!canNavigate}
               >
                 &gt;
               </button>

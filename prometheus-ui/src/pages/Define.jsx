@@ -514,34 +514,65 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
             </GradientBorder>
           </div>
 
-          {/* Module + Code */}
+          {/* Modules + Code */}
           <div style={{ display: 'flex', gap: D.gapSm }}>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle(isFieldActive('module'))}>Module</label>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button
-                  onClick={() => { updateField('module', Math.max(1, formData.module - 1)); setActiveColumn('left') }}
-                  style={moduleButtonStyle}
-                  disabled={formData.module <= 1}
+              <label style={labelStyle(isFieldActive('module'))}>Modules</label>
+              {/* Module adjuster in styled window matching Code input */}
+              <GradientBorder isActive={isFieldActive('module')}>
+                <div
+                  style={{
+                    ...inputStyle,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '12px',
+                    padding: '10px 16px'
+                  }}
+                  onMouseEnter={() => setHoveredField('module')}
+                  onMouseLeave={() => setHoveredField(null)}
                 >
-                  −
-                </button>
-                <span style={{
-                  color: THEME.AMBER,
-                  fontFamily: THEME.FONT_MONO,
-                  fontSize: 'clamp(13px, 0.75vw, 16px)',  /* D.fs18 reduced 20% */
-                  minWidth: '24px',
-                  textAlign: 'center'
-                }}>
-                  {formData.module}
-                </span>
-                <button
-                  onClick={() => { updateField('module', formData.module + 1); setActiveColumn('left') }}
-                  style={moduleButtonStyle}
-                >
-                  +
-                </button>
-              </div>
+                  <button
+                    onClick={() => { updateField('module', Math.max(1, formData.module - 1)); setActiveColumn('left') }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: THEME.TEXT_SECONDARY,
+                      fontSize: '18px',
+                      cursor: formData.module <= 1 ? 'default' : 'pointer',
+                      padding: '0 4px',
+                      opacity: formData.module <= 1 ? 0.4 : 1,
+                      transition: 'opacity 0.2s ease'
+                    }}
+                    disabled={formData.module <= 1}
+                  >
+                    −
+                  </button>
+                  <span style={{
+                    color: THEME.AMBER,
+                    fontFamily: THEME.FONT_MONO,
+                    fontSize: 'clamp(13px, 0.75vw, 16px)',
+                    minWidth: '24px',
+                    textAlign: 'center'
+                  }}>
+                    {formData.module}
+                  </span>
+                  <button
+                    onClick={() => { updateField('module', formData.module + 1); setActiveColumn('left') }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: THEME.TEXT_SECONDARY,
+                      fontSize: '18px',
+                      cursor: 'pointer',
+                      padding: '0 4px',
+                      transition: 'opacity 0.2s ease'
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+              </GradientBorder>
             </div>
             <div style={{ flex: 2 }}>
               <label style={labelStyle(isFieldActive('code'))}>Code</label>
@@ -672,11 +703,44 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
             </span>
           </div>
 
-          {/* Content Type - inline layout with Theory/Practical readouts */}
+          {/* Content Type - Theory/Practical labels above, readout on right */}
           <div
             onClick={() => setActiveSlider('content')}
             style={{ marginTop: '1.39vh', cursor: 'pointer' }}
           >
+            {/* Theory / Practical labels above slider */}
+            {/* Color logic: initially grey, when active: label for direction slider moved towards turns orange */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginBottom: '4px',
+                marginLeft: '87px',
+                marginRight: '85px'  /* Practical moved 5px left */
+              }}
+            >
+              <span style={{
+                fontSize: '12px',
+                fontFamily: THEME.FONT_PRIMARY,
+                color: activeSlider === 'content'
+                  ? (formData.contentType < 50 ? THEME.AMBER : THEME.TEXT_DIM)  /* Orange when towards Theory */
+                  : THEME.TEXT_SECONDARY,
+                transition: 'color 0.2s ease'
+              }}>
+                Theory
+              </span>
+              <span style={{
+                fontSize: '12px',
+                fontFamily: THEME.FONT_PRIMARY,
+                color: activeSlider === 'content'
+                  ? (formData.contentType > 50 ? THEME.AMBER : THEME.TEXT_DIM)  /* Orange when towards Practical */
+                  : THEME.TEXT_SECONDARY,
+                transition: 'color 0.2s ease'
+              }}>
+                Practical
+              </span>
+            </div>
+            {/* Slider row: Label | Slider | Readout */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <label style={{
                 ...labelStyle(isFieldActive('contentType')),
@@ -726,22 +790,41 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                   }}
                 />
               </div>
-            </div>
-            {/* Theory / Practical labels below */}
-            <div
-              style={{
+              {/* Readout - Two-line format: T P on top, percentages below */}
+              <div style={{
+                minWidth: '90px',
+                textAlign: 'center',
+                flexShrink: 0,
                 display: 'flex',
-                justifyContent: 'space-between',
-                marginTop: '4px',
-                marginLeft: '87px'
-              }}
-            >
-              <span style={{ fontSize: '12px', fontFamily: THEME.FONT_PRIMARY, color: THEME.TEXT_SECONDARY }}>
-                Theory: <span style={{ color: activeSlider === 'content' ? '#00FF00' : THEME.AMBER, transition: 'color 0.2s ease' }}>{100 - formData.contentType}%</span>
-              </span>
-              <span style={{ fontSize: '12px', fontFamily: THEME.FONT_PRIMARY, color: THEME.TEXT_SECONDARY }}>
-                Practical: <span style={{ color: activeSlider === 'content' ? '#00FF00' : THEME.AMBER, transition: 'color 0.2s ease' }}>{formData.contentType}%</span>
-              </span>
+                flexDirection: 'column',
+                alignItems: 'center',
+                lineHeight: 1.2
+              }}>
+                {/* T P labels row */}
+                <div style={{
+                  display: 'flex',
+                  gap: '16px',
+                  fontFamily: THEME.FONT_PRIMARY,
+                  fontSize: '14px',
+                  color: activeSlider === 'content' ? THEME.AMBER : THEME.TEXT_DIM,
+                  transition: 'color 0.2s ease'
+                }}>
+                  <span>T</span>
+                  <span>P</span>
+                </div>
+                {/* Percentage values row */}
+                <div style={{
+                  display: 'flex',
+                  gap: '8px',
+                  fontFamily: THEME.FONT_PRIMARY,
+                  fontSize: '14px',
+                  color: activeSlider === 'content' ? '#00FF00' : THEME.AMBER,
+                  transition: 'color 0.2s ease'
+                }}>
+                  <span>{100 - formData.contentType}%</span>
+                  <span>{formData.contentType}%</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -963,15 +1046,17 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                             fontFamily: THEME.FONT_PRIMARY,
                             letterSpacing: '2px',
                             overflow: 'hidden',
-                            whiteSpace: 'nowrap'
+                            whiteSpace: 'pre'  /* Preserve whitespace exactly */
                           }}
                         >
                           <span style={{ color: '#00FF00' }}>
                             {lo.trim().split(/\s+/)[0]}
                           </span>
-                          <span style={{ color: THEME.WHITE }}>
-                            {lo.trim().includes(' ') ? ' ' + lo.trim().split(/\s+/).slice(1).join(' ') : ''}
-                          </span>
+                          {lo.trim().includes(' ') && (
+                            <span style={{ color: THEME.WHITE, whiteSpace: 'pre' }}>
+                              {' ' + lo.trim().split(/\s+/).slice(1).join(' ')}
+                            </span>
+                          )}
                         </div>
                       )}
                     </GradientBorder>
@@ -1228,16 +1313,6 @@ const smallButtonStyle = {
   fontWeight: 600,
   cursor: 'pointer',
   padding: '0 8px',
-  transition: 'color 0.2s ease'
-}
-
-const moduleButtonStyle = {
-  background: 'transparent',
-  border: 'none',
-  color: THEME.TEXT_SECONDARY,
-  fontSize: '21px',
-  cursor: 'pointer',
-  padding: '4px 8px',
   transition: 'color 0.2s ease'
 }
 

@@ -107,6 +107,31 @@ function App() {
     })
   }, [])
 
+  // System-wide clear (Navigation Hub CLEAR button resets ALL data)
+  const handleSystemClear = useCallback(() => {
+    setCourseData({
+      title: '',
+      thematic: '',
+      module: 1,
+      code: '',
+      duration: 1,
+      durationUnit: 'Hours',
+      level: 'Foundational',
+      seniority: 'Junior',
+      description: '',
+      deliveryModes: [],
+      qualification: false,
+      accredited: false,
+      certified: false,
+      learningObjectives: ['']
+    })
+    setCourseState({
+      startDate: null,
+      saveCount: 0
+    })
+    setCourseLoaded(false)
+  }, [])
+
   // Handle login
   const handleLogin = useCallback((userData) => {
     setCurrentUser(userData)
@@ -242,6 +267,7 @@ function App() {
             user={currentUser ? { name: currentUser.name || currentUser.username || 'User' } : { name: '---' }}
             courseState={courseState}
             setCourseState={setCourseState}
+            onSystemClear={handleSystemClear}
           />
         </div>
         <DebugGridController isVisible={showDebugGrid} onEscapeWhenNoPins={handleEscapeNavigation} />

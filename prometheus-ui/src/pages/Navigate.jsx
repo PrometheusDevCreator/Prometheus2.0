@@ -16,7 +16,7 @@ import Header from '../components/Header'
 import Footer from '../components/Footer'
 import CourseSelector from '../components/CourseSelector'
 
-function Navigate({ onNavigate, courseData = {}, setCourseData, user, courseState, setCourseState }) {
+function Navigate({ onNavigate, courseData = {}, setCourseData, user, courseState, setCourseState, onSystemClear }) {
   const [isPKEActive, setIsPKEActive] = useState(false)
   const [loadedCourseData, setLoadedCourseData] = useState(null)
 
@@ -193,13 +193,18 @@ function Navigate({ onNavigate, courseData = {}, setCourseData, user, courseStat
       </div>
 
       {/* Shared Footer Component - PKE hidden on Navigation Hub */}
+      {/* CLEAR on Navigation Hub clears ALL system data */}
       <Footer
         currentSection="navigate"
         onNavigate={handleWheelNavigate}
         isPKEActive={isPKEActive}
         onPKEToggle={setIsPKEActive}
         onSave={() => {}}
-        onClear={() => {}}
+        onClear={() => {
+          // System-wide clear: reset all course data and local state
+          onSystemClear?.()
+          setLoadedCourseData(null)
+        }}
         onDelete={() => {}}
         user={loadedCourseData ? { name: loadedCourseData.owner } : (user || { name: '---' })}
         courseState={loadedCourseData ? { startDate: loadedCourseData.startDate, saveCount: loadedCourseData.status === 'COMMENCED' ? 1 : 2 } : (courseState || { startDate: null, saveCount: 0 })}
