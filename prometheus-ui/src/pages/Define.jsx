@@ -72,6 +72,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
   const [invalidLOPulse, setInvalidLOPulse] = useState(null) // Track which LO should show red pulse
   const loInputRefs = useRef({}) // Refs for LO inputs to handle focus
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(true) // Track if form has unsaved changes (starts true until first save)
+  const [activeSlider, setActiveSlider] = useState(null) // Track which slider is active ('duration' | 'level' | 'seniority' | 'content')
 
   // Delete workflow state
   const [deleteLoIndex, setDeleteLoIndex] = useState(null) // Which LO is being deleted
@@ -366,6 +367,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
     const percentage = (x / rect.width) * 100
     updateField('contentType', Math.round(Math.max(0, Math.min(100, percentage))))
     setActiveColumn('center')
+    setActiveSlider('content')
   }, [updateField])
 
   const handleContentTypeMouseDown = useCallback((e) => {
@@ -560,8 +562,18 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
           </div>
 
           {/* Duration - inline layout: Label | Slider | Readout */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '15px' }}>
-            <label style={{ ...labelStyle(isFieldActive('duration')), marginBottom: 0, minWidth: '75px', flexShrink: 0 }}>Duration</label>
+          {/* Moved down 75px (15+75=90), click activates slider for color change */}
+          <div
+            onClick={() => setActiveSlider('duration')}
+            style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '90px', cursor: 'pointer' }}
+          >
+            <label style={{
+              ...labelStyle(isFieldActive('duration')),
+              marginBottom: 0,
+              minWidth: '75px',
+              flexShrink: 0,
+              color: activeSlider === 'duration' ? THEME.WHITE : THEME.TEXT_SECONDARY
+            }}>Duration</label>
             <div style={{ flex: 1 }}>
               <DurationSlider
                 value={formData.duration}
@@ -570,57 +582,109 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                   updateField('duration', val)
                   updateField('durationUnit', unit)
                   setActiveColumn('left')
+                  setActiveSlider('duration')
                 }}
                 width="100%"
                 showValue={false}
               />
             </div>
-            <span style={{ color: THEME.AMBER, fontFamily: THEME.FONT_PRIMARY, fontSize: '14px', minWidth: '70px', textAlign: 'right', flexShrink: 0 }}>
+            <span style={{
+              color: activeSlider === 'duration' ? '#00FF00' : THEME.AMBER,
+              fontFamily: THEME.FONT_PRIMARY,
+              fontSize: '14px',
+              minWidth: '90px',
+              textAlign: 'right',
+              flexShrink: 0,
+              transition: 'color 0.2s ease'
+            }}>
               {formData.duration} {formData.duration === 1 ? formData.durationUnit.slice(0, -1) : formData.durationUnit}
             </span>
           </div>
 
           {/* Level - inline layout: Label | Slider | Readout */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '1.39vh' }}>
-            <label style={{ ...labelStyle(isFieldActive('level')), marginBottom: 0, minWidth: '75px', flexShrink: 0 }}>Level</label>
+          <div
+            onClick={() => setActiveSlider('level')}
+            style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '1.39vh', cursor: 'pointer' }}
+          >
+            <label style={{
+              ...labelStyle(isFieldActive('level')),
+              marginBottom: 0,
+              minWidth: '75px',
+              flexShrink: 0,
+              color: activeSlider === 'level' ? THEME.WHITE : THEME.TEXT_SECONDARY
+            }}>Level</label>
             <div style={{ flex: 1 }}>
               <Slider
                 options={LEVEL_OPTIONS}
                 value={formData.level}
-                onChange={(val) => { updateField('level', val); setActiveColumn('left') }}
+                onChange={(val) => { updateField('level', val); setActiveColumn('left'); setActiveSlider('level') }}
                 width="100%"
                 hideStepLabels
                 showBubble={false}
               />
             </div>
-            <span style={{ color: THEME.AMBER, fontFamily: THEME.FONT_PRIMARY, fontSize: '14px', minWidth: '90px', textAlign: 'right', flexShrink: 0 }}>
+            <span style={{
+              color: activeSlider === 'level' ? '#00FF00' : THEME.AMBER,
+              fontFamily: THEME.FONT_PRIMARY,
+              fontSize: '14px',
+              minWidth: '90px',
+              textAlign: 'right',
+              flexShrink: 0,
+              transition: 'color 0.2s ease'
+            }}>
               {formData.level}
             </span>
           </div>
 
           {/* Seniority - inline layout: Label | Slider | Readout */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '1.39vh' }}>
-            <label style={{ ...labelStyle(isFieldActive('seniority')), marginBottom: 0, minWidth: '75px', flexShrink: 0 }}>Seniority</label>
+          <div
+            onClick={() => setActiveSlider('seniority')}
+            style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '1.39vh', cursor: 'pointer' }}
+          >
+            <label style={{
+              ...labelStyle(isFieldActive('seniority')),
+              marginBottom: 0,
+              minWidth: '75px',
+              flexShrink: 0,
+              color: activeSlider === 'seniority' ? THEME.WHITE : THEME.TEXT_SECONDARY
+            }}>Seniority</label>
             <div style={{ flex: 1 }}>
               <Slider
                 options={SENIORITY_OPTIONS}
                 value={formData.seniority}
-                onChange={(val) => { updateField('seniority', val); setActiveColumn('left') }}
+                onChange={(val) => { updateField('seniority', val); setActiveColumn('left'); setActiveSlider('seniority') }}
                 width="100%"
                 highlightLast
                 hideStepLabels
                 showBubble={false}
               />
             </div>
-            <span style={{ color: THEME.AMBER, fontFamily: THEME.FONT_PRIMARY, fontSize: '14px', minWidth: '90px', textAlign: 'right', flexShrink: 0 }}>
+            <span style={{
+              color: activeSlider === 'seniority' ? '#00FF00' : THEME.AMBER,
+              fontFamily: THEME.FONT_PRIMARY,
+              fontSize: '14px',
+              minWidth: '90px',
+              textAlign: 'right',
+              flexShrink: 0,
+              transition: 'color 0.2s ease'
+            }}>
               {formData.seniority}
             </span>
           </div>
 
           {/* Content Type - inline layout with Theory/Practical readouts */}
-          <div style={{ marginTop: '1.39vh' }}>
+          <div
+            onClick={() => setActiveSlider('content')}
+            style={{ marginTop: '1.39vh', cursor: 'pointer' }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <label style={{ ...labelStyle(isFieldActive('contentType')), marginBottom: 0, minWidth: '75px', flexShrink: 0 }}>
+              <label style={{
+                ...labelStyle(isFieldActive('contentType')),
+                marginBottom: 0,
+                minWidth: '75px',
+                flexShrink: 0,
+                color: activeSlider === 'content' ? THEME.WHITE : THEME.TEXT_SECONDARY
+              }}>
                 Content
               </label>
               {/* Slider track */}
@@ -673,10 +737,10 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
               }}
             >
               <span style={{ fontSize: '12px', fontFamily: THEME.FONT_PRIMARY, color: THEME.TEXT_SECONDARY }}>
-                Theory: <span style={{ color: THEME.AMBER }}>{100 - formData.contentType}%</span>
+                Theory: <span style={{ color: activeSlider === 'content' ? '#00FF00' : THEME.AMBER, transition: 'color 0.2s ease' }}>{100 - formData.contentType}%</span>
               </span>
               <span style={{ fontSize: '12px', fontFamily: THEME.FONT_PRIMARY, color: THEME.TEXT_SECONDARY }}>
-                Practical: <span style={{ color: THEME.AMBER }}>{formData.contentType}%</span>
+                Practical: <span style={{ color: activeSlider === 'content' ? '#00FF00' : THEME.AMBER, transition: 'color 0.2s ease' }}>{formData.contentType}%</span>
               </span>
             </div>
           </div>
@@ -699,11 +763,11 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
               transition: 'color 0.2s ease, border-color 0.2s ease'
             }}
           >
-            Description
+            DESCRIPTION
           </h2>
 
-          {/* Description textarea - aligned with Title in left column */}
-          <div style={{ marginTop: '-5px', width: '100%' }}>  {/* Aligned with Title nudge */}
+          {/* Description textarea - aligned with Title input in left column */}
+          <div style={{ marginTop: '25px', width: '100%' }}>  {/* Moved down 30px to Y:+260 */}
             <GradientBorder isActive={isFieldActive('description')}>
               <textarea
                 value={formData.description}
@@ -722,8 +786,8 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
             </GradientBorder>
           </div>
 
-          {/* Delivery Mode Buttons */}
-          <div>
+          {/* Delivery Mode Buttons - moved down 15px */}
+          <div style={{ marginTop: '15px' }}>
             <label style={{ ...labelStyle(false), marginBottom: '12px', display: 'block' }}>
               Delivery Method
             </label>
@@ -963,27 +1027,30 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
               </span>
             </div>
 
-            {/* Expandable verbs section */}
+            {/* Expandable verbs section - 2 rows × 3 columns layout */}
             {bloomsExpanded && (
               <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gridTemplateRows: 'auto auto',
+                gap: '12px 16px',
                 paddingLeft: '8px',
                 borderLeft: `2px solid ${THEME.BORDER}`
               }}>
                 {BLOOMS_CATEGORIES.map(category => (
-                  <div key={category.name}>
+                  <div key={category.name} style={{ display: 'flex', flexDirection: 'column' }}>
                     {/* Category heading - font 11px, color white */}
                     <div style={{
                       fontSize: '11px',
                       color: THEME.WHITE,
-                      marginBottom: '4px',
-                      letterSpacing: '2px'
+                      marginBottom: '6px',
+                      letterSpacing: '2px',
+                      fontWeight: 600
                     }}>
                       {category.name}
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {/* Verbs listed vertically */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                       {category.verbs.map(verb => (
                         <BloomVerbButton
                           key={verb}

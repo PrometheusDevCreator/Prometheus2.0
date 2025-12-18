@@ -364,7 +364,7 @@ function App() {
         {/* Header - includes horizontal line and page title */}
         <Header
           pageTitle={
-            currentPage === 'define' ? 'COURSE INFORMATION' :
+            currentPage === 'define' ? '' :  /* COURSE INFORMATION removed per founder request */
             currentPage === 'design' ? 'OUTLINE PLANNER' :
             currentPage === 'build' ? 'BUILD' :
             currentPage === 'format' ? 'FORMAT' :
