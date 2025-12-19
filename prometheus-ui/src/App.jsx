@@ -71,6 +71,7 @@ function App() {
     title: '',
     thematic: '',
     module: 1,
+    moduleTitles: [],  // Array of module titles
     code: '',
     duration: 1,
     durationUnit: 'Hours',
@@ -113,6 +114,7 @@ function App() {
       title: '',
       thematic: '',
       module: 1,
+      moduleTitles: [],  // Reset module titles
       code: '',
       duration: 1,
       durationUnit: 'Hours',

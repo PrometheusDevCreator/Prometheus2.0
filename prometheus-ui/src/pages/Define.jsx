@@ -108,11 +108,20 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
     setActiveLOIndex(null)
   }, [])
 
+  // Module Title input state
+  const [currentModuleIndex, setCurrentModuleIndex] = useState(0) // Which module title is being viewed/edited
+  const [moduleTitleJustTriggered, setModuleTitleJustTriggered] = useState(false) // For initial pulse animation
+  const [moduleTitleActive, setModuleTitleActive] = useState(false) // Is the module title input focused
+  const [moduleTitleHovered, setModuleTitleHovered] = useState(false) // Is the module title input hovered
+  const [arrowsHovered, setArrowsHovered] = useState(false) // Are the up/down arrows hovered
+  const [previousModuleCount, setPreviousModuleCount] = useState(1) // Track previous module count for redundancy detection
+
   // Form state
   const [formData, setFormData] = useState({
     title: courseData?.title || '',
     thematic: courseData?.thematic || '',
     module: courseData?.module || 1,
+    moduleTitles: courseData?.moduleTitles || [], // Array of module titles
     code: courseData?.code || '',
     duration: courseData?.duration || 1,
     durationUnit: courseData?.durationUnit || 'Hours',
@@ -132,6 +141,72 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
     setFormData(prev => ({ ...prev, [field]: value }))
     setHasUnsavedChanges(true) // Mark as having unsaved changes
   }, [])
+
+  // Update module title at specific index
+  const updateModuleTitle = useCallback((index, value) => {
+    setFormData(prev => {
+      const newTitles = [...prev.moduleTitles]
+      newTitles[index] = value
+      return { ...prev, moduleTitles: newTitles }
+    })
+    setHasUnsavedChanges(true)
+  }, [])
+
+  // Handle module count increase (+ button)
+  const handleModuleIncrease = useCallback(() => {
+    const newCount = formData.module + 1
+    // Track previous count for redundancy detection
+    if (newCount > previousModuleCount) {
+      setPreviousModuleCount(newCount)
+    }
+    // Ensure moduleTitles array has enough slots
+    setFormData(prev => {
+      const newTitles = [...prev.moduleTitles]
+      while (newTitles.length < newCount) {
+        newTitles.push('')
+      }
+      return { ...prev, module: newCount, moduleTitles: newTitles }
+    })
+    // Trigger pulse animation when going from 1 to 2+ modules
+    if (formData.module === 1) {
+      setModuleTitleJustTriggered(true)
+      setCurrentModuleIndex(0)
+      // Clear pulse after animation completes
+      setTimeout(() => setModuleTitleJustTriggered(false), 2000)
+    }
+    setActiveColumn('left')
+    setHasUnsavedChanges(true)
+  }, [formData.module, previousModuleCount])
+
+  // Handle module count decrease (- button)
+  const handleModuleDecrease = useCallback(() => {
+    if (formData.module <= 1) return
+    const newCount = formData.module - 1
+    updateField('module', newCount)
+    // Adjust current index if needed
+    if (currentModuleIndex >= newCount) {
+      setCurrentModuleIndex(Math.max(0, newCount - 1))
+    }
+    setActiveColumn('left')
+  }, [formData.module, currentModuleIndex, updateField])
+
+  // Navigate to previous module title
+  const handleModulePrev = useCallback(() => {
+    if (currentModuleIndex > 0) {
+      setCurrentModuleIndex(prev => prev - 1)
+    }
+  }, [currentModuleIndex])
+
+  // Navigate to next module title
+  const handleModuleNext = useCallback(() => {
+    if (currentModuleIndex < formData.module - 1) {
+      setCurrentModuleIndex(prev => prev + 1)
+    }
+  }, [currentModuleIndex, formData.module])
+
+  // Check if there are redundant modules (modules that were named but count was reduced)
+  const hasRedundantModules = formData.moduleTitles.length > formData.module &&
+    formData.moduleTitles.slice(formData.module).some(title => title && title.trim().length > 0)
 
   // Toggle delivery mode
   const toggleDelivery = useCallback((mode) => {
@@ -277,6 +352,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
       title: '',
       thematic: '',
       module: 1,
+      moduleTitles: [],  // Reset module titles
       code: '',
       duration: 1,
       durationUnit: 'Hours',
@@ -291,6 +367,11 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
       learningObjectives: ['']
     })
     setLoConfirmedUpTo(-1) // Reset LO confirmation state
+    // Reset module title state
+    setCurrentModuleIndex(0)
+    setModuleTitleJustTriggered(false)
+    setModuleTitleActive(false)
+    setPreviousModuleCount(1)
     resetActiveColumn()
   }, [resetActiveColumn])
 
@@ -533,7 +614,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                   onMouseLeave={() => setHoveredField(null)}
                 >
                   <button
-                    onClick={() => { updateField('module', Math.max(1, formData.module - 1)); setActiveColumn('left') }}
+                    onClick={handleModuleDecrease}
                     style={{
                       background: 'transparent',
                       border: 'none',
@@ -558,7 +639,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                     {formData.module}
                   </span>
                   <button
-                    onClick={() => { updateField('module', formData.module + 1); setActiveColumn('left') }}
+                    onClick={handleModuleIncrease}
                     style={{
                       background: 'transparent',
                       border: 'none',
@@ -592,11 +673,125 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
             </div>
           </div>
 
+          {/* Module Title Input - appears when modules > 1 */}
+          {formData.module > 1 && (
+            <div style={{ marginTop: D.gapSm }}>
+              <label style={labelStyle(moduleTitleActive || moduleTitleHovered)}>
+                Module {currentModuleIndex + 1} Title
+              </label>
+              <div
+                onMouseEnter={() => setModuleTitleHovered(true)}
+                onMouseLeave={() => setModuleTitleHovered(false)}
+                style={{
+                  position: 'relative',
+                  borderRadius: '20px',
+                  padding: '1px',
+                  background: moduleTitleJustTriggered
+                    ? THEME.AMBER
+                    : (moduleTitleActive || moduleTitleHovered)
+                      ? THEME.AMBER
+                      : `linear-gradient(135deg, ${THEME.BORDER_GREY} 0%, ${THEME.BORDER} 50%, ${THEME.BORDER_GREY} 100%)`,
+                  animation: moduleTitleJustTriggered ? 'moduleTitlePulse 1s ease-in-out infinite' : 'none',
+                  transition: 'background 0.2s ease'
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: THEME.BG_INPUT,
+                  borderRadius: '19px'
+                }}>
+                  <input
+                    type="text"
+                    value={formData.moduleTitles[currentModuleIndex] || ''}
+                    onChange={(e) => updateModuleTitle(currentModuleIndex, e.target.value)}
+                    onFocus={() => {
+                      setModuleTitleActive(true)
+                      setModuleTitleJustTriggered(false)
+                      handleFieldFocus('moduleTitle')
+                    }}
+                    onBlur={() => {
+                      setModuleTitleActive(false)
+                      setFocusedField(null)
+                    }}
+                    style={{
+                      ...inputStyle,
+                      flex: 1,
+                      border: 'none',
+                      background: 'transparent'
+                    }}
+                    placeholder={`Enter Module ${currentModuleIndex + 1} title...`}
+                  />
+                  {/* Up/Down navigation arrows */}
+                  <div
+                    onMouseEnter={() => setArrowsHovered(true)}
+                    onMouseLeave={() => setArrowsHovered(false)}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      marginRight: '12px',
+                      gap: '2px'
+                    }}
+                  >
+                    <button
+                      onClick={handleModulePrev}
+                      disabled={currentModuleIndex === 0}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        padding: '0',
+                        cursor: currentModuleIndex === 0 ? 'default' : 'pointer',
+                        opacity: currentModuleIndex === 0 ? 0.3 : 1,
+                        fontSize: '12px',
+                        lineHeight: 1,
+                        color: arrowsHovered && !moduleTitleActive
+                          ? THEME.AMBER
+                          : moduleTitleActive
+                            ? THEME.WHITE
+                            : THEME.TEXT_SECONDARY,
+                        transition: 'color 0.2s ease'
+                      }}
+                    >
+                      ▲
+                    </button>
+                    <button
+                      onClick={handleModuleNext}
+                      disabled={currentModuleIndex >= formData.module - 1}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        padding: '0',
+                        cursor: currentModuleIndex >= formData.module - 1 ? 'default' : 'pointer',
+                        opacity: currentModuleIndex >= formData.module - 1 ? 0.3 : 1,
+                        fontSize: '12px',
+                        lineHeight: 1,
+                        color: arrowsHovered && !moduleTitleActive
+                          ? THEME.AMBER
+                          : moduleTitleActive
+                            ? THEME.WHITE
+                            : THEME.TEXT_SECONDARY,
+                        transition: 'color 0.2s ease'
+                      }}
+                    >
+                      ▼
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Duration - inline layout: Label | Slider | Readout */}
-          {/* Moved down 75px (15+75=90), click activates slider for color change */}
+          {/* Moved down 75px (15+75=90), +15px if module title visible = 105px max */}
           <div
             onClick={() => setActiveSlider('duration')}
-            style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '90px', cursor: 'pointer' }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              marginTop: formData.module > 1 ? '75px' : '90px',  /* Reduced when module title shows */
+              cursor: 'pointer'
+            }}
           >
             <label style={{
               ...labelStyle(isFieldActive('duration')),
@@ -831,6 +1026,22 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
 
         {/* CENTER COLUMN - DESCRIPTION */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: D.gapMd }}>
+          {/* REDUNDANT MODULE warning - appears when modules reduced after being named */}
+          {hasRedundantModules && (
+            <div
+              style={{
+                fontSize: D.fs18,
+                fontFamily: THEME.FONT_PRIMARY,
+                color: '#ff3333',  /* Deep red - same as delete warning */
+                letterSpacing: '4.5px',
+                textAlign: 'center',
+                marginBottom: '-8px'  /* Offset the gap */
+              }}
+            >
+              R E D U N D A N T {'  '} M O D U L E
+            </div>
+          )}
+
           <h2
             onMouseEnter={() => setHoveredHeader('center')}
             onMouseLeave={() => setHoveredHeader(null)}

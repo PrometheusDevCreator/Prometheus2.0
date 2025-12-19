@@ -253,6 +253,16 @@ textarea::placeholder {
   to { transform: rotate(360deg); }
 }
 
+/* Module Title Pulse - Orange glow for newly triggered module title input */
+@keyframes moduleTitlePulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(212, 115, 12, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(212, 115, 12, 0.6);
+  }
+}
+
 /* Green pulse - NavWheel arc indicator */
 @keyframes greenPulse {
   0% {
