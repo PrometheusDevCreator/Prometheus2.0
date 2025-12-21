@@ -90,13 +90,14 @@ function ScalarNode({
           background: isSelected
             ? `linear-gradient(90deg, ${color}22 0%, transparent 100%)`
             : isHovered
-              ? THEME.BG_PANEL
+              ? `linear-gradient(90deg, ${THEME.BG_PANEL} 0%, transparent 100%)`
               : 'transparent',
           border: isSelected ? `1px solid ${color}` : '1px solid transparent',
           borderRadius: '0.4vh',
           cursor: 'pointer',
-          transition: 'all 0.15s ease',
-          position: 'relative'
+          transition: 'all 0.2s ease',
+          position: 'relative',
+          transform: isHovered && !isSelected ? 'translateX(2px)' : 'none'
         }}
       >
         {/* Connector line */}

@@ -263,6 +263,21 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     updateLesson(lessonId, { saved: true })
   }, [updateLesson])
 
+  // Toggle LO assignment for a lesson
+  const toggleLessonLO = useCallback((lessonId, loId) => {
+    setLessons(prev => prev.map(lesson => {
+      if (lesson.id !== lessonId) return lesson
+      const currentLOs = lesson.learningObjectives || []
+      const hasLO = currentLOs.includes(loId)
+      return {
+        ...lesson,
+        learningObjectives: hasLO
+          ? currentLOs.filter(id => id !== loId)
+          : [...currentLOs, loId]
+      }
+    }))
+  }, [])
+
   // --------------------------------------------
   // DRAG OPERATIONS (Phase 3)
   // --------------------------------------------
@@ -658,6 +673,7 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     scheduleLesson,
     unscheduleLesson,
     saveToLibrary,
+    toggleLessonLO,
 
     // Scalar
     scalarData,
@@ -696,7 +712,7 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     activeTab, viewMode, currentModule, currentWeek, currentDay,
     lessons, selectedLesson, scheduledLessons, unscheduledLessons, savedLessons,
     updateLesson, createLesson, deleteLesson, duplicateLesson,
-    scheduleLesson, unscheduleLesson, saveToLibrary,
+    scheduleLesson, unscheduleLesson, saveToLibrary, toggleLessonLO,
     moveLesson, resizeLesson, checkCollision, findAvailableSlot,
     scalarData, selectedScalarItem, toggleScalarExpand,
     addLearningObjective, addTopic, addSubtopic, updateScalarNode, deleteScalarNode,

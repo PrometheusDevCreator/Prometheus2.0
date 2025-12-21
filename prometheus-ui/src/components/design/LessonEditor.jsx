@@ -230,24 +230,8 @@ function LessonEditorContent({ lesson, updateLesson }) {
         )}
       </div>
 
-      {/* LO Indicator (placeholder circles) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4vw' }}>
-        <span style={{ fontSize: '1vh', color: THEME.TEXT_DIM, marginRight: '0.3vw' }}>LO:</span>
-        {[1, 2, 3, 4, 5].map(i => (
-          <div
-            key={i}
-            style={{
-              width: '1.2vh',
-              height: '1.2vh',
-              borderRadius: '50%',
-              border: `1px solid ${THEME.BORDER_GREY}`,
-              background: lesson.learningObjectives.includes(`lo-${i}`) ? THEME.AMBER : 'transparent',
-              cursor: 'pointer'
-            }}
-            title={`LO ${i}`}
-          />
-        ))}
-      </div>
+      {/* LO Indicator (interactive circles) */}
+      <LOIndicator lesson={lesson} />
 
       {/* Metadata Row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1vw', flexWrap: 'wrap' }}>
@@ -288,7 +272,13 @@ function LessonEditorContent({ lesson, updateLesson }) {
           value={lesson.duration.toString()}
           type="number"
           suffix="min"
-          onChange={(value) => updateLesson(lesson.id, { duration: parseInt(value) || 0 })}
+          min={30}
+          max={480}
+          step={30}
+          onChange={(value) => {
+            const duration = Math.max(30, Math.min(480, parseInt(value) || 30))
+            updateLesson(lesson.id, { duration })
+          }}
         />
       </div>
 
@@ -426,22 +416,89 @@ function ScalarEditorContent() {
       <div style={{ height: '1px', background: THEME.BORDER, margin: '0.5vh 0' }} />
 
       {/* Delete button */}
-      <button
+      <DeleteButton
+        label={`Delete ${type.toUpperCase()}`}
         onClick={() => deleteScalarNode(type, data.id)}
-        style={{
-          background: 'transparent',
-          border: `1px solid #cc4444`,
-          borderRadius: '0.4vh',
-          color: '#cc4444',
-          fontSize: '1vh',
-          padding: '0.6vh 1vw',
-          cursor: 'pointer',
-          textTransform: 'uppercase',
-          letterSpacing: '0.1vw'
-        }}
-      >
-        Delete {type.toUpperCase()}
-      </button>
+      />
+    </div>
+  )
+}
+
+// ============================================
+// LO INDICATOR (Interactive circles linked to Scalar data)
+// ============================================
+
+function LOIndicator({ lesson }) {
+  const { scalarData, currentModule, toggleLessonLO, setActiveTab } = useDesign()
+  const [hoveredLO, setHoveredLO] = useState(null)
+
+  // Get LOs for current module
+  const module = scalarData.modules.find(m => m.order === currentModule) || scalarData.modules[0]
+  const moduleLOs = module?.learningObjectives || []
+
+  // Handle empty state
+  if (moduleLOs.length === 0) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4vw' }}>
+        <span style={{ fontSize: '1vh', color: THEME.TEXT_DIM }}>LO:</span>
+        <span
+          onClick={() => setActiveTab('scalar')}
+          style={{
+            fontSize: '0.9vh',
+            color: THEME.AMBER,
+            cursor: 'pointer',
+            fontStyle: 'italic'
+          }}
+        >
+          Add LOs in SCALAR tab
+        </span>
+      </div>
+    )
+  }
+
+  // Limit to first 5 LOs for display, show count if more
+  const displayLOs = moduleLOs.slice(0, 5)
+  const hasMore = moduleLOs.length > 5
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4vw', flexWrap: 'wrap' }}>
+      <span style={{ fontSize: '1vh', color: THEME.TEXT_DIM, marginRight: '0.3vw' }}>LO:</span>
+      {displayLOs.map((lo, index) => {
+        const isAssigned = lesson.learningObjectives.includes(lo.id)
+        const isHovered = hoveredLO === lo.id
+
+        return (
+          <div
+            key={lo.id}
+            onClick={() => toggleLessonLO(lesson.id, lo.id)}
+            onMouseEnter={() => setHoveredLO(lo.id)}
+            onMouseLeave={() => setHoveredLO(null)}
+            style={{
+              width: '1.4vh',
+              height: '1.4vh',
+              borderRadius: '50%',
+              border: `1px solid ${isAssigned ? THEME.AMBER : THEME.BORDER_GREY}`,
+              background: isAssigned ? THEME.AMBER : isHovered ? THEME.AMBER_DARK : 'transparent',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '0.7vh',
+              color: isAssigned ? THEME.BG_DARK : THEME.TEXT_DIM,
+              fontWeight: 500
+            }}
+            title={`LO ${lo.order}: ${lo.verb} ${lo.description}\nClick to ${isAssigned ? 'remove' : 'assign'}`}
+          >
+            {lo.order}
+          </div>
+        )
+      })}
+      {hasMore && (
+        <span style={{ fontSize: '0.9vh', color: THEME.TEXT_DIM }}>
+          +{moduleLOs.length - 5}
+        </span>
+      )}
     </div>
   )
 }
@@ -523,7 +580,9 @@ function LessonLegend() {
 // FIELD COMPONENTS
 // ============================================
 
-function FieldInput({ label, value, onChange, type = 'text', suffix = '' }) {
+function FieldInput({ label, value, onChange, type = 'text', suffix = '', min, max, step }) {
+  const [focused, setFocused] = useState(false)
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3vh' }}>
       <label style={{ fontSize: '1vh', color: THEME.TEXT_DIM }}>{label}</label>
@@ -532,16 +591,23 @@ function FieldInput({ label, value, onChange, type = 'text', suffix = '' }) {
           type={type}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          min={min}
+          max={max}
+          step={step}
           style={{
             flex: 1,
             background: THEME.BG_INPUT,
-            border: `1px solid ${THEME.BORDER}`,
+            border: `1px solid ${focused ? THEME.AMBER : THEME.BORDER}`,
             borderRadius: '0.4vh',
             color: THEME.WHITE,
             fontSize: '1.1vh',
             fontFamily: THEME.FONT_PRIMARY,
             padding: '0.5vh 0.6vw',
-            outline: 'none'
+            outline: 'none',
+            transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+            boxShadow: focused ? `0 0 0 1px ${THEME.AMBER}33` : 'none'
           }}
         />
         {suffix && <span style={{ fontSize: '1vh', color: THEME.TEXT_DIM }}>{suffix}</span>}
@@ -551,22 +617,28 @@ function FieldInput({ label, value, onChange, type = 'text', suffix = '' }) {
 }
 
 function FieldDropdown({ label, value, options, onChange }) {
+  const [focused, setFocused] = useState(false)
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3vh' }}>
       <label style={{ fontSize: '1vh', color: THEME.TEXT_DIM }}>{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         style={{
           background: THEME.BG_INPUT,
-          border: `1px solid ${THEME.BORDER}`,
+          border: `1px solid ${focused ? THEME.AMBER : THEME.BORDER}`,
           borderRadius: '0.4vh',
           color: THEME.WHITE,
           fontSize: '1.1vh',
           fontFamily: THEME.FONT_PRIMARY,
           padding: '0.5vh 0.6vw',
           outline: 'none',
-          cursor: 'pointer'
+          cursor: 'pointer',
+          transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+          boxShadow: focused ? `0 0 0 1px ${THEME.AMBER}33` : 'none'
         }}
       >
         {options.map(opt => (
@@ -574,6 +646,32 @@ function FieldDropdown({ label, value, options, onChange }) {
         ))}
       </select>
     </div>
+  )
+}
+
+function DeleteButton({ label, onClick }) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: hovered ? 'rgba(204, 68, 68, 0.15)' : 'transparent',
+        border: `1px solid ${hovered ? '#ff6666' : '#cc4444'}`,
+        borderRadius: '0.4vh',
+        color: hovered ? '#ff6666' : '#cc4444',
+        fontSize: '1vh',
+        padding: '0.6vh 1vw',
+        cursor: 'pointer',
+        textTransform: 'uppercase',
+        letterSpacing: '0.1vw',
+        transition: 'all 0.2s ease'
+      }}
+    >
+      {label}
+    </button>
   )
 }
 
