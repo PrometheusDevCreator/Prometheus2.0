@@ -17,7 +17,7 @@
  * - Content area (right): Contains lesson blocks
  */
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useState } from 'react'
 import { THEME } from '../../constants/theme'
 import { useDesign } from '../../contexts/DesignContext'
 import LessonBlock from './LessonBlock'
@@ -28,6 +28,7 @@ const HOUR_WIDTH = 80           // Width of each hour column
 const DAY_HEIGHT = 60           // Height of each day row
 const HEADER_HEIGHT = 30        // Height of time header
 const NUM_DAYS = 5              // Number of day rows to show
+const PIXELS_PER_MINUTE = HOUR_WIDTH / 60  // For time calculations
 
 function TimetableGrid({ startHour = 8, endHour = 17 }) {
   const {
@@ -35,7 +36,9 @@ function TimetableGrid({ startHour = 8, endHour = 17 }) {
     currentDay,
     currentWeek,
     viewMode,
-    clearSelection
+    clearSelection,
+    moveLesson,
+    scheduleLesson
   } = useDesign()
 
   // Generate hour columns
@@ -78,9 +81,16 @@ function TimetableGrid({ startHour = 8, endHour = 17 }) {
   // Determine which days to show based on view mode
   const daysToShow = useMemo(() => {
     if (viewMode === 'day') {
+      // Single day view
       return [currentDay]
+    } else if (viewMode === 'week') {
+      // Show 5 days (one week)
+      return Array.from({ length: NUM_DAYS }, (_, i) => i + 1)
+    } else {
+      // Module view - show all weeks in module
+      // For now, show 5 days per week (could expand based on course data)
+      return Array.from({ length: NUM_DAYS }, (_, i) => i + 1)
     }
-    return Array.from({ length: NUM_DAYS }, (_, i) => i + 1)
   }, [viewMode, currentDay])
 
   return (
@@ -151,7 +161,10 @@ function TimetableGrid({ startHour = 8, endHour = 17 }) {
             lessons={getLessonsForDay(day)}
             pixelsPerMinute={pixelsPerMinute}
             startHour={startHour}
+            endHour={endHour}
             isCurrentDay={day === currentDay && viewMode === 'week'}
+            onDrop={(lessonId, newStartTime) => moveLesson(lessonId, day, newStartTime)}
+            onSchedule={(lessonId, newStartTime) => scheduleLesson(lessonId, day, newStartTime)}
           />
         ))}
 
@@ -185,8 +198,13 @@ function DayRow({
   lessons,
   pixelsPerMinute,
   startHour,
-  isCurrentDay
+  endHour,
+  isCurrentDay,
+  onDrop,
+  onSchedule
 }) {
+  const [isDragOver, setIsDragOver] = useState(false)
+
   // Get block left position
   const getBlockLeft = (lesson) => {
     if (!lesson.startTime) return 0
@@ -196,13 +214,69 @@ function DayRow({
     return minutesFromStart * pixelsPerMinute
   }
 
+  // Calculate time from drop position
+  const getTimeFromPosition = (clientX, containerRect) => {
+    const relativeX = clientX - containerRect.left
+    const minutesFromStart = relativeX / pixelsPerMinute
+    // Snap to 30-minute increments
+    const snappedMinutes = Math.round(minutesFromStart / 30) * 30
+    const totalMinutes = startHour * 60 + snappedMinutes
+    // Clamp to grid bounds
+    const maxMinutes = endHour * 60
+    const clampedMinutes = Math.max(startHour * 60, Math.min(maxMinutes, totalMinutes))
+    const hour = Math.floor(clampedMinutes / 60)
+    const min = clampedMinutes % 60
+    return `${hour.toString().padStart(2, '0')}${min.toString().padStart(2, '0')}`
+  }
+
+  // Handle drag over
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setIsDragOver(true)
+  }, [])
+
+  // Handle drag leave
+  const handleDragLeave = useCallback((e) => {
+    // Only set false if we're leaving the container, not entering a child
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setIsDragOver(false)
+    }
+  }, [])
+
+  // Handle drop
+  const handleDrop = useCallback((e) => {
+    e.preventDefault()
+    setIsDragOver(false)
+
+    const lessonId = e.dataTransfer.getData('lessonId')
+    if (!lessonId) return
+
+    const contentArea = e.currentTarget
+    const rect = contentArea.getBoundingClientRect()
+    const newStartTime = getTimeFromPosition(e.clientX, rect)
+
+    // Check if this is from library (schedule) or from grid (move)
+    const dragType = e.dataTransfer.getData('dragType')
+    if (dragType === 'move') {
+      onDrop(lessonId, newStartTime)
+    } else {
+      // From library - schedule it
+      onSchedule(lessonId, newStartTime)
+    }
+  }, [onDrop, onSchedule, pixelsPerMinute, startHour, endHour])
+
   return (
     <div
       style={{
         display: 'flex',
         height: `${DAY_HEIGHT}px`,
         borderBottom: `1px solid ${THEME.BORDER}`,
-        background: isCurrentDay ? 'rgba(212, 115, 12, 0.05)' : 'transparent'
+        background: isDragOver
+          ? 'rgba(212, 115, 12, 0.15)'
+          : isCurrentDay
+            ? 'rgba(212, 115, 12, 0.05)'
+            : 'transparent'
       }}
     >
       {/* Day Label */}
@@ -223,13 +297,16 @@ function DayRow({
         Day {day}
       </div>
 
-      {/* Content Area (with hour grid lines) */}
+      {/* Content Area (with hour grid lines) - DROP ZONE */}
       <div
         style={{
           flex: 1,
           position: 'relative',
           minWidth: `${hours.length * HOUR_WIDTH}px`
         }}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         {/* Hour grid lines */}
         {hours.map((hour, idx) => (
@@ -262,6 +339,7 @@ function DayRow({
               lesson={lesson}
               pixelsPerMinute={pixelsPerMinute}
               dayHeight={DAY_HEIGHT}
+              startHour={startHour}
             />
           </div>
         ))}

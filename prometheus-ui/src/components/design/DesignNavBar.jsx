@@ -32,6 +32,8 @@ function DesignNavBar() {
     setCurrentModule,
     currentWeek,
     setCurrentWeek,
+    currentDay,
+    setCurrentDay,
     courseData
   } = useDesign()
 
@@ -175,6 +177,26 @@ function DesignNavBar() {
             onClick={() => setCurrentWeek(w => Math.min(totalWeeks, w + 1))}
           />
         </div>
+
+        {/* Day Control (only in DAY view mode) */}
+        {viewMode === 'day' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
+            <span style={labelStyle}>Day:</span>
+            <NavArrow
+              direction="left"
+              disabled={currentDay <= 1}
+              onClick={() => setCurrentDay(d => Math.max(1, d - 1))}
+            />
+            <span style={{ color: THEME.AMBER, fontSize: '1.4vh', fontFamily: THEME.FONT_PRIMARY, fontWeight: 500 }}>
+              {currentDay}
+            </span>
+            <NavArrow
+              direction="right"
+              disabled={currentDay >= 5}
+              onClick={() => setCurrentDay(d => Math.min(5, d + 1))}
+            />
+          </div>
+        )}
       </div>
 
       {/* RIGHT ZONE: Tabs + View Toggle */}

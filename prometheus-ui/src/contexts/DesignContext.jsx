@@ -63,6 +63,30 @@ import { createContext, useContext, useState, useCallback, useMemo } from 'react
  */
 
 // ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+// Convert time string "0900" to minutes from midnight
+function timeToMinutes(timeStr) {
+  if (!timeStr) return 0
+  const hour = parseInt(timeStr.slice(0, 2)) || 0
+  const min = parseInt(timeStr.slice(2, 4)) || 0
+  return hour * 60 + min
+}
+
+// Convert minutes from midnight to time string "0900"
+function minutesToTime(minutes) {
+  const hour = Math.floor(minutes / 60) % 24
+  const min = minutes % 60
+  return `${hour.toString().padStart(2, '0')}${min.toString().padStart(2, '0')}`
+}
+
+// Snap minutes to 30-minute grid
+function snapToGrid(minutes, gridSize = 30) {
+  return Math.round(minutes / gridSize) * gridSize
+}
+
+// ============================================
 // LESSON TYPES
 // ============================================
 export const LESSON_TYPES = [
@@ -221,6 +245,67 @@ export function DesignProvider({ children, courseData, setCourseData }) {
   }, [updateLesson])
 
   // --------------------------------------------
+  // DRAG OPERATIONS (Phase 3)
+  // --------------------------------------------
+
+  // Move lesson to new day/time
+  const moveLesson = useCallback((lessonId, newDay, newStartTime) => {
+    updateLesson(lessonId, {
+      day: newDay,
+      startTime: newStartTime,
+      scheduled: true
+    })
+  }, [updateLesson])
+
+  // Resize lesson duration (snaps to 30-min increments)
+  const resizeLesson = useCallback((lessonId, newDuration) => {
+    // Snap to 30-minute increments
+    const snappedDuration = Math.round(newDuration / 30) * 30
+    // Minimum 30 minutes, maximum 480 minutes (8 hours)
+    const clampedDuration = Math.max(30, Math.min(480, snappedDuration))
+    updateLesson(lessonId, { duration: clampedDuration })
+  }, [updateLesson])
+
+  // Check for collision with other lessons
+  const checkCollision = useCallback((lessonId, day, startTime, duration) => {
+    const startMinutes = timeToMinutes(startTime)
+    const endMinutes = startMinutes + duration
+
+    return lessons.some(lesson => {
+      if (lesson.id === lessonId || lesson.day !== day || !lesson.scheduled) return false
+      const lessonStart = timeToMinutes(lesson.startTime)
+      const lessonEnd = lessonStart + lesson.duration
+      return startMinutes < lessonEnd && endMinutes > lessonStart
+    })
+  }, [lessons])
+
+  // Find next available slot on a day
+  const findAvailableSlot = useCallback((day, preferredStartTime, duration) => {
+    const dayLessons = lessons
+      .filter(l => l.day === day && l.scheduled)
+      .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
+
+    let startMinutes = timeToMinutes(preferredStartTime)
+
+    for (const lesson of dayLessons) {
+      const lessonStart = timeToMinutes(lesson.startTime)
+      const lessonEnd = lessonStart + lesson.duration
+
+      if (startMinutes + duration <= lessonStart) {
+        // Fits before this lesson
+        return minutesToTime(startMinutes)
+      }
+
+      if (startMinutes < lessonEnd) {
+        // Overlaps, move after this lesson
+        startMinutes = lessonEnd
+      }
+    }
+
+    return minutesToTime(startMinutes)
+  }, [lessons])
+
+  // --------------------------------------------
   // SELECTION OPERATIONS
   // --------------------------------------------
 
@@ -308,6 +393,12 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     editorCollapsed,
     setEditorCollapsed,
 
+    // Drag operations
+    moveLesson,
+    resizeLesson,
+    checkCollision,
+    findAvailableSlot,
+
     // Course data (from parent)
     courseData,
     setCourseData,
@@ -319,6 +410,7 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     lessons, selectedLesson, scheduledLessons, unscheduledLessons, savedLessons,
     updateLesson, createLesson, deleteLesson, duplicateLesson,
     scheduleLesson, unscheduleLesson, saveToLibrary,
+    moveLesson, resizeLesson, checkCollision, findAvailableSlot,
     scalarData, selection, select, startEditing, clearSelection,
     editorCollapsed, courseData, setCourseData
   ])
