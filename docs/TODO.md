@@ -15,6 +15,7 @@
 
 | Task | Priority | Status | Notes |
 |------|----------|--------|-------|
+| **DESIGN Page Reimplementation** | **HIGH** | **Phase 1 COMPLETE** | Phase 2 (Timetable Core) next. See `docs/briefs/DESIGN_PAGE_IMPLEMENTATION_PLAN.md` |
 | Backend API integration | HIGH | Not Started | API scaffolded in `core/api/`, needs connection to UI |
 | PKE Engine implementation | HIGH | Not Started | Core intelligence feature, `core/pke/` is placeholder |
 

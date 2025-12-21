@@ -37,8 +37,10 @@ const BASE_H = 1080
 import Login from './pages/Login'
 import Navigate from './pages/Navigate'
 import Define from './pages/Define'
-import OutlinePlanner from './pages/OutlinePlanner'
-import Scalar from './pages/Scalar'
+import Design from './pages/Design'  // New unified DESIGN page (Phase 1)
+// Legacy pages retained for reference during migration:
+// import OutlinePlanner from './pages/OutlinePlanner'
+// import Scalar from './pages/Scalar'
 import Build from './pages/Build'
 import Format from './pages/Format'
 import Generate from './pages/Generate'
@@ -61,7 +63,7 @@ function App() {
 
   // Navigation state
   const [currentPage, setCurrentPage] = useState('navigate')
-  const [designSubpage, setDesignSubpage] = useState('planner') // 'planner' | 'scalar'
+  // Note: designSubpage removed - now handled internally by Design.jsx
 
   // Debug grid state (Ctrl+G toggle)
   const [showDebugGrid, setShowDebugGrid] = useState(false)
@@ -168,10 +170,7 @@ function App() {
     }
   }, [])
 
-  // Handle design sub-navigation (planner vs scalar)
-  const handleDesignSubnav = useCallback((subpage) => {
-    setDesignSubpage(subpage)
-  }, [])
+  // Note: handleDesignSubnav removed - now handled internally by Design.jsx
 
   // Navigation via Escape (when grid has no pins)
   // Grid toggle is now handled by DebugGridController (G key)
@@ -296,29 +295,17 @@ function App() {
           />
         )
       case 'design':
-        // Design has sub-pages: OutlinePlanner and Scalar
-        if (designSubpage === 'planner') {
-          return (
-            <OutlinePlanner
-              onNavigate={handleNavigate}
-              courseData={courseData}
-              setCourseData={setCourseData}
-              courseLoaded={courseLoaded}
-              user={userData}
-              courseState={courseState}
-            />
-          )
-        } else {
-          return (
-            <Scalar
-              onNavigate={handleNavigate}
-              courseData={courseData}
-              courseLoaded={courseLoaded}
-              user={userData}
-              courseState={courseState}
-            />
-          )
-        }
+        // New unified Design page with internal tab switching
+        return (
+          <Design
+            onNavigate={handleNavigate}
+            courseData={courseData}
+            setCourseData={setCourseData}
+            courseLoaded={courseLoaded}
+            user={userData}
+            courseState={courseState}
+          />
+        )
       case 'build':
         return (
           <Build
@@ -393,7 +380,7 @@ function App() {
         <Header
           pageTitle={
             currentPage === 'define' ? '' :  /* COURSE INFORMATION removed per founder request */
-            currentPage === 'design' ? 'OUTLINE PLANNER' :
+            currentPage === 'design' ? 'COURSE PLANNER' :
             currentPage === 'build' ? 'BUILD' :
             currentPage === 'format' ? 'FORMAT' :
             currentPage === 'generate' ? 'GENERATE' :
@@ -416,58 +403,7 @@ function App() {
           {renderPage()}
         </div>
 
-        {/* Design Sub-navigation (only on design page) - OVERVIEW and SCALAR tabs */}
-        {currentPage === 'design' && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '100px',
-              right: '40px',
-              display: 'flex',
-              gap: '12px',
-              zIndex: 100
-            }}
-          >
-            <button
-              onClick={() => handleDesignSubnav('planner')}
-              style={{
-                padding: '14px 36px',
-                fontSize: '15px',
-                letterSpacing: '3px',
-                fontFamily: THEME.FONT_PRIMARY,
-                background: designSubpage === 'planner' ? THEME.GRADIENT_BUTTON : 'transparent',
-                border: `1px solid ${designSubpage === 'planner' ? THEME.AMBER : THEME.BORDER}`,
-                borderRadius: '20px',
-                color: designSubpage === 'planner' ? THEME.WHITE : THEME.TEXT_SECONDARY,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => { if (designSubpage !== 'planner') e.target.style.color = THEME.AMBER }}
-              onMouseLeave={(e) => { if (designSubpage !== 'planner') e.target.style.color = THEME.TEXT_SECONDARY }}
-            >
-              OVERVIEW
-            </button>
-            <button
-              onClick={() => handleDesignSubnav('scalar')}
-              style={{
-                padding: '14px 36px',
-                fontSize: '15px',
-                letterSpacing: '3px',
-                fontFamily: THEME.FONT_PRIMARY,
-                background: designSubpage === 'scalar' ? THEME.GRADIENT_BUTTON : 'transparent',
-                border: `1px solid ${designSubpage === 'scalar' ? THEME.AMBER : THEME.BORDER}`,
-                borderRadius: '20px',
-                color: designSubpage === 'scalar' ? THEME.WHITE : THEME.TEXT_SECONDARY,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => { if (designSubpage !== 'scalar') e.target.style.color = THEME.AMBER }}
-              onMouseLeave={(e) => { if (designSubpage !== 'scalar') e.target.style.color = THEME.TEXT_SECONDARY }}
-            >
-              SCALAR
-            </button>
-          </div>
-        )}
+        {/* Design Sub-navigation moved to internal DesignNavBar component */}
       </div>
       <DebugGridController isVisible={showDebugGrid} onEscapeWhenNoPins={handleEscapeNavigation} />
     </div>
