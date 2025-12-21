@@ -30,6 +30,7 @@ import { DesignProvider, useDesign } from '../contexts/DesignContext'
 import DesignNavBar from '../components/design/DesignNavBar'
 import LessonEditor from '../components/design/LessonEditor'
 import TimetableWorkspace from '../components/design/TimetableWorkspace'
+import ScalarWorkspace from '../components/design/ScalarWorkspace'
 import Footer from '../components/Footer'
 
 // ============================================
@@ -109,7 +110,7 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState }) {
           {activeTab === 'timetable' ? (
             <TimetableWorkspace />
           ) : (
-            <ScalarWorkspacePlaceholder />
+            <ScalarWorkspace />
           )}
         </div>
       </div>
@@ -127,53 +128,6 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState }) {
         courseState={courseState || { startDate: null, saveCount: 0 }}
         progress={0}
       />
-    </div>
-  )
-}
-
-// ============================================
-// PLACEHOLDER WORKSPACES (Phase 5 implementation)
-// ============================================
-
-function ScalarWorkspacePlaceholder() {
-  const { currentModule } = useDesign()
-
-  return (
-    <div
-      style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: THEME.BG_DARK,
-        border: `1px dashed ${THEME.BORDER}`,
-        margin: '1vh 1vw',
-        borderRadius: '0.5vh'
-      }}
-    >
-      <div
-        style={{
-          textAlign: 'center',
-          color: THEME.TEXT_DIM
-        }}
-      >
-        <h2 style={{ fontSize: '2vh', color: THEME.WHITE, marginBottom: '1vh' }}>
-          SCALAR WORKSPACE
-        </h2>
-        <p style={{ fontSize: '1.3vh', marginBottom: '1.5vh' }}>
-          Module: <span style={{ color: THEME.AMBER }}>{currentModule}</span>
-        </p>
-        <p style={{ fontSize: '1.1vh', fontStyle: 'italic' }}>
-          Phase 5: Scalar controls, tree view, drag reorder
-        </p>
-        <p style={{ fontSize: '1.1vh', fontStyle: 'italic' }}>
-          Hierarchy: Module → LO → Topic → Subtopic
-        </p>
-        <p style={{ fontSize: '1.1vh', fontStyle: 'italic' }}>
-          Auto-renumbering on drag operations
-        </p>
-      </div>
     </div>
   )
 }

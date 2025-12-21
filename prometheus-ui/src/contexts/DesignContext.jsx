@@ -141,6 +141,7 @@ export function DesignProvider({ children, courseData, setCourseData }) {
 
   // --------------------------------------------
   // SCALAR HIERARCHY STATE
+  // Module > LearningObjective > Topic > Subtopic
   // --------------------------------------------
   const [scalarData, setScalarData] = useState({
     modules: [
@@ -148,7 +149,25 @@ export function DesignProvider({ children, courseData, setCourseData }) {
         id: 'module-1',
         name: 'Module 1',
         order: 1,
-        learningObjectives: []
+        expanded: true,
+        learningObjectives: [
+          {
+            id: 'lo-1-1',
+            verb: 'EXPLAIN',
+            description: 'the fundamentals of the subject',
+            order: 1,
+            expanded: true,
+            topics: [
+              {
+                id: 'topic-1-1-1',
+                title: 'Introduction to Core Concepts',
+                order: 1,
+                expanded: false,
+                subtopics: []
+              }
+            ]
+          }
+        ]
       }
     ]
   })
@@ -306,6 +325,267 @@ export function DesignProvider({ children, courseData, setCourseData }) {
   }, [lessons])
 
   // --------------------------------------------
+  // SCALAR OPERATIONS
+  // --------------------------------------------
+
+  // Toggle expand/collapse for any scalar node
+  const toggleScalarExpand = useCallback((nodeType, nodeId) => {
+    setScalarData(prev => {
+      const newData = { ...prev, modules: [...prev.modules] }
+
+      for (let m = 0; m < newData.modules.length; m++) {
+        const module = { ...newData.modules[m] }
+        newData.modules[m] = module
+
+        if (nodeType === 'module' && module.id === nodeId) {
+          module.expanded = !module.expanded
+          return newData
+        }
+
+        module.learningObjectives = [...module.learningObjectives]
+        for (let l = 0; l < module.learningObjectives.length; l++) {
+          const lo = { ...module.learningObjectives[l] }
+          module.learningObjectives[l] = lo
+
+          if (nodeType === 'lo' && lo.id === nodeId) {
+            lo.expanded = !lo.expanded
+            return newData
+          }
+
+          lo.topics = [...lo.topics]
+          for (let t = 0; t < lo.topics.length; t++) {
+            const topic = { ...lo.topics[t] }
+            lo.topics[t] = topic
+
+            if (nodeType === 'topic' && topic.id === nodeId) {
+              topic.expanded = !topic.expanded
+              return newData
+            }
+          }
+        }
+      }
+      return newData
+    })
+  }, [])
+
+  // Add new LO to a module
+  const addLearningObjective = useCallback((moduleId) => {
+    setScalarData(prev => {
+      const newData = { ...prev, modules: [...prev.modules] }
+      const moduleIndex = newData.modules.findIndex(m => m.id === moduleId)
+      if (moduleIndex === -1) return prev
+
+      const module = { ...newData.modules[moduleIndex] }
+      newData.modules[moduleIndex] = module
+      module.learningObjectives = [...module.learningObjectives]
+
+      const newLO = {
+        id: `lo-${Date.now()}`,
+        verb: 'IDENTIFY',
+        description: 'new learning objective',
+        order: module.learningObjectives.length + 1,
+        expanded: true,
+        topics: []
+      }
+      module.learningObjectives.push(newLO)
+      return newData
+    })
+  }, [])
+
+  // Add new Topic to an LO
+  const addTopic = useCallback((loId) => {
+    setScalarData(prev => {
+      const newData = { ...prev, modules: [...prev.modules] }
+
+      for (let m = 0; m < newData.modules.length; m++) {
+        const module = { ...newData.modules[m] }
+        newData.modules[m] = module
+        module.learningObjectives = [...module.learningObjectives]
+
+        for (let l = 0; l < module.learningObjectives.length; l++) {
+          const lo = { ...module.learningObjectives[l] }
+          module.learningObjectives[l] = lo
+
+          if (lo.id === loId) {
+            lo.topics = [...lo.topics]
+            const newTopic = {
+              id: `topic-${Date.now()}`,
+              title: 'New Topic',
+              order: lo.topics.length + 1,
+              expanded: false,
+              subtopics: []
+            }
+            lo.topics.push(newTopic)
+            return newData
+          }
+        }
+      }
+      return prev
+    })
+  }, [])
+
+  // Add new Subtopic to a Topic
+  const addSubtopic = useCallback((topicId) => {
+    setScalarData(prev => {
+      const newData = { ...prev, modules: [...prev.modules] }
+
+      for (let m = 0; m < newData.modules.length; m++) {
+        const module = { ...newData.modules[m] }
+        newData.modules[m] = module
+        module.learningObjectives = [...module.learningObjectives]
+
+        for (let l = 0; l < module.learningObjectives.length; l++) {
+          const lo = { ...module.learningObjectives[l] }
+          module.learningObjectives[l] = lo
+          lo.topics = [...lo.topics]
+
+          for (let t = 0; t < lo.topics.length; t++) {
+            const topic = { ...lo.topics[t] }
+            lo.topics[t] = topic
+
+            if (topic.id === topicId) {
+              topic.subtopics = [...topic.subtopics]
+              const newSubtopic = {
+                id: `subtopic-${Date.now()}`,
+                title: 'New Subtopic',
+                order: topic.subtopics.length + 1
+              }
+              topic.subtopics.push(newSubtopic)
+              topic.expanded = true
+              return newData
+            }
+          }
+        }
+      }
+      return prev
+    })
+  }, [])
+
+  // Update scalar node (LO, Topic, or Subtopic)
+  const updateScalarNode = useCallback((nodeType, nodeId, updates) => {
+    setScalarData(prev => {
+      const newData = { ...prev, modules: [...prev.modules] }
+
+      for (let m = 0; m < newData.modules.length; m++) {
+        const module = { ...newData.modules[m] }
+        newData.modules[m] = module
+        module.learningObjectives = [...module.learningObjectives]
+
+        for (let l = 0; l < module.learningObjectives.length; l++) {
+          const lo = { ...module.learningObjectives[l] }
+          module.learningObjectives[l] = lo
+
+          if (nodeType === 'lo' && lo.id === nodeId) {
+            Object.assign(lo, updates)
+            return newData
+          }
+
+          lo.topics = [...lo.topics]
+          for (let t = 0; t < lo.topics.length; t++) {
+            const topic = { ...lo.topics[t] }
+            lo.topics[t] = topic
+
+            if (nodeType === 'topic' && topic.id === nodeId) {
+              Object.assign(topic, updates)
+              return newData
+            }
+
+            topic.subtopics = [...(topic.subtopics || [])]
+            for (let s = 0; s < topic.subtopics.length; s++) {
+              const subtopic = { ...topic.subtopics[s] }
+              topic.subtopics[s] = subtopic
+
+              if (nodeType === 'subtopic' && subtopic.id === nodeId) {
+                Object.assign(subtopic, updates)
+                return newData
+              }
+            }
+          }
+        }
+      }
+      return prev
+    })
+  }, [])
+
+  // Delete scalar node
+  const deleteScalarNode = useCallback((nodeType, nodeId) => {
+    setScalarData(prev => {
+      const newData = { ...prev, modules: [...prev.modules] }
+
+      for (let m = 0; m < newData.modules.length; m++) {
+        const module = { ...newData.modules[m] }
+        newData.modules[m] = module
+        module.learningObjectives = [...module.learningObjectives]
+
+        if (nodeType === 'lo') {
+          const loIndex = module.learningObjectives.findIndex(lo => lo.id === nodeId)
+          if (loIndex !== -1) {
+            module.learningObjectives.splice(loIndex, 1)
+            // Renumber
+            module.learningObjectives.forEach((lo, idx) => lo.order = idx + 1)
+            return newData
+          }
+        }
+
+        for (let l = 0; l < module.learningObjectives.length; l++) {
+          const lo = { ...module.learningObjectives[l] }
+          module.learningObjectives[l] = lo
+          lo.topics = [...lo.topics]
+
+          if (nodeType === 'topic') {
+            const topicIndex = lo.topics.findIndex(t => t.id === nodeId)
+            if (topicIndex !== -1) {
+              lo.topics.splice(topicIndex, 1)
+              lo.topics.forEach((t, idx) => t.order = idx + 1)
+              return newData
+            }
+          }
+
+          for (let t = 0; t < lo.topics.length; t++) {
+            const topic = { ...lo.topics[t] }
+            lo.topics[t] = topic
+            topic.subtopics = [...(topic.subtopics || [])]
+
+            if (nodeType === 'subtopic') {
+              const subIndex = topic.subtopics.findIndex(s => s.id === nodeId)
+              if (subIndex !== -1) {
+                topic.subtopics.splice(subIndex, 1)
+                topic.subtopics.forEach((s, idx) => s.order = idx + 1)
+                return newData
+              }
+            }
+          }
+        }
+      }
+      return prev
+    })
+  }, [])
+
+  // Get selected scalar item
+  const selectedScalarItem = useMemo(() => {
+    if (!selection.type || selection.type === 'lesson') return null
+
+    for (const module of scalarData.modules) {
+      for (const lo of module.learningObjectives) {
+        if (selection.type === 'lo' && lo.id === selection.id) {
+          return { type: 'lo', data: lo, moduleId: module.id }
+        }
+        for (const topic of lo.topics) {
+          if (selection.type === 'topic' && topic.id === selection.id) {
+            return { type: 'topic', data: topic, loId: lo.id, moduleId: module.id }
+          }
+          for (const subtopic of topic.subtopics || []) {
+            if (selection.type === 'subtopic' && subtopic.id === selection.id) {
+              return { type: 'subtopic', data: subtopic, topicId: topic.id, loId: lo.id, moduleId: module.id }
+            }
+          }
+        }
+      }
+    }
+    return null
+  }, [selection, scalarData])
+
+  // --------------------------------------------
   // SELECTION OPERATIONS
   // --------------------------------------------
 
@@ -382,6 +662,13 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     // Scalar
     scalarData,
     setScalarData,
+    selectedScalarItem,
+    toggleScalarExpand,
+    addLearningObjective,
+    addTopic,
+    addSubtopic,
+    updateScalarNode,
+    deleteScalarNode,
 
     // Selection
     selection,
@@ -411,7 +698,9 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     updateLesson, createLesson, deleteLesson, duplicateLesson,
     scheduleLesson, unscheduleLesson, saveToLibrary,
     moveLesson, resizeLesson, checkCollision, findAvailableSlot,
-    scalarData, selection, select, startEditing, clearSelection,
+    scalarData, selectedScalarItem, toggleScalarExpand,
+    addLearningObjective, addTopic, addSubtopic, updateScalarNode, deleteScalarNode,
+    selection, select, startEditing, clearSelection,
     editorCollapsed, courseData, setCourseData
   ])
 

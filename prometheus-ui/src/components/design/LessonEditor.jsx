@@ -321,19 +321,127 @@ function LessonEditorContent({ lesson, updateLesson }) {
 }
 
 // ============================================
-// SCALAR EDITOR CONTENT (Phase 5 - placeholder)
+// SCALAR EDITOR CONTENT (Phase 5)
 // ============================================
 
 function ScalarEditorContent() {
-  const { selection } = useDesign()
+  const { selection, selectedScalarItem, updateScalarNode, deleteScalarNode } = useDesign()
+
+  if (!selectedScalarItem) {
+    return (
+      <div style={{ color: THEME.TEXT_DIM, fontSize: '1.1vh', fontStyle: 'italic' }}>
+        No item selected
+      </div>
+    )
+  }
+
+  const { type, data } = selectedScalarItem
+
+  // Determine colors based on type
+  const typeColors = {
+    lo: THEME.AMBER,
+    topic: '#4a9eff',
+    subtopic: '#9b59b6'
+  }
+  const color = typeColors[type] || THEME.AMBER
 
   return (
-    <div style={{ color: THEME.TEXT_DIM, fontSize: '1.1vh' }}>
-      <p>Editing: {selection.type}</p>
-      <p>ID: {selection.id}</p>
-      <p style={{ fontStyle: 'italic', marginTop: '1vh' }}>
-        Scalar editing coming in Phase 5
-      </p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5vh' }}>
+      {/* Type indicator */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
+        <div
+          style={{
+            width: '0.8vh',
+            height: '1.6vh',
+            borderRadius: '0.2vh',
+            background: color
+          }}
+        />
+        <span
+          style={{
+            fontSize: '1.2vh',
+            color: color,
+            fontFamily: THEME.FONT_PRIMARY,
+            textTransform: 'uppercase',
+            letterSpacing: '0.1vw'
+          }}
+        >
+          {type === 'lo' ? 'Learning Objective' : type === 'topic' ? 'Topic' : 'Subtopic'}
+        </span>
+      </div>
+
+      {/* LO Editor */}
+      {type === 'lo' && (
+        <>
+          <FieldDropdown
+            label="Verb"
+            value={data.verb}
+            options={[
+              { value: 'EXPLAIN', label: 'EXPLAIN' },
+              { value: 'IDENTIFY', label: 'IDENTIFY' },
+              { value: 'DESCRIBE', label: 'DESCRIBE' },
+              { value: 'DEMONSTRATE', label: 'DEMONSTRATE' },
+              { value: 'APPLY', label: 'APPLY' },
+              { value: 'ANALYZE', label: 'ANALYZE' },
+              { value: 'EVALUATE', label: 'EVALUATE' },
+              { value: 'CREATE', label: 'CREATE' }
+            ]}
+            onChange={(value) => updateScalarNode(type, data.id, { verb: value })}
+          />
+          <FieldInput
+            label="Description"
+            value={data.description}
+            onChange={(value) => updateScalarNode(type, data.id, { description: value })}
+          />
+          <div style={{ fontSize: '1vh', color: THEME.TEXT_DIM }}>
+            Topics: {data.topics?.length || 0}
+          </div>
+        </>
+      )}
+
+      {/* Topic Editor */}
+      {type === 'topic' && (
+        <>
+          <FieldInput
+            label="Title"
+            value={data.title}
+            onChange={(value) => updateScalarNode(type, data.id, { title: value })}
+          />
+          <div style={{ fontSize: '1vh', color: THEME.TEXT_DIM }}>
+            Subtopics: {data.subtopics?.length || 0}
+          </div>
+        </>
+      )}
+
+      {/* Subtopic Editor */}
+      {type === 'subtopic' && (
+        <FieldInput
+          label="Title"
+          value={data.title}
+          onChange={(value) => updateScalarNode(type, data.id, { title: value })}
+        />
+      )}
+
+      {/* Divider */}
+      <div style={{ height: '1px', background: THEME.BORDER, margin: '0.5vh 0' }} />
+
+      {/* Delete button */}
+      <button
+        onClick={() => deleteScalarNode(type, data.id)}
+        style={{
+          background: 'transparent',
+          border: `1px solid #cc4444`,
+          borderRadius: '0.4vh',
+          color: '#cc4444',
+          fontSize: '1vh',
+          padding: '0.6vh 1vw',
+          cursor: 'pointer',
+          textTransform: 'uppercase',
+          letterSpacing: '0.1vw'
+        }}
+      >
+        Delete {type.toUpperCase()}
+      </button>
     </div>
   )
 }
