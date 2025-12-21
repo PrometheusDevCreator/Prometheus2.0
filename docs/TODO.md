@@ -15,7 +15,7 @@
 
 | Task | Priority | Status | Notes |
 |------|----------|--------|-------|
-| **DESIGN Page Reimplementation** | **HIGH** | **Phase 3 COMPLETE** | Phase 4 (Lesson Library) next. See `docs/briefs/DESIGN_PAGE_IMPLEMENTATION_PLAN.md` |
+| **DESIGN Page Reimplementation** | **HIGH** | **Phase 4 COMPLETE** | Phase 5 (Scalar Tab) next. See `docs/briefs/DESIGN_PAGE_IMPLEMENTATION_PLAN.md` |
 | Backend API integration | HIGH | Not Started | API scaffolded in `core/api/`, needs connection to UI |
 | PKE Engine implementation | HIGH | Not Started | Core intelligence feature, `core/pke/` is placeholder |
 
@@ -38,6 +38,7 @@
 
 | Task | Completed | Notes |
 |------|-----------|-------|
+| DESIGN Phase 4: Lesson Library | 2025-12-21 | LessonLibrary, LessonCard, context menus, Save to Library |
 | DESIGN Phase 3: Timetable Interactions | 2025-12-21 | Drag-to-move, resize, library drag, view toggle |
 | DESIGN Phase 2: Timetable Core | 2025-12-21 | TimeControls, LessonBlock, TimetableGrid |
 | DESIGN Phase 1: Foundation | 2025-12-21 | DesignContext, DesignNavBar, LessonEditor |

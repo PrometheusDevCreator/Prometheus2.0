@@ -41,6 +41,10 @@ function LessonBlock({
     startEditing,
     updateLesson,
     resizeLesson,
+    unscheduleLesson,
+    saveToLibrary,
+    duplicateLesson,
+    deleteLesson,
     LESSON_TYPES
   } = useDesign()
 
@@ -48,8 +52,9 @@ function LessonBlock({
   const blockRef = useRef(null)
   const dragStartRef = useRef(null)
 
-  // Local hover state
+  // Local state
   const [isHovered, setIsHovered] = useState(false)
+  const [contextMenu, setContextMenu] = useState(null)
 
   // Determine block state
   const isSelected = selection.type === 'lesson' && selection.id === lesson.id
@@ -94,6 +99,40 @@ function LessonBlock({
     e.stopPropagation()
     startEditing('lesson', lesson.id)
   }, [startEditing, lesson.id])
+
+  // Handle right-click - context menu
+  const handleContextMenu = useCallback((e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    select('lesson', lesson.id)
+    setContextMenu({ x: e.clientX, y: e.clientY })
+  }, [select, lesson.id])
+
+  // Close context menu
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null)
+  }, [])
+
+  // Context menu actions
+  const handleUnschedule = useCallback(() => {
+    unscheduleLesson(lesson.id)
+    closeContextMenu()
+  }, [lesson.id, unscheduleLesson, closeContextMenu])
+
+  const handleSaveToLibrary = useCallback(() => {
+    saveToLibrary(lesson.id)
+    closeContextMenu()
+  }, [lesson.id, saveToLibrary, closeContextMenu])
+
+  const handleDuplicate = useCallback(() => {
+    duplicateLesson(lesson.id)
+    closeContextMenu()
+  }, [lesson.id, duplicateLesson, closeContextMenu])
+
+  const handleDelete = useCallback(() => {
+    deleteLesson(lesson.id)
+    closeContextMenu()
+  }, [lesson.id, deleteLesson, closeContextMenu])
 
   // Handle drag start for moving block
   const handleDragStart = useCallback((e) => {
@@ -204,10 +243,12 @@ function LessonBlock({
   }
 
   return (
+    <>
     <div
       ref={blockRef}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
+      onContextMenu={handleContextMenu}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       draggable
@@ -350,6 +391,108 @@ function LessonBlock({
             draggable={false}
           />
         </>
+      )}
+    </div>
+
+    {/* Context Menu */}
+    {contextMenu && (
+      <BlockContextMenu
+        x={contextMenu.x}
+        y={contextMenu.y}
+        lesson={lesson}
+        onUnschedule={handleUnschedule}
+        onSaveToLibrary={handleSaveToLibrary}
+        onDuplicate={handleDuplicate}
+        onDelete={handleDelete}
+        onClose={closeContextMenu}
+      />
+    )}
+    </>
+  )
+}
+
+// ============================================
+// CONTEXT MENU COMPONENT
+// ============================================
+
+function BlockContextMenu({ x, y, lesson, onUnschedule, onSaveToLibrary, onDuplicate, onDelete, onClose }) {
+  // Prevent menu from going off-screen
+  const adjustedX = Math.min(x, window.innerWidth - 180)
+  const adjustedY = Math.min(y, window.innerHeight - 180)
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 999
+        }}
+        onClick={onClose}
+      />
+
+      {/* Menu */}
+      <div
+        style={{
+          position: 'fixed',
+          top: adjustedY,
+          left: adjustedX,
+          background: THEME.BG_PANEL,
+          border: `1px solid ${THEME.BORDER_LIGHT}`,
+          borderRadius: '0.5vh',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+          zIndex: 1000,
+          minWidth: '10vw',
+          overflow: 'hidden'
+        }}
+      >
+        <ContextMenuItem label="Edit" hint="Double-click" disabled />
+        <ContextMenuItem label="Unschedule" onClick={onUnschedule} />
+        {!lesson.saved && (
+          <ContextMenuItem label="Save to Library" onClick={onSaveToLibrary} />
+        )}
+        <ContextMenuItem label="Duplicate" onClick={onDuplicate} />
+        <div style={{ height: '1px', background: THEME.BORDER, margin: '0.3vh 0' }} />
+        <ContextMenuItem label="Delete" onClick={onDelete} danger />
+      </div>
+    </>
+  )
+}
+
+function ContextMenuItem({ label, hint, onClick, disabled, danger }) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <div
+      onClick={disabled ? undefined : onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        padding: '0.8vh 1vw',
+        fontSize: '1.1vh',
+        fontFamily: THEME.FONT_PRIMARY,
+        color: disabled
+          ? THEME.TEXT_DIM
+          : danger
+            ? hovered ? '#ff6666' : '#cc4444'
+            : hovered ? THEME.WHITE : THEME.TEXT_PRIMARY,
+        background: hovered && !disabled ? THEME.BG_DARK : 'transparent',
+        cursor: disabled ? 'default' : 'pointer',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        transition: 'all 0.15s ease'
+      }}
+    >
+      <span>{label}</span>
+      {hint && (
+        <span style={{ fontSize: '0.9vh', color: THEME.TEXT_DIM, marginLeft: '1vw' }}>
+          {hint}
+        </span>
       )}
     </div>
   )
