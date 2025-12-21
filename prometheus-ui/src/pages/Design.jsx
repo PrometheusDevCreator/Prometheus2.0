@@ -29,6 +29,7 @@ import { THEME } from '../constants/theme'
 import { DesignProvider, useDesign } from '../contexts/DesignContext'
 import DesignNavBar from '../components/design/DesignNavBar'
 import LessonEditor from '../components/design/LessonEditor'
+import TimetableWorkspace from '../components/design/TimetableWorkspace'
 import Footer from '../components/Footer'
 
 // ============================================
@@ -106,7 +107,7 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState }) {
         >
           {/* Workspace Content - switches based on active tab */}
           {activeTab === 'timetable' ? (
-            <TimetableWorkspacePlaceholder />
+            <TimetableWorkspace />
           ) : (
             <ScalarWorkspacePlaceholder />
           )}
@@ -131,54 +132,8 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState }) {
 }
 
 // ============================================
-// PLACEHOLDER WORKSPACES (Phase 2+ implementation)
+// PLACEHOLDER WORKSPACES (Phase 5 implementation)
 // ============================================
-
-function TimetableWorkspacePlaceholder() {
-  const { viewMode, currentDay, currentWeek } = useDesign()
-
-  return (
-    <div
-      style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: THEME.BG_DARK,
-        border: `1px dashed ${THEME.BORDER}`,
-        margin: '1vh 1vw',
-        borderRadius: '0.5vh'
-      }}
-    >
-      <div
-        style={{
-          textAlign: 'center',
-          color: THEME.TEXT_DIM
-        }}
-      >
-        <h2 style={{ fontSize: '2vh', color: THEME.WHITE, marginBottom: '1vh' }}>
-          TIMETABLE WORKSPACE
-        </h2>
-        <p style={{ fontSize: '1.3vh', marginBottom: '0.5vh' }}>
-          View Mode: <span style={{ color: THEME.AMBER }}>{viewMode.toUpperCase()}</span>
-        </p>
-        <p style={{ fontSize: '1.3vh', marginBottom: '1.5vh' }}>
-          Day {currentDay} | Week {currentWeek}
-        </p>
-        <p style={{ fontSize: '1.1vh', fontStyle: 'italic' }}>
-          Phase 2: Time controls, timetable grid, lesson blocks
-        </p>
-        <p style={{ fontSize: '1.1vh', fontStyle: 'italic' }}>
-          Phase 3: Drag interactions, resize, scheduling
-        </p>
-        <p style={{ fontSize: '1.1vh', fontStyle: 'italic' }}>
-          Phase 4: Lesson Library
-        </p>
-      </div>
-    </div>
-  )
-}
 
 function ScalarWorkspacePlaceholder() {
   const { currentModule } = useDesign()
