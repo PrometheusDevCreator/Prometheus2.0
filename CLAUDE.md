@@ -29,6 +29,15 @@
 >
 > Reference: `/PLAYWRIGHT_CONFIG.md` (Project Root)
 
+> **📋 STATUS & TASKS**
+>
+> Before starting work, check current project state:
+> - **Status:** `docs/STATUS.md` - Current system state, recent changes
+> - **TODO:** `docs/TODO.md` - Active task backlog
+> - **Ideas:** `docs/IDEAS.md` - Strategic ideas parking lot
+>
+> Update these files as work progresses. Offer to add ideas when Founder mentions them.
+
 ---
 
 ## Project Overview
@@ -50,10 +59,13 @@
 
 ## Current Development Status
 
-**Phase:** Early Development / Foundation
-**UI Status:** React frontend functional (basic navigation, PKE interface started)
-**Backend Status:** Scaffolded (API stub, importers started, models defined)
-**Orchestrator Status:** Scaffolded (agent adapters in place, schemas defined)
+> **For detailed current status, see `docs/STATUS.md`**
+
+**Phase:** UI Stable / Backend Pending
+**UI Status:** React frontend STABLE - Login, Navigate, Define (LOCKED), Design pages functional
+**Backend Status:** Scaffolded (API stub exists, not connected to UI)
+**PKE Status:** Placeholder only (not implemented)
+**Orchestrator Status:** Scaffolded (agent adapters defined)
 
 ---
 
@@ -161,10 +173,14 @@ Prometheus2.0/
 |------|---------|
 | `CLAUDE_PROTOCOL.md` | **MANDATORY** - Task execution protocol |
 | `UI_DOCTRINE.md` | **MANDATORY** - Immutable UI frame definitions |
+| `PLAYWRIGHT_CONFIG.md` | **MANDATORY** - Viewport/screenshot standards |
+| `docs/STATUS.md` | **CHECK FIRST** - Current system state |
+| `docs/TODO.md` | **CHECK FIRST** - Active task backlog |
+| `docs/IDEAS.md` | Strategic ideas parking lot |
+| `docs/ui/GRID_REFERENCE.md` | Grid coordinate system (1890×940 baseline) |
 | `prometheus-ui/MOCKUP_SPECS.md` | Exact measurements from PowerPoint mockups |
 | `docs/prometheus-constitution.md` | Core governance principles |
 | `docs/architecture-overview.md` | System architecture |
-| `docs/memory-framework.md` | PKE memory system design |
 | `core/api/main.py` | Backend API entry point |
 | `prometheus-ui/src/App.jsx` | Frontend main application |
 
@@ -215,15 +231,20 @@ cd core
 
 ---
 
-## Known Gaps (as of 2025-12-08)
+## Known Gaps
 
-- [ ] `core/generation/` - Empty (generation engine not implemented)
-- [ ] `core/pke/` - Empty (PKE engine not implemented)
-- [ ] `core/formatting/` - Empty (formatting not implemented)
-- [ ] `orchestrator/routes/` - Empty (API routes not implemented)
+> **For current task backlog, see `docs/TODO.md`**
+
+| Gap | Location | Priority |
+|-----|----------|----------|
+| PKE Engine | `core/pke/` | HIGH |
+| Backend API connection | `core/api/` | HIGH |
+| Generation Engine | `core/generation/` | MEDIUM |
+| Formatting Engine | `core/formatting/` | MEDIUM |
+| Build/Format/Generate pages | `prometheus-ui/src/pages/` | MEDIUM |
 
 ---
 
-*Last Updated: 2025-12-08*
-*Updated By: Claude Code (CC) - Structure Audit*
+*Last Updated: 2025-12-21*
+*Updated By: Claude Code (CC) - Documentation Overhaul*
 
