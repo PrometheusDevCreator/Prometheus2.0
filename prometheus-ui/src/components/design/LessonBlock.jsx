@@ -165,9 +165,9 @@ function LessonBlock({
     const handleMouseMove = (moveEvent) => {
       const deltaX = moveEvent.clientX - startX
       const deltaMinutes = deltaX / pixelsPerMinute
-      const newDuration = Math.max(30, startDuration + deltaMinutes)
-      // Snap to 30-minute increments
-      const snappedDuration = Math.round(newDuration / 30) * 30
+      const newDuration = Math.max(5, startDuration + deltaMinutes)
+      // Snap to 5-minute increments
+      const snappedDuration = Math.round(newDuration / 5) * 5
       resizeLesson(lesson.id, snappedDuration)
     }
 
@@ -194,8 +194,8 @@ function LessonBlock({
       const deltaX = moveEvent.clientX - startX
       const deltaMinutes = deltaX / pixelsPerMinute
       // Moving left edge right = shorter duration, moving left = longer duration
-      const newDuration = Math.max(30, startDuration - deltaMinutes)
-      const snappedDuration = Math.round(newDuration / 30) * 30
+      const newDuration = Math.max(5, startDuration - deltaMinutes)
+      const snappedDuration = Math.round(newDuration / 5) * 5
       const durationChange = startDuration - snappedDuration
       const newStartMinutes = originalStartMinutes + durationChange
 

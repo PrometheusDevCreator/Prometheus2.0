@@ -288,11 +288,11 @@ function LessonEditorContent({
               value={lesson.duration.toString()}
               type="number"
               suffix="min"
-              min={30}
+              min={5}
               max={480}
-              step={30}
+              step={5}
               onChange={(value) => {
-                const duration = Math.max(30, Math.min(480, parseInt(value) || 30))
+                const duration = Math.max(5, Math.min(480, parseInt(value) || 5))
                 updateLesson(lesson.id, { duration })
               }}
               compact

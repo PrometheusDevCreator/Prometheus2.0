@@ -53,21 +53,21 @@ function TimeControls({
     return `${totalHours}h ${remainingMins}m`
   }
 
-  // Handle start time change
+  // Handle start time change (range: 6-12, i.e., 0600-1200)
   const handleStartChange = useCallback((e) => {
     const value = parseInt(e.target.value)
-    // Ensure at least 2 hours visible
-    if (value < endHour - 1) {
+    // Clamp to valid range and ensure at least 2 hours before end
+    if (value >= 6 && value <= 12 && value < endHour - 1) {
       if (onStartChange) onStartChange(value)
       else setLocalStartHour(value)
     }
   }, [endHour, onStartChange])
 
-  // Handle end time change
+  // Handle end time change (range: 12-20, i.e., 1200-2000)
   const handleEndChange = useCallback((e) => {
     const value = parseInt(e.target.value)
-    // Ensure at least 2 hours visible
-    if (value > startHour + 1) {
+    // Clamp to valid range and ensure at least 2 hours after start
+    if (value >= 12 && value <= 20 && value > startHour + 1) {
       if (onEndChange) onEndChange(value)
       else setLocalEndHour(value)
     }
@@ -146,32 +146,32 @@ function TimeControls({
               position: 'absolute',
               top: '50%',
               transform: 'translateY(-50%)',
-              left: `${((startHour - 6) / 16) * 100}%`,
-              right: `${100 - ((endHour - 6) / 16) * 100}%`,
+              left: `${((startHour - 6) / 14) * 100}%`,
+              right: `${100 - ((endHour - 6) / 14) * 100}%`,
               height: '0.4vh',
               background: THEME.AMBER,
               borderRadius: '0.2vh'
             }}
           />
 
-          {/* Start slider */}
+          {/* Start slider (0600-1200) */}
           <input
             type="range"
             min={6}
-            max={22}
+            max={12}
             value={startHour}
             onChange={handleStartChange}
             style={{
               ...sliderStyle,
-              zIndex: startHour > endHour - 2 ? 5 : 3
+              zIndex: 3
             }}
           />
 
-          {/* End slider */}
+          {/* End slider (1200-2000) */}
           <input
             type="range"
-            min={6}
-            max={22}
+            min={12}
+            max={20}
             value={endHour}
             onChange={handleEndChange}
             style={{

@@ -18,7 +18,7 @@
  * - Block context menu type -> Editor dropdown updates
  */
 
-import { createContext, useContext, useState, useCallback, useMemo } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react'
 
 // ============================================
 // DATA MODEL TYPES (for reference)
@@ -81,8 +81,8 @@ function minutesToTime(minutes) {
   return `${hour.toString().padStart(2, '0')}${min.toString().padStart(2, '0')}`
 }
 
-// Snap minutes to 30-minute grid
-function snapToGrid(minutes, gridSize = 30) {
+// Snap minutes to 5-minute grid
+function snapToGrid(minutes, gridSize = 5) {
   return Math.round(minutes / gridSize) * gridSize
 }
 
@@ -143,6 +143,51 @@ export function DesignProvider({ children, courseData, setCourseData }) {
   // SCALAR HIERARCHY STATE
   // Module > LearningObjective > Topic > Subtopic
   // --------------------------------------------
+
+  // Helper to convert courseData.learningObjectives (strings) to scalar format
+  const convertCourseDataLOs = useCallback((loStrings) => {
+    if (!loStrings || loStrings.length === 0) return []
+    return loStrings
+      .filter(lo => lo && lo.trim().length > 0)
+      .map((loText, idx) => {
+        const words = loText.trim().split(/\s+/)
+        const verb = words[0]?.toUpperCase() || 'IDENTIFY'
+        const description = words.slice(1).join(' ') || ''
+        return {
+          id: `lo-define-${idx + 1}`,
+          verb,
+          description,
+          order: idx + 1,
+          expanded: true,
+          topics: []
+        }
+      })
+  }, [])
+
+  // Initialize scalarData from courseData if available
+  const initialLOs = useMemo(() => {
+    if (courseData?.learningObjectives?.length > 0) {
+      return convertCourseDataLOs(courseData.learningObjectives)
+    }
+    // Fallback to default LO
+    return [{
+      id: 'lo-1-1',
+      verb: 'EXPLAIN',
+      description: 'the fundamentals of the subject',
+      order: 1,
+      expanded: true,
+      topics: [
+        {
+          id: 'topic-1-1-1',
+          title: 'Introduction to Core Concepts',
+          order: 1,
+          expanded: false,
+          subtopics: []
+        }
+      ]
+    }]
+  }, [courseData?.learningObjectives, convertCourseDataLOs])
+
   const [scalarData, setScalarData] = useState({
     modules: [
       {
@@ -150,27 +195,25 @@ export function DesignProvider({ children, courseData, setCourseData }) {
         name: 'Module 1',
         order: 1,
         expanded: true,
-        learningObjectives: [
-          {
-            id: 'lo-1-1',
-            verb: 'EXPLAIN',
-            description: 'the fundamentals of the subject',
-            order: 1,
-            expanded: true,
-            topics: [
-              {
-                id: 'topic-1-1-1',
-                title: 'Introduction to Core Concepts',
-                order: 1,
-                expanded: false,
-                subtopics: []
-              }
-            ]
-          }
-        ]
+        learningObjectives: initialLOs
       }
     ]
   })
+
+  // Sync scalarData when courseData.learningObjectives changes
+  useEffect(() => {
+    if (courseData?.learningObjectives?.length > 0) {
+      const newLOs = convertCourseDataLOs(courseData.learningObjectives)
+      setScalarData(prev => ({
+        ...prev,
+        modules: prev.modules.map((module, idx) =>
+          idx === 0
+            ? { ...module, learningObjectives: newLOs }
+            : module
+        )
+      }))
+    }
+  }, [courseData?.learningObjectives, convertCourseDataLOs])
 
   // --------------------------------------------
   // SELECTION STATE (exactly one at a time)
@@ -364,12 +407,12 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     })
   }, [updateLesson])
 
-  // Resize lesson duration (snaps to 30-min increments)
+  // Resize lesson duration (snaps to 5-min increments)
   const resizeLesson = useCallback((lessonId, newDuration) => {
-    // Snap to 30-minute increments
-    const snappedDuration = Math.round(newDuration / 30) * 30
-    // Minimum 30 minutes, maximum 480 minutes (8 hours)
-    const clampedDuration = Math.max(30, Math.min(480, snappedDuration))
+    // Snap to 5-minute increments
+    const snappedDuration = Math.round(newDuration / 5) * 5
+    // Minimum 5 minutes, maximum 480 minutes (8 hours)
+    const clampedDuration = Math.max(5, Math.min(480, snappedDuration))
     updateLesson(lessonId, { duration: clampedDuration })
   }, [updateLesson])
 

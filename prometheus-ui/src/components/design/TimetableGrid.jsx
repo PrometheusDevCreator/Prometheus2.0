@@ -236,8 +236,8 @@ function DayRow({
     const adjustedClientX = clientX - grabOffsetX
     const relativeX = adjustedClientX - containerRect.left
     const minutesFromStart = relativeX / pixelsPerMinute
-    // Snap to 30-minute increments
-    const snappedMinutes = Math.round(minutesFromStart / 30) * 30
+    // Snap to 5-minute increments
+    const snappedMinutes = Math.round(minutesFromStart / 5) * 5
     const totalMinutes = startHour * 60 + snappedMinutes
     // Clamp to grid bounds
     const maxMinutes = endHour * 60
