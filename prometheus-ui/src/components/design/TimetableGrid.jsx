@@ -22,11 +22,11 @@ import { THEME } from '../../constants/theme'
 import { useDesign } from '../../contexts/DesignContext'
 import LessonBlock from './LessonBlock'
 
-// Constants
-const DAY_LABEL_WIDTH = 60      // Width of day label column
-const HOUR_WIDTH = 80           // Width of each hour column
-const DAY_HEIGHT = 60           // Height of each day row
-const HEADER_HEIGHT = 30        // Height of time header
+// Constants - Increased by 15% for better readability
+const DAY_LABEL_WIDTH = 70      // Width of day label column (was 60)
+const HOUR_WIDTH = 92           // Width of each hour column (was 80, +15%)
+const DAY_HEIGHT = 69           // Height of each day row (was 60, +15%)
+const HEADER_HEIGHT = 35        // Height of time header (was 30)
 const NUM_DAYS = 5              // Number of day rows to show
 const PIXELS_PER_MINUTE = HOUR_WIDTH / 60  // For time calculations
 
@@ -138,7 +138,7 @@ function TimetableGrid({ startHour = 8, endHour = 17 }) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.1vh',
+                fontSize: '1.3vh',
                 color: THEME.TEXT_DIM,
                 fontFamily: THEME.FONT_MONO,
                 borderRight: idx < hours.length - 1 ? `1px solid ${THEME.BORDER}` : 'none',
@@ -287,7 +287,7 @@ function DayRow({
           display: 'flex',
           alignItems: 'center',
           paddingLeft: '0.8vw',
-          fontSize: '1.1vh',
+          fontSize: '1.3vh',
           color: THEME.WHITE,
           fontFamily: THEME.FONT_PRIMARY,
           borderRight: `1px solid ${THEME.BORDER}`,
@@ -352,7 +352,7 @@ function DayRow({
               left: '50%',
               top: '50%',
               transform: 'translate(-50%, -50%)',
-              fontSize: '1vh',
+              fontSize: '1.2vh',
               color: THEME.TEXT_DIM,
               opacity: 0.5,
               fontStyle: 'italic'

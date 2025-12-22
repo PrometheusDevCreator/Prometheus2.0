@@ -297,7 +297,7 @@ function LessonBlock({
         {/* Time Range */}
         <div
           style={{
-            fontSize: '0.9vh',
+            fontSize: '1.1vh',
             color: THEME.TEXT_DIM,
             fontFamily: THEME.FONT_MONO,
             whiteSpace: 'nowrap'
@@ -309,7 +309,7 @@ function LessonBlock({
         {/* Lesson Title */}
         <div
           style={{
-            fontSize: '1.1vh',
+            fontSize: '1.3vh',
             color: isSelected ? THEME.WHITE : THEME.TEXT_PRIMARY,
             fontFamily: THEME.FONT_PRIMARY,
             fontWeight: isSelected ? 500 : 400,
@@ -326,7 +326,7 @@ function LessonBlock({
         {lesson.topics.length > 0 && (
           <div
             style={{
-              fontSize: '0.85vh',
+              fontSize: '1.0vh',
               color: THEME.TEXT_DIM,
               whiteSpace: 'nowrap',
               overflow: 'hidden',
@@ -345,7 +345,7 @@ function LessonBlock({
             position: 'absolute',
             bottom: '2px',
             right: '4px',
-            fontSize: '0.7vh',
+            fontSize: '0.85vh',
             color: THEME.AMBER,
             fontFamily: THEME.FONT_MONO,
             letterSpacing: '0.05vw',
@@ -473,7 +473,7 @@ function ContextMenuItem({ label, hint, onClick, disabled, danger }) {
       onMouseLeave={() => setHovered(false)}
       style={{
         padding: '0.8vh 1vw',
-        fontSize: '1.1vh',
+        fontSize: '1.3vh',
         fontFamily: THEME.FONT_PRIMARY,
         color: disabled
           ? THEME.TEXT_DIM
@@ -490,7 +490,7 @@ function ContextMenuItem({ label, hint, onClick, disabled, danger }) {
     >
       <span>{label}</span>
       {hint && (
-        <span style={{ fontSize: '0.9vh', color: THEME.TEXT_DIM, marginLeft: '1vw' }}>
+        <span style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM, marginLeft: '1vw' }}>
           {hint}
         </span>
       )}

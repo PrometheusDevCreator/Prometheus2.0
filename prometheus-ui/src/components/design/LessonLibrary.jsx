@@ -94,10 +94,11 @@ function LessonLibrary() {
           borderBottom: `1px solid ${THEME.BORDER}`
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1vw' }}>
+        {/* Left: Label + Tabs */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1vw', flex: 1 }}>
           <span
             style={{
-              fontSize: '1.2vh',
+              fontSize: '1.3vh',
               letterSpacing: '0.1vw',
               color: THEME.TEXT_DIM,
               fontFamily: THEME.FONT_PRIMARY,
@@ -124,34 +125,11 @@ function LessonLibrary() {
           </div>
         </div>
 
-        {/* Add Lesson Button */}
-        <button
-          onClick={handleAddLesson}
-          style={{
-            background: 'transparent',
-            border: `1px dashed ${THEME.AMBER}`,
-            borderRadius: '0.5vh',
-            color: THEME.AMBER,
-            fontSize: '1.1vh',
-            padding: '0.5vh 1vw',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.3vw',
-            transition: 'all 0.2s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.background = THEME.AMBER
-            e.target.style.color = THEME.BG_DARK
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.background = 'transparent'
-            e.target.style.color = THEME.AMBER
-          }}
-        >
-          <span style={{ fontSize: '1.3vh' }}>+</span>
-          New Lesson
-        </button>
+        {/* Center: Add Lesson Button - styled like SCALAR tab button */}
+        <NewLessonButton onClick={handleAddLesson} />
+
+        {/* Right spacer for balance */}
+        <div style={{ flex: 1 }} />
       </div>
 
       {/* Library Content */}
@@ -172,7 +150,7 @@ function LessonLibrary() {
               alignItems: 'center',
               justifyContent: 'center',
               color: THEME.TEXT_DIM,
-              fontSize: '1.1vh',
+              fontSize: '1.3vh',
               fontStyle: 'italic'
             }}
           >
@@ -211,6 +189,36 @@ function LessonLibrary() {
 // SUB-COMPONENTS
 // ============================================
 
+function NewLessonButton({ onClick }) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        padding: '1vh 1.8vw',
+        fontSize: '1.3vh',
+        letterSpacing: '0.15vw',
+        fontFamily: THEME.FONT_PRIMARY,
+        background: hovered ? THEME.AMBER : 'transparent',
+        border: `1px dashed ${THEME.AMBER}`,
+        borderRadius: '1.8vh',
+        color: hovered ? THEME.BG_DARK : THEME.AMBER,
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.4vw',
+        transition: 'all 0.2s ease'
+      }}
+    >
+      <span style={{ fontSize: '1.5vh', fontWeight: 500 }}>+</span>
+      New Lesson
+    </button>
+  )
+}
+
 function LibraryTab({ label, active, count, onClick }) {
   const [hovered, setHovered] = useState(false)
 
@@ -224,8 +232,8 @@ function LibraryTab({ label, active, count, onClick }) {
         border: `1px solid ${active ? THEME.BORDER_LIGHT : THEME.BORDER}`,
         borderRadius: '0.4vh',
         color: active ? THEME.WHITE : hovered ? THEME.AMBER : THEME.TEXT_DIM,
-        fontSize: '1vh',
-        padding: '0.4vh 0.8vw',
+        fontSize: '1.2vh',
+        padding: '0.5vh 0.9vw',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -241,7 +249,7 @@ function LibraryTab({ label, active, count, onClick }) {
             color: THEME.BG_DARK,
             borderRadius: '0.3vh',
             padding: '0 0.3vw',
-            fontSize: '0.9vh',
+            fontSize: '1vh',
             fontWeight: 500
           }}
         >
@@ -323,7 +331,7 @@ function ContextMenuItem({ label, hint, onClick, disabled, danger }) {
       onMouseLeave={() => setHovered(false)}
       style={{
         padding: '0.8vh 1vw',
-        fontSize: '1.1vh',
+        fontSize: '1.3vh',
         fontFamily: THEME.FONT_PRIMARY,
         color: disabled
           ? THEME.TEXT_DIM
@@ -340,7 +348,7 @@ function ContextMenuItem({ label, hint, onClick, disabled, danger }) {
     >
       <span>{label}</span>
       {hint && (
-        <span style={{ fontSize: '0.9vh', color: THEME.TEXT_DIM, marginLeft: '1vw' }}>
+        <span style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM, marginLeft: '1vw' }}>
           {hint}
         </span>
       )}

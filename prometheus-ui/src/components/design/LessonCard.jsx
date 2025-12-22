@@ -105,7 +105,7 @@ function LessonCard({ lesson, onContextMenu }) {
       {/* Title */}
       <span
         style={{
-          fontSize: '1.1vh',
+          fontSize: '1.3vh',
           color: isSelected ? THEME.WHITE : THEME.TEXT_PRIMARY,
           fontFamily: THEME.FONT_PRIMARY,
           fontWeight: isSelected ? 500 : 400,
@@ -121,7 +121,7 @@ function LessonCard({ lesson, onContextMenu }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span
           style={{
-            fontSize: '0.9vh',
+            fontSize: '1.1vh',
             color: THEME.TEXT_DIM,
             fontFamily: THEME.FONT_MONO
           }}
@@ -130,7 +130,7 @@ function LessonCard({ lesson, onContextMenu }) {
         </span>
         <span
           style={{
-            fontSize: '0.8vh',
+            fontSize: '1.0vh',
             color: lessonType.color,
             fontFamily: THEME.FONT_PRIMARY,
             textTransform: 'uppercase',

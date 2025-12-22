@@ -73,9 +73,9 @@ function LessonEditor() {
   return (
     <div
       style={{
-        width: '20%',
-        minWidth: '200px',
-        maxWidth: '300px',
+        width: '22%',
+        minWidth: '300px',
+        maxWidth: '400px',
         height: '100%',
         background: THEME.BG_PANEL,
         borderRight: `1px solid ${THEME.BORDER}`,
@@ -97,7 +97,7 @@ function LessonEditor() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8vw' }}>
           <span
             style={{
-              fontSize: '1.3vh',
+              fontSize: '1.5vh',
               letterSpacing: '0.15vw',
               color: THEME.WHITE,
               fontFamily: THEME.FONT_PRIMARY,
@@ -108,7 +108,7 @@ function LessonEditor() {
           </span>
           <span
             style={{
-              fontSize: '1.1vh',
+              fontSize: '1.3vh',
               color: THEME.AMBER,
               fontFamily: THEME.FONT_MONO
             }}
@@ -122,7 +122,7 @@ function LessonEditor() {
             background: 'transparent',
             border: 'none',
             color: THEME.TEXT_DIM,
-            fontSize: '1.4vh',
+            fontSize: '1.6vh',
             cursor: 'pointer',
             padding: '0.3vh 0.5vw'
           }}
@@ -143,26 +143,8 @@ function LessonEditor() {
         )}
       </div>
 
-      {/* Legend */}
+      {/* Legend - Expanded to fill space */}
       <LessonLegend />
-
-      {/* Duration Display */}
-      {selectedLesson && (
-        <div
-          style={{
-            padding: '1vh 1vw',
-            borderTop: `1px solid ${THEME.BORDER}`,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}
-        >
-          <span style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM }}>Lesson Duration:</span>
-          <span style={{ fontSize: '1.2vh', color: THEME.AMBER, fontFamily: THEME.FONT_MONO }}>
-            {selectedLesson.duration} MINS
-          </span>
-        </div>
-      )}
     </div>
   )
 }
@@ -182,7 +164,7 @@ function LessonEditorContent({ lesson, updateLesson }) {
       {/* Selected Lesson Display */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw', marginBottom: '0.5vh' }}>
-          <span style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM }}>LESSON:</span>
+          <span style={{ fontSize: '1.3vh', color: THEME.TEXT_DIM }}>LESSON:</span>
         </div>
         {editingTitle ? (
           <input
@@ -206,7 +188,7 @@ function LessonEditorContent({ lesson, updateLesson }) {
               border: `1px solid ${THEME.AMBER}`,
               borderRadius: '0.4vh',
               color: THEME.WHITE,
-              fontSize: '1.3vh',
+              fontSize: '1.5vh',
               fontFamily: THEME.FONT_PRIMARY,
               padding: '0.6vh 0.8vw',
               outline: 'none'
@@ -217,7 +199,7 @@ function LessonEditorContent({ lesson, updateLesson }) {
             onClick={() => setEditingTitle(true)}
             style={{
               color: THEME.AMBER,
-              fontSize: '1.3vh',
+              fontSize: '1.5vh',
               fontFamily: THEME.FONT_PRIMARY,
               letterSpacing: '0.1vw',
               cursor: 'pointer',
@@ -235,13 +217,13 @@ function LessonEditorContent({ lesson, updateLesson }) {
 
       {/* Metadata Row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1vw', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: '1.1vh', color: THEME.AMBER, fontFamily: THEME.FONT_MONO }}>
+        <span style={{ fontSize: '1.3vh', color: THEME.AMBER, fontFamily: THEME.FONT_MONO }}>
           {lesson.startTime || '----'}-{calculateEndTime(lesson.startTime, lesson.duration)}
         </span>
-        <span style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM }}>
+        <span style={{ fontSize: '1.3vh', color: THEME.TEXT_DIM }}>
           {lesson.duration} min
         </span>
-        <span style={{ fontSize: '1.1vh', color: lessonType.color }}>
+        <span style={{ fontSize: '1.3vh', color: lessonType.color }}>
           {lessonType.label}
         </span>
       </div>
@@ -288,10 +270,10 @@ function LessonEditorContent({ lesson, updateLesson }) {
       {/* Topics Section (Phase 3+ - placeholder) */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5vh' }}>
-          <span style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM, letterSpacing: '0.1vw' }}>TOPICS</span>
+          <span style={{ fontSize: '1.3vh', color: THEME.TEXT_DIM, letterSpacing: '0.1vw' }}>TOPICS</span>
           <button style={addButtonStyle}>+ TOPIC</button>
         </div>
-        <div style={{ color: THEME.TEXT_DIM, fontSize: '1vh', fontStyle: 'italic' }}>
+        <div style={{ color: THEME.TEXT_DIM, fontSize: '1.2vh', fontStyle: 'italic' }}>
           {lesson.topics.length === 0 ? 'No topics added' : `${lesson.topics.length} topic(s)`}
         </div>
       </div>
@@ -299,10 +281,10 @@ function LessonEditorContent({ lesson, updateLesson }) {
       {/* Learning Objectives Section (Phase 3+ - placeholder) */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5vh' }}>
-          <span style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM, letterSpacing: '0.1vw' }}>LEARNING OBJECTIVES</span>
+          <span style={{ fontSize: '1.3vh', color: THEME.TEXT_DIM, letterSpacing: '0.1vw' }}>LEARNING OBJECTIVES</span>
           <button style={addButtonStyle}>+ LO</button>
         </div>
-        <div style={{ color: THEME.TEXT_DIM, fontSize: '1vh', fontStyle: 'italic' }}>
+        <div style={{ color: THEME.TEXT_DIM, fontSize: '1.2vh', fontStyle: 'italic' }}>
           {lesson.learningObjectives.length === 0 ? 'No LOs assigned' : `${lesson.learningObjectives.length} LO(s)`}
         </div>
       </div>
@@ -319,7 +301,7 @@ function ScalarEditorContent() {
 
   if (!selectedScalarItem) {
     return (
-      <div style={{ color: THEME.TEXT_DIM, fontSize: '1.1vh', fontStyle: 'italic' }}>
+      <div style={{ color: THEME.TEXT_DIM, fontSize: '1.3vh', fontStyle: 'italic' }}>
         No item selected
       </div>
     )
@@ -383,7 +365,7 @@ function ScalarEditorContent() {
             value={data.description}
             onChange={(value) => updateScalarNode(type, data.id, { description: value })}
           />
-          <div style={{ fontSize: '1vh', color: THEME.TEXT_DIM }}>
+          <div style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM }}>
             Topics: {data.topics?.length || 0}
           </div>
         </>
@@ -397,7 +379,7 @@ function ScalarEditorContent() {
             value={data.title}
             onChange={(value) => updateScalarNode(type, data.id, { title: value })}
           />
-          <div style={{ fontSize: '1vh', color: THEME.TEXT_DIM }}>
+          <div style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM }}>
             Subtopics: {data.subtopics?.length || 0}
           </div>
         </>
@@ -440,11 +422,11 @@ function LOIndicator({ lesson }) {
   if (moduleLOs.length === 0) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4vw' }}>
-        <span style={{ fontSize: '1vh', color: THEME.TEXT_DIM }}>LO:</span>
+        <span style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM }}>LO:</span>
         <span
           onClick={() => setActiveTab('scalar')}
           style={{
-            fontSize: '0.9vh',
+            fontSize: '1.1vh',
             color: THEME.AMBER,
             cursor: 'pointer',
             fontStyle: 'italic'
@@ -462,7 +444,7 @@ function LOIndicator({ lesson }) {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4vw', flexWrap: 'wrap' }}>
-      <span style={{ fontSize: '1vh', color: THEME.TEXT_DIM, marginRight: '0.3vw' }}>LO:</span>
+      <span style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM, marginRight: '0.3vw' }}>LO:</span>
       {displayLOs.map((lo, index) => {
         const isAssigned = lesson.learningObjectives.includes(lo.id)
         const isHovered = hoveredLO === lo.id
@@ -495,7 +477,7 @@ function LOIndicator({ lesson }) {
         )
       })}
       {hasMore && (
-        <span style={{ fontSize: '0.9vh', color: THEME.TEXT_DIM }}>
+        <span style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM }}>
           +{moduleLOs.length - 5}
         </span>
       )}
@@ -517,13 +499,13 @@ function EmptyState() {
         justifyContent: 'center',
         height: '100%',
         color: THEME.TEXT_DIM,
-        fontSize: '1.1vh',
+        fontSize: '1.3vh',
         textAlign: 'center',
         padding: '2vh'
       }}
     >
       <p>No item selected</p>
-      <p style={{ marginTop: '0.5vh', fontSize: '1vh' }}>
+      <p style={{ marginTop: '0.5vh', fontSize: '1.2vh' }}>
         Click a lesson or item to edit
       </p>
     </div>
@@ -550,24 +532,25 @@ function LessonLegend() {
   return (
     <div
       style={{
-        padding: '1vh 1vw',
+        padding: '1.5vh 1.2vw',
         borderTop: `1px solid ${THEME.BORDER}`,
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
-        gap: '0.5vh 0.8vw'
+        gap: '1vh 1.2vw'
       }}
     >
       {legendItems.map(item => (
-        <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4vw' }}>
+        <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6vw' }}>
           <div
             style={{
-              width: '1vh',
-              height: '1vh',
+              width: '1.4vh',
+              height: '1.4vh',
               background: item.color,
-              borderRadius: '0.2vh'
+              borderRadius: '0.3vh',
+              flexShrink: 0
             }}
           />
-          <span style={{ fontSize: '0.9vh', color: THEME.TEXT_DIM }}>
+          <span style={{ fontSize: '1.1vh', color: THEME.TEXT_SECONDARY }}>
             {item.label}
           </span>
         </div>
@@ -585,7 +568,7 @@ function FieldInput({ label, value, onChange, type = 'text', suffix = '', min, m
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3vh' }}>
-      <label style={{ fontSize: '1vh', color: THEME.TEXT_DIM }}>{label}</label>
+      <label style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM }}>{label}</label>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.3vw' }}>
         <input
           type={type}
@@ -602,7 +585,7 @@ function FieldInput({ label, value, onChange, type = 'text', suffix = '', min, m
             border: `1px solid ${focused ? THEME.AMBER : THEME.BORDER}`,
             borderRadius: '0.4vh',
             color: THEME.WHITE,
-            fontSize: '1.1vh',
+            fontSize: '1.3vh',
             fontFamily: THEME.FONT_PRIMARY,
             padding: '0.5vh 0.6vw',
             outline: 'none',
@@ -610,7 +593,7 @@ function FieldInput({ label, value, onChange, type = 'text', suffix = '', min, m
             boxShadow: focused ? `0 0 0 1px ${THEME.AMBER}33` : 'none'
           }}
         />
-        {suffix && <span style={{ fontSize: '1vh', color: THEME.TEXT_DIM }}>{suffix}</span>}
+        {suffix && <span style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM }}>{suffix}</span>}
       </div>
     </div>
   )
@@ -621,7 +604,7 @@ function FieldDropdown({ label, value, options, onChange }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3vh' }}>
-      <label style={{ fontSize: '1vh', color: THEME.TEXT_DIM }}>{label}</label>
+      <label style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM }}>{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -632,7 +615,7 @@ function FieldDropdown({ label, value, options, onChange }) {
           border: `1px solid ${focused ? THEME.AMBER : THEME.BORDER}`,
           borderRadius: '0.4vh',
           color: THEME.WHITE,
-          fontSize: '1.1vh',
+          fontSize: '1.3vh',
           fontFamily: THEME.FONT_PRIMARY,
           padding: '0.5vh 0.6vw',
           outline: 'none',
@@ -662,7 +645,7 @@ function DeleteButton({ label, onClick }) {
         border: `1px solid ${hovered ? '#ff6666' : '#cc4444'}`,
         borderRadius: '0.4vh',
         color: hovered ? '#ff6666' : '#cc4444',
-        fontSize: '1vh',
+        fontSize: '1.2vh',
         padding: '0.6vh 1vw',
         cursor: 'pointer',
         textTransform: 'uppercase',
@@ -697,7 +680,7 @@ const addButtonStyle = {
   background: 'transparent',
   border: 'none',
   color: THEME.AMBER,
-  fontSize: '1vh',
+  fontSize: '1.2vh',
   cursor: 'pointer',
   padding: '0.2vh 0.4vw'
 }

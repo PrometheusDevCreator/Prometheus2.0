@@ -79,23 +79,23 @@ function DesignNavBar() {
       }}
     >
       {/* LEFT ZONE: Section Label + Course Title */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5vw', flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1vw', flex: 1 }}>
         <span
           style={{
-            fontSize: '1.4vh',
-            letterSpacing: '0.2vw',
+            fontSize: '1.5vh',
+            letterSpacing: '0.15vw',
             color: THEME.TEXT_DIM,
             fontFamily: THEME.FONT_PRIMARY,
             textTransform: 'uppercase'
           }}
         >
-          Course Planner
+          ACTIVE COURSE:
         </span>
         <span
           style={{
-            fontSize: '1.6vh',
+            fontSize: '1.7vh',
             letterSpacing: '0.15vw',
-            color: THEME.AMBER,
+            color: THEME.GREEN_BRIGHT,
             fontFamily: THEME.FONT_PRIMARY,
             fontWeight: 500
           }}
