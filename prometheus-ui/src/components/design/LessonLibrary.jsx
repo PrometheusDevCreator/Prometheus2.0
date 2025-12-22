@@ -89,13 +89,13 @@ function LessonLibrary() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
           padding: '0.8vh 1vw',
-          borderBottom: `1px solid ${THEME.BORDER}`
+          borderBottom: `1px solid ${THEME.BORDER}`,
+          gap: '1vw'
         }}
       >
         {/* Left: Label + Tabs */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1vw', flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1vw' }}>
           <span
             style={{
               fontSize: '1.3vh',
@@ -125,11 +125,10 @@ function LessonLibrary() {
           </div>
         </div>
 
-        {/* Center: Add Lesson Button - styled like SCALAR tab button */}
-        <NewLessonButton onClick={handleAddLesson} />
-
-        {/* Right spacer for balance */}
-        <div style={{ flex: 1 }} />
+        {/* Add Lesson Button - positioned after tabs with gap */}
+        <div style={{ marginLeft: '2vw' }}>
+          <NewLessonButton onClick={handleAddLesson} />
+        </div>
       </div>
 
       {/* Library Content */}

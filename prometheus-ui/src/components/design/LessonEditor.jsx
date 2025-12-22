@@ -32,36 +32,17 @@ function LessonEditor() {
     currentModule,
     currentWeek,
     activeTab,
-    LESSON_TYPES
+    LESSON_TYPES,
+    addTopicToLesson,
+    removeTopicFromLesson,
+    updateLessonTopic,
+    toggleLessonLO,
+    scalarData
   } = useDesign()
 
-  // If collapsed, render just the expand tab
+  // If collapsed, render nothing (expansion tab is now in TimeControls)
   if (editorCollapsed) {
-    return (
-      <div
-        onClick={() => setEditorCollapsed(false)}
-        style={{
-          position: 'absolute',
-          left: 0,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: '2vw',
-          height: '10vh',
-          background: THEME.BG_PANEL,
-          borderRight: `1px solid ${THEME.BORDER}`,
-          borderTopRightRadius: '0.5vh',
-          borderBottomRightRadius: '0.5vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          zIndex: 10
-        }}
-        title="Expand Editor"
-      >
-        <span style={{ color: THEME.TEXT_DIM, fontSize: '1.5vh' }}>›</span>
-      </div>
-    )
+    return null
   }
 
   // Determine what to show based on active tab and selection
@@ -135,7 +116,16 @@ function LessonEditor() {
       {/* Content Area */}
       <div style={{ flex: 1, overflow: 'auto', padding: '1vh 1vw' }}>
         {showLessonEditor && selectedLesson ? (
-          <LessonEditorContent lesson={selectedLesson} updateLesson={updateLesson} />
+          <LessonEditorContent
+            lesson={selectedLesson}
+            updateLesson={updateLesson}
+            addTopicToLesson={addTopicToLesson}
+            removeTopicFromLesson={removeTopicFromLesson}
+            updateLessonTopic={updateLessonTopic}
+            toggleLessonLO={toggleLessonLO}
+            scalarData={scalarData}
+            currentModule={currentModule}
+          />
         ) : showScalarEditor ? (
           <ScalarEditorContent />
         ) : (
@@ -153,11 +143,30 @@ function LessonEditor() {
 // LESSON EDITOR CONTENT (Phase 1 Shell)
 // ============================================
 
-function LessonEditorContent({ lesson, updateLesson }) {
+function LessonEditorContent({
+  lesson,
+  updateLesson,
+  addTopicToLesson,
+  removeTopicFromLesson,
+  updateLessonTopic,
+  toggleLessonLO,
+  scalarData,
+  currentModule
+}) {
   const { LESSON_TYPES } = useDesign()
   const [editingTitle, setEditingTitle] = useState(false)
+  const [showLODropdown, setShowLODropdown] = useState(false)
+  const [editingTopicId, setEditingTopicId] = useState(null)
 
   const lessonType = LESSON_TYPES.find(t => t.id === lesson.type) || LESSON_TYPES[0]
+
+  // Get module LOs for dropdown
+  const module = scalarData?.modules?.find(m => m.order === currentModule) || scalarData?.modules?.[0]
+  const moduleLOs = module?.learningObjectives || []
+
+  // Get primary assigned LO details for display under title
+  const primaryLOId = lesson.learningObjectives?.[0]
+  const primaryLO = primaryLOId ? moduleLOs.find(lo => lo.id === primaryLOId) : null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5vh' }}>
@@ -210,6 +219,25 @@ function LessonEditorContent({ lesson, updateLesson }) {
             {lesson.title}
           </div>
         )}
+
+        {/* Show assigned LO under title (requirement 8d) */}
+        {primaryLO && (
+          <div
+            style={{
+              fontSize: '1.1vh',
+              color: THEME.TEXT_DIM,
+              marginTop: '0.3vh',
+              padding: '0.3vh 0',
+              borderLeft: `2px solid ${THEME.AMBER}`,
+              paddingLeft: '0.5vw'
+            }}
+          >
+            <span style={{ color: THEME.AMBER, fontFamily: THEME.FONT_MONO }}>
+              LO{primaryLO.order}:
+            </span>{' '}
+            {primaryLO.verb} {primaryLO.description}
+          </div>
+        )}
       </div>
 
       {/* LO Indicator (interactive circles) */}
@@ -240,53 +268,282 @@ function LessonEditorContent({ lesson, updateLesson }) {
           onChange={(value) => updateLesson(lesson.id, { title: value })}
         />
 
-        {/* Type Dropdown */}
-        <FieldDropdown
-          label="Type"
-          value={lesson.type}
-          options={LESSON_TYPES.map(t => ({ value: t.id, label: t.label }))}
-          onChange={(value) => updateLesson(lesson.id, { type: value })}
-        />
+        {/* Type and Duration Row - side by side */}
+        <div style={{ display: 'flex', gap: '0.8vw', alignItems: 'flex-end' }}>
+          {/* Type Dropdown - 50% width */}
+          <div style={{ flex: 1 }}>
+            <FieldDropdown
+              label="Type"
+              value={lesson.type}
+              options={LESSON_TYPES.map(t => ({ value: t.id, label: t.label }))}
+              onChange={(value) => updateLesson(lesson.id, { type: value })}
+              compact
+            />
+          </div>
 
-        {/* Duration Input */}
-        <FieldInput
-          label="Duration"
-          value={lesson.duration.toString()}
-          type="number"
-          suffix="min"
-          min={30}
-          max={480}
-          step={30}
-          onChange={(value) => {
-            const duration = Math.max(30, Math.min(480, parseInt(value) || 30))
-            updateLesson(lesson.id, { duration })
-          }}
-        />
+          {/* Duration Input - 25% width (75% reduced) */}
+          <div style={{ width: '4vw', flexShrink: 0 }}>
+            <FieldInput
+              label="Duration"
+              value={lesson.duration.toString()}
+              type="number"
+              suffix="min"
+              min={30}
+              max={480}
+              step={30}
+              onChange={(value) => {
+                const duration = Math.max(30, Math.min(480, parseInt(value) || 30))
+                updateLesson(lesson.id, { duration })
+              }}
+              compact
+            />
+          </div>
+        </div>
       </div>
 
       {/* Divider */}
       <div style={{ height: '1px', background: THEME.BORDER, margin: '0.5vh 0' }} />
 
-      {/* Topics Section (Phase 3+ - placeholder) */}
+      {/* Learning Objectives Section - NOW ABOVE TOPICS */}
+      <div style={{ position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5vh' }}>
+          <span style={{ fontSize: '1.3vh', color: THEME.TEXT_DIM, letterSpacing: '0.1vw' }}>LEARNING OBJECTIVES</span>
+          <button
+            style={addButtonStyle}
+            onClick={() => setShowLODropdown(!showLODropdown)}
+          >
+            ASSIGN LO
+          </button>
+        </div>
+
+        {/* LO Dropdown */}
+        {showLODropdown && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              zIndex: 100,
+              background: THEME.BG_PANEL,
+              border: `1px solid ${THEME.BORDER_LIGHT}`,
+              borderRadius: '0.4vh',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+              minWidth: '12vw',
+              maxHeight: '20vh',
+              overflow: 'auto'
+            }}
+          >
+            {moduleLOs.length === 0 ? (
+              <div style={{ padding: '0.8vh 1vw', color: THEME.TEXT_DIM, fontSize: '1.1vh', fontStyle: 'italic' }}>
+                No LOs available. Add in SCALAR tab.
+              </div>
+            ) : (
+              moduleLOs.map(lo => {
+                const isAssigned = lesson.learningObjectives?.includes(lo.id)
+                return (
+                  <div
+                    key={lo.id}
+                    onClick={() => {
+                      toggleLessonLO(lesson.id, lo.id)
+                    }}
+                    style={{
+                      padding: '0.6vh 0.8vw',
+                      fontSize: '1.1vh',
+                      color: isAssigned ? THEME.AMBER : THEME.TEXT_PRIMARY,
+                      background: isAssigned ? THEME.AMBER_DARK : 'transparent',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4vw',
+                      transition: 'background 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = isAssigned ? THEME.AMBER_DARK : THEME.BG_DARK}
+                    onMouseLeave={(e) => e.currentTarget.style.background = isAssigned ? THEME.AMBER_DARK : 'transparent'}
+                  >
+                    <span style={{ fontFamily: THEME.FONT_MONO, minWidth: '2vw' }}>
+                      {isAssigned ? '✓' : ''} LO{lo.order}
+                    </span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {lo.verb} {lo.description}
+                    </span>
+                  </div>
+                )
+              })
+            )}
+            <div
+              onClick={() => setShowLODropdown(false)}
+              style={{
+                padding: '0.5vh 0.8vw',
+                fontSize: '1vh',
+                color: THEME.TEXT_DIM,
+                borderTop: `1px solid ${THEME.BORDER}`,
+                textAlign: 'center',
+                cursor: 'pointer'
+              }}
+            >
+              Close
+            </div>
+          </div>
+        )}
+
+        {/* Assigned LOs List */}
+        {lesson.learningObjectives?.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3vh' }}>
+            {lesson.learningObjectives.map(loId => {
+              const lo = moduleLOs.find(l => l.id === loId)
+              if (!lo) return null
+              return (
+                <div
+                  key={loId}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4vw',
+                    padding: '0.3vh 0.5vw',
+                    background: THEME.BG_DARK,
+                    borderRadius: '0.3vh',
+                    fontSize: '1.1vh'
+                  }}
+                >
+                  <span style={{ color: THEME.AMBER, fontFamily: THEME.FONT_MONO }}>LO{lo.order}</span>
+                  <span style={{ color: THEME.TEXT_PRIMARY, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {lo.verb} {lo.description}
+                  </span>
+                  <button
+                    onClick={() => toggleLessonLO(lesson.id, loId)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: THEME.TEXT_DIM,
+                      fontSize: '1vh',
+                      cursor: 'pointer',
+                      padding: '0.2vh'
+                    }}
+                    title="Remove LO"
+                  >
+                    ×
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div style={{ color: THEME.TEXT_DIM, fontSize: '1.2vh', fontStyle: 'italic' }}>
+            No LOs assigned
+          </div>
+        )}
+      </div>
+
+      {/* Topics Section - NOW BELOW LEARNING OBJECTIVES */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5vh' }}>
           <span style={{ fontSize: '1.3vh', color: THEME.TEXT_DIM, letterSpacing: '0.1vw' }}>TOPICS</span>
-          <button style={addButtonStyle}>+ TOPIC</button>
+          <button
+            style={addButtonStyle}
+            onClick={() => addTopicToLesson(lesson.id, 'New Topic')}
+          >
+            ADD TOPIC
+          </button>
         </div>
-        <div style={{ color: THEME.TEXT_DIM, fontSize: '1.2vh', fontStyle: 'italic' }}>
-          {lesson.topics.length === 0 ? 'No topics added' : `${lesson.topics.length} topic(s)`}
-        </div>
-      </div>
 
-      {/* Learning Objectives Section (Phase 3+ - placeholder) */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5vh' }}>
-          <span style={{ fontSize: '1.3vh', color: THEME.TEXT_DIM, letterSpacing: '0.1vw' }}>LEARNING OBJECTIVES</span>
-          <button style={addButtonStyle}>+ LO</button>
-        </div>
-        <div style={{ color: THEME.TEXT_DIM, fontSize: '1.2vh', fontStyle: 'italic' }}>
-          {lesson.learningObjectives.length === 0 ? 'No LOs assigned' : `${lesson.learningObjectives.length} LO(s)`}
-        </div>
+        {/* Topics List with LO-based numbering */}
+        {lesson.topics?.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4vh' }}>
+            {lesson.topics.map(topic => (
+              <div
+                key={topic.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4vw',
+                  padding: '0.4vh 0.5vw',
+                  background: THEME.BG_DARK,
+                  borderRadius: '0.3vh',
+                  fontSize: '1.1vh'
+                }}
+              >
+                <span style={{ color: THEME.AMBER, fontFamily: THEME.FONT_MONO, minWidth: '2vw' }}>
+                  {topic.number || '?.?'}
+                </span>
+                {editingTopicId === topic.id ? (
+                  <input
+                    autoFocus
+                    type="text"
+                    defaultValue={topic.title}
+                    onBlur={(e) => {
+                      updateLessonTopic(lesson.id, topic.id, { title: e.target.value })
+                      setEditingTopicId(null)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        updateLessonTopic(lesson.id, topic.id, { title: e.target.value })
+                        setEditingTopicId(null)
+                      }
+                      if (e.key === 'Escape') setEditingTopicId(null)
+                    }}
+                    style={{
+                      flex: 1,
+                      background: THEME.BG_INPUT,
+                      border: `1px solid ${THEME.AMBER}`,
+                      borderRadius: '0.3vh',
+                      color: THEME.WHITE,
+                      fontSize: '1.1vh',
+                      padding: '0.2vh 0.4vw',
+                      outline: 'none'
+                    }}
+                  />
+                ) : (
+                  <span
+                    onClick={() => setEditingTopicId(topic.id)}
+                    style={{
+                      color: THEME.TEXT_PRIMARY,
+                      flex: 1,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      cursor: 'pointer'
+                    }}
+                    title="Click to edit"
+                  >
+                    {topic.title}
+                  </span>
+                )}
+                <button
+                  onClick={() => setEditingTopicId(topic.id)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: THEME.TEXT_DIM,
+                    fontSize: '1vh',
+                    cursor: 'pointer',
+                    padding: '0.2vh'
+                  }}
+                  title="Edit topic"
+                >
+                  ✎
+                </button>
+                <button
+                  onClick={() => removeTopicFromLesson(lesson.id, topic.id)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: THEME.TEXT_DIM,
+                    fontSize: '1vh',
+                    cursor: 'pointer',
+                    padding: '0.2vh'
+                  }}
+                  title="Remove topic"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ color: THEME.TEXT_DIM, fontSize: '1.2vh', fontStyle: 'italic' }}>
+            No topics added
+          </div>
+        )}
       </div>
     </div>
   )
@@ -563,12 +820,12 @@ function LessonLegend() {
 // FIELD COMPONENTS
 // ============================================
 
-function FieldInput({ label, value, onChange, type = 'text', suffix = '', min, max, step }) {
+function FieldInput({ label, value, onChange, type = 'text', suffix = '', min, max, step, compact = false }) {
   const [focused, setFocused] = useState(false)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3vh' }}>
-      <label style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM }}>{label}</label>
+      <label style={{ fontSize: compact ? '1vh' : '1.2vh', color: THEME.TEXT_DIM }}>{label}</label>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.3vw' }}>
         <input
           type={type}
@@ -581,30 +838,31 @@ function FieldInput({ label, value, onChange, type = 'text', suffix = '', min, m
           step={step}
           style={{
             flex: 1,
+            width: compact ? '100%' : undefined,
             background: THEME.BG_INPUT,
             border: `1px solid ${focused ? THEME.AMBER : THEME.BORDER}`,
             borderRadius: '0.4vh',
             color: THEME.WHITE,
-            fontSize: '1.3vh',
+            fontSize: compact ? '1.1vh' : '1.3vh',
             fontFamily: THEME.FONT_PRIMARY,
-            padding: '0.5vh 0.6vw',
+            padding: compact ? '0.4vh 0.4vw' : '0.5vh 0.6vw',
             outline: 'none',
             transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
             boxShadow: focused ? `0 0 0 1px ${THEME.AMBER}33` : 'none'
           }}
         />
-        {suffix && <span style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM }}>{suffix}</span>}
+        {suffix && <span style={{ fontSize: compact ? '1vh' : '1.2vh', color: THEME.TEXT_DIM }}>{suffix}</span>}
       </div>
     </div>
   )
 }
 
-function FieldDropdown({ label, value, options, onChange }) {
+function FieldDropdown({ label, value, options, onChange, compact = false }) {
   const [focused, setFocused] = useState(false)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3vh' }}>
-      <label style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM }}>{label}</label>
+      <label style={{ fontSize: compact ? '1vh' : '1.2vh', color: THEME.TEXT_DIM }}>{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -615,13 +873,14 @@ function FieldDropdown({ label, value, options, onChange }) {
           border: `1px solid ${focused ? THEME.AMBER : THEME.BORDER}`,
           borderRadius: '0.4vh',
           color: THEME.WHITE,
-          fontSize: '1.3vh',
+          fontSize: compact ? '1.1vh' : '1.3vh',
           fontFamily: THEME.FONT_PRIMARY,
-          padding: '0.5vh 0.6vw',
+          padding: compact ? '0.4vh 0.4vw' : '0.5vh 0.6vw',
           outline: 'none',
           cursor: 'pointer',
           transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-          boxShadow: focused ? `0 0 0 1px ${THEME.AMBER}33` : 'none'
+          boxShadow: focused ? `0 0 0 1px ${THEME.AMBER}33` : 'none',
+          width: '100%'
         }}
       >
         {options.map(opt => (

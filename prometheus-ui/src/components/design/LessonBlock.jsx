@@ -136,15 +136,21 @@ function LessonBlock({
 
   // Handle drag start for moving block
   const handleDragStart = useCallback((e) => {
+    // Calculate the offset from the left edge of the block where user grabbed
+    const blockRect = blockRef.current?.getBoundingClientRect()
+    const grabOffsetX = blockRect ? e.clientX - blockRect.left : 0
+
     e.dataTransfer.setData('lessonId', lesson.id)
     e.dataTransfer.setData('dragType', 'move')
+    e.dataTransfer.setData('grabOffsetX', grabOffsetX.toString())
     e.dataTransfer.effectAllowed = 'move'
     // Store original position for offset calculation
     dragStartRef.current = {
       x: e.clientX,
       y: e.clientY,
       startTime: lesson.startTime,
-      day: lesson.day
+      day: lesson.day,
+      grabOffsetX
     }
   }, [lesson.id, lesson.startTime, lesson.day])
 

@@ -22,16 +22,26 @@ import { useState, useCallback } from 'react'
 import { THEME } from '../../constants/theme'
 import { useDesign } from '../../contexts/DesignContext'
 
-function TimeControls() {
+function TimeControls({
+  startHour: propStartHour,
+  endHour: propEndHour,
+  onStartChange,
+  onEndChange,
+  editorCollapsed = false,
+  onExpandEditor
+}) {
   const {
     currentDay,
     scheduledLessons,
     viewMode
   } = useDesign()
 
-  // Time range state (in hours, 24h format)
-  const [startHour, setStartHour] = useState(8)  // 0800
-  const [endHour, setEndHour] = useState(17)     // 1700
+  // Use props if provided, otherwise use local state
+  const [localStartHour, setLocalStartHour] = useState(8)
+  const [localEndHour, setLocalEndHour] = useState(17)
+
+  const startHour = propStartHour ?? localStartHour
+  const endHour = propEndHour ?? localEndHour
 
   // Calculate total scheduled hours
   const totalMinutes = scheduledLessons.reduce((sum, lesson) => sum + lesson.duration, 0)
@@ -48,31 +58,66 @@ function TimeControls() {
     const value = parseInt(e.target.value)
     // Ensure at least 2 hours visible
     if (value < endHour - 1) {
-      setStartHour(value)
+      if (onStartChange) onStartChange(value)
+      else setLocalStartHour(value)
     }
-  }, [endHour])
+  }, [endHour, onStartChange])
 
   // Handle end time change
   const handleEndChange = useCallback((e) => {
     const value = parseInt(e.target.value)
     // Ensure at least 2 hours visible
     if (value > startHour + 1) {
-      setEndHour(value)
+      if (onEndChange) onEndChange(value)
+      else setLocalEndHour(value)
     }
-  }, [startHour])
+  }, [startHour, onEndChange])
+
+  // Hover state for editor tab
+  const [editorTabHovered, setEditorTabHovered] = useState(false)
 
   return (
     <div
       style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
         padding: '1vh 1.5vw',
         borderBottom: `1px solid ${THEME.BORDER}`,
-        background: THEME.BG_DARK
+        background: THEME.BG_DARK,
+        gap: '1.5vw'
       }}
     >
-      {/* LEFT: Time Range Slider */}
+      {/* LEFT: Lesson Editor Tab (when collapsed) */}
+      {editorCollapsed && (
+        <button
+          onClick={onExpandEditor}
+          onMouseEnter={() => setEditorTabHovered(true)}
+          onMouseLeave={() => setEditorTabHovered(false)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4vw',
+            padding: '0.6vh 1vw',
+            background: editorTabHovered ? THEME.AMBER_DARK : THEME.BG_PANEL,
+            border: `1px solid ${editorTabHovered ? THEME.AMBER : THEME.BORDER}`,
+            borderRadius: '0.4vh',
+            color: editorTabHovered ? THEME.AMBER : THEME.TEXT_DIM,
+            fontSize: '1.2vh',
+            fontFamily: THEME.FONT_PRIMARY,
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            flexShrink: 0
+          }}
+        >
+          Lesson Editor
+          <span style={{ fontSize: '1.4vh' }}>›</span>
+        </button>
+      )}
+
+      {/* Spacer to push slider to center */}
+      <div style={{ flex: 1 }} />
+
+      {/* CENTER: Time Range Slider */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.8vw' }}>
         {/* Start Time Label */}
         <span style={timeLabelStyle}>
@@ -142,26 +187,30 @@ function TimeControls() {
         </span>
       </div>
 
-      {/* CENTRE: Total Course Hours */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
-        <span style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM, fontFamily: THEME.FONT_PRIMARY }}>
-          Total Course Hours:
-        </span>
-        <span style={{ fontSize: '1.3vh', color: THEME.GREEN_BRIGHT, fontFamily: THEME.FONT_MONO }}>
-          {formatTotalTime()}
-        </span>
-      </div>
+      {/* Spacer to push slider to center */}
+      <div style={{ flex: 1 }} />
 
-      {/* RIGHT: Day Indicator */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
-        <span style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM, fontFamily: THEME.FONT_PRIMARY }}>
-          {viewMode === 'day' ? 'Day:' : viewMode === 'week' ? 'Week View' : 'Module View'}
-        </span>
-        {viewMode === 'day' && (
-          <span style={{ fontSize: '1.3vh', color: THEME.AMBER, fontFamily: THEME.FONT_MONO }}>
-            {currentDay}
+      {/* RIGHT: Total Course Hours + Day Indicator */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5vw', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
+          <span style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM, fontFamily: THEME.FONT_PRIMARY }}>
+            Total:
           </span>
-        )}
+          <span style={{ fontSize: '1.3vh', color: THEME.GREEN_BRIGHT, fontFamily: THEME.FONT_MONO }}>
+            {formatTotalTime()}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
+          <span style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM, fontFamily: THEME.FONT_PRIMARY }}>
+            {viewMode === 'day' ? 'Day:' : viewMode === 'week' ? 'Week View' : 'Module View'}
+          </span>
+          {viewMode === 'day' && (
+            <span style={{ fontSize: '1.3vh', color: THEME.AMBER, fontFamily: THEME.FONT_MONO }}>
+              {currentDay}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )

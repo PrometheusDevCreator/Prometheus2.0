@@ -21,7 +21,7 @@ import TimetableGrid from './TimetableGrid'
 import LessonLibrary from './LessonLibrary'
 
 function TimetableWorkspace() {
-  const { viewMode } = useDesign()
+  const { viewMode, editorCollapsed, setEditorCollapsed } = useDesign()
 
   // Time range state (shared with TimeControls and TimetableGrid)
   const [startHour, setStartHour] = useState(8)
@@ -43,6 +43,8 @@ function TimetableWorkspace() {
         endHour={endHour}
         onStartChange={setStartHour}
         onEndChange={setEndHour}
+        editorCollapsed={editorCollapsed}
+        onExpandEditor={() => setEditorCollapsed(false)}
       />
 
       {/* Timetable Grid */}

@@ -278,6 +278,79 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     }))
   }, [])
 
+  // Add topic to a lesson (with LO-based numbering)
+  const addTopicToLesson = useCallback((lessonId, topicTitle = 'New Topic') => {
+    setLessons(prev => {
+      const lesson = prev.find(l => l.id === lessonId)
+      if (!lesson) return prev
+
+      // Get the primary LO for numbering (first assigned LO, or 1 if none)
+      const primaryLOId = lesson.learningObjectives?.[0] || null
+      let loOrder = 1
+
+      // Find the LO order from scalar data if assigned
+      if (primaryLOId) {
+        for (const module of scalarData.modules) {
+          const lo = module.learningObjectives.find(l => l.id === primaryLOId)
+          if (lo) {
+            loOrder = lo.order
+            break
+          }
+        }
+      }
+
+      // Calculate next topic number for this LO across all lessons
+      let maxTopicNum = 0
+      prev.forEach(l => {
+        const loPrimary = l.learningObjectives?.[0]
+        if (loPrimary === primaryLOId || (!loPrimary && !primaryLOId)) {
+          l.topics?.forEach(t => {
+            const match = t.number?.match(/^\d+\.(\d+)$/)
+            if (match) {
+              maxTopicNum = Math.max(maxTopicNum, parseInt(match[1]))
+            }
+          })
+        }
+      })
+
+      const newTopic = {
+        id: `topic-lesson-${Date.now()}`,
+        title: topicTitle,
+        number: `${loOrder}.${maxTopicNum + 1}`,
+        loId: primaryLOId
+      }
+
+      return prev.map(l =>
+        l.id === lessonId
+          ? { ...l, topics: [...(l.topics || []), newTopic] }
+          : l
+      )
+    })
+  }, [scalarData])
+
+  // Remove topic from a lesson
+  const removeTopicFromLesson = useCallback((lessonId, topicId) => {
+    setLessons(prev => prev.map(lesson =>
+      lesson.id === lessonId
+        ? { ...lesson, topics: (lesson.topics || []).filter(t => t.id !== topicId) }
+        : lesson
+    ))
+  }, [])
+
+  // Update topic in a lesson
+  const updateLessonTopic = useCallback((lessonId, topicId, updates) => {
+    setLessons(prev => prev.map(lesson =>
+      lesson.id === lessonId
+        ? {
+            ...lesson,
+            topics: (lesson.topics || []).map(t =>
+              t.id === topicId ? { ...t, ...updates } : t
+            )
+          }
+        : lesson
+    ))
+  }, [])
+
   // --------------------------------------------
   // DRAG OPERATIONS (Phase 3)
   // --------------------------------------------
@@ -674,6 +747,9 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     unscheduleLesson,
     saveToLibrary,
     toggleLessonLO,
+    addTopicToLesson,
+    removeTopicFromLesson,
+    updateLessonTopic,
 
     // Scalar
     scalarData,
@@ -713,6 +789,7 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     lessons, selectedLesson, scheduledLessons, unscheduledLessons, savedLessons,
     updateLesson, createLesson, deleteLesson, duplicateLesson,
     scheduleLesson, unscheduleLesson, saveToLibrary, toggleLessonLO,
+    addTopicToLesson, removeTopicFromLesson, updateLessonTopic,
     moveLesson, resizeLesson, checkCollision, findAvailableSlot,
     scalarData, selectedScalarItem, toggleScalarExpand,
     addLearningObjective, addTopic, addSubtopic, updateScalarNode, deleteScalarNode,

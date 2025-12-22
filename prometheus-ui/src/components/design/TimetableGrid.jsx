@@ -22,11 +22,11 @@ import { THEME } from '../../constants/theme'
 import { useDesign } from '../../contexts/DesignContext'
 import LessonBlock from './LessonBlock'
 
-// Constants - Increased by 15% for better readability
-const DAY_LABEL_WIDTH = 70      // Width of day label column (was 60)
-const HOUR_WIDTH = 92           // Width of each hour column (was 80, +15%)
-const DAY_HEIGHT = 69           // Height of each day row (was 60, +15%)
-const HEADER_HEIGHT = 35        // Height of time header (was 30)
+// Constants - Updated for improved readability
+const DAY_LABEL_WIDTH = 70      // Width of day label column
+const HOUR_WIDTH = 110          // Width of each hour column (+20% from 92)
+const DAY_HEIGHT = 69           // Height of each day row
+const HEADER_HEIGHT = 35        // Height of time header
 const NUM_DAYS = 5              // Number of day rows to show
 const PIXELS_PER_MINUTE = HOUR_WIDTH / 60  // For time calculations
 
@@ -38,8 +38,13 @@ function TimetableGrid({ startHour = 8, endHour = 17 }) {
     viewMode,
     clearSelection,
     moveLesson,
-    scheduleLesson
+    scheduleLesson,
+    selection,
+    selectedLesson
   } = useDesign()
+
+  // Track which day has a hovered lesson
+  const [hoveredLessonDay, setHoveredLessonDay] = useState(null)
 
   // Generate hour columns
   const hours = useMemo(() => {
@@ -153,20 +158,29 @@ function TimetableGrid({ startHour = 8, endHour = 17 }) {
         </div>
 
         {/* Day Rows */}
-        {daysToShow.map(day => (
-          <DayRow
-            key={day}
-            day={day}
-            hours={hours}
-            lessons={getLessonsForDay(day)}
-            pixelsPerMinute={pixelsPerMinute}
-            startHour={startHour}
-            endHour={endHour}
-            isCurrentDay={day === currentDay && viewMode === 'week'}
-            onDrop={(lessonId, newStartTime) => moveLesson(lessonId, day, newStartTime)}
-            onSchedule={(lessonId, newStartTime) => scheduleLesson(lessonId, day, newStartTime)}
-          />
-        ))}
+        {daysToShow.map(day => {
+          // Check if this day has the selected lesson
+          const hasSelectedLesson = selectedLesson && selectedLesson.day === day && selectedLesson.week === currentWeek
+          // Check if this day has a hovered lesson
+          const hasHoveredLesson = hoveredLessonDay === day
+
+          return (
+            <DayRow
+              key={day}
+              day={day}
+              hours={hours}
+              lessons={getLessonsForDay(day)}
+              pixelsPerMinute={pixelsPerMinute}
+              startHour={startHour}
+              endHour={endHour}
+              isCurrentDay={day === currentDay && viewMode === 'week'}
+              isHighlighted={hasSelectedLesson || hasHoveredLesson}
+              onDrop={(lessonId, newStartTime) => moveLesson(lessonId, day, newStartTime)}
+              onSchedule={(lessonId, newStartTime) => scheduleLesson(lessonId, day, newStartTime)}
+              onLessonHover={(isHovered) => setHoveredLessonDay(isHovered ? day : null)}
+            />
+          )
+        })}
 
         {/* Empty state if no days */}
         {daysToShow.length === 0 && (
@@ -200,8 +214,10 @@ function DayRow({
   startHour,
   endHour,
   isCurrentDay,
+  isHighlighted,
   onDrop,
-  onSchedule
+  onSchedule,
+  onLessonHover
 }) {
   const [isDragOver, setIsDragOver] = useState(false)
 
@@ -214,9 +230,11 @@ function DayRow({
     return minutesFromStart * pixelsPerMinute
   }
 
-  // Calculate time from drop position
-  const getTimeFromPosition = (clientX, containerRect) => {
-    const relativeX = clientX - containerRect.left
+  // Calculate time from drop position (with optional grab offset)
+  const getTimeFromPosition = (clientX, containerRect, grabOffsetX = 0) => {
+    // Adjust clientX by the grab offset to get the left edge position
+    const adjustedClientX = clientX - grabOffsetX
+    const relativeX = adjustedClientX - containerRect.left
     const minutesFromStart = relativeX / pixelsPerMinute
     // Snap to 30-minute increments
     const snappedMinutes = Math.round(minutesFromStart / 30) * 30
@@ -254,10 +272,17 @@ function DayRow({
 
     const contentArea = e.currentTarget
     const rect = contentArea.getBoundingClientRect()
-    const newStartTime = getTimeFromPosition(e.clientX, rect)
+
+    // Get grab offset for accurate positioning (move operations store this)
+    const grabOffsetX = parseFloat(e.dataTransfer.getData('grabOffsetX')) || 0
 
     // Check if this is from library (schedule) or from grid (move)
     const dragType = e.dataTransfer.getData('dragType')
+
+    // Only use grab offset for move operations (not schedule from library)
+    const effectiveOffset = dragType === 'move' ? grabOffsetX : 0
+    const newStartTime = getTimeFromPosition(e.clientX, rect, effectiveOffset)
+
     if (dragType === 'move') {
       onDrop(lessonId, newStartTime)
     } else {
@@ -288,10 +313,11 @@ function DayRow({
           alignItems: 'center',
           paddingLeft: '0.8vw',
           fontSize: '1.3vh',
-          color: THEME.WHITE,
+          color: isHighlighted ? THEME.AMBER : THEME.WHITE,
           fontFamily: THEME.FONT_PRIMARY,
           borderRight: `1px solid ${THEME.BORDER}`,
-          background: THEME.BG_PANEL
+          background: THEME.BG_PANEL,
+          transition: 'color 0.2s ease'
         }}
       >
         Day {day}
@@ -334,6 +360,8 @@ function DayRow({
               top: '5px',
               zIndex: 2
             }}
+            onMouseEnter={() => onLessonHover?.(true)}
+            onMouseLeave={() => onLessonHover?.(false)}
           >
             <LessonBlock
               lesson={lesson}

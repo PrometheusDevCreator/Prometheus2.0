@@ -96,6 +96,17 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState }) {
         {/* Lesson Editor Panel (Left) */}
         <LessonEditor />
 
+        {/* Spacer Column - 50% narrower than DAY column (70px/2 = 35px) */}
+        {!editorCollapsed && (
+          <div
+            style={{
+              width: '35px',
+              flexShrink: 0,
+              background: 'transparent'
+            }}
+          />
+        )}
+
         {/* Workspace Area (Right) */}
         <div
           style={{
