@@ -238,7 +238,7 @@ function ControlZone({ lessonTypes, currentType, onTypeSelect, hasPendingLesson 
         background: THEME.BG_DARK,
         display: 'flex',
         justifyContent: 'center',
-        marginTop: '-50px',
+        marginTop: '-125px',
         position: 'relative',
         zIndex: 10
       }}
@@ -253,7 +253,7 @@ function ControlZone({ lessonTypes, currentType, onTypeSelect, hasPendingLesson 
         }}
       >
         {/* Lesson Type Palette - 2x5 Grid - aligned left */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5vh', marginLeft: '15px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5vh', marginLeft: '5px' }}>
           {/* Row 1 */}
           <div style={{ display: 'flex', gap: '0.4vw' }}>
             {row1Types.map(type => (

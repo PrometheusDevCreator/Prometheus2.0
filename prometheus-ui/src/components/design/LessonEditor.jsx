@@ -116,21 +116,22 @@ function LessonEditor() {
   }
 
   // ============================================
-  // EXPANDED STATE - Full Panel
+  // EXPANDED STATE - Full Panel (position: absolute to not shift timetable)
   // ============================================
   return (
     <div
       style={{
-        width: '220px',
-        margin: '8px',
-        marginRight: '12px',
-        background: 'rgba(20, 20, 20, 0.9)',
+        width: '270px',
+        maxHeight: 'calc(100% - 140px)',
+        position: 'absolute',
+        left: '108px',
+        top: '23px',
+        background: 'rgba(20, 20, 20, 0.95)',
         border: '1px solid rgba(100, 100, 100, 0.5)',
         borderRadius: '8px',
         display: 'flex',
         flexDirection: 'column',
-        flexShrink: 0,
-        position: 'relative',
+        zIndex: 60,
         overflow: 'hidden'
       }}
     >
@@ -146,7 +147,7 @@ function LessonEditor() {
       >
         <span
           style={{
-            fontSize: '1.3vh',
+            fontSize: '1.6vh',
             letterSpacing: '0.12vw',
             color: THEME.TEXT_PRIMARY,
             fontFamily: THEME.FONT_PRIMARY,
@@ -161,7 +162,7 @@ function LessonEditor() {
             background: 'transparent',
             border: 'none',
             color: THEME.TEXT_DIM,
-            fontSize: '1.6vh',
+            fontSize: '1.9vh',
             cursor: 'pointer',
             padding: '0.2vh 0.4vw',
             transition: 'color 0.2s ease'
@@ -200,7 +201,7 @@ function LessonEditor() {
                   border: `1px solid ${THEME.AMBER}`,
                   borderRadius: '0.3vh',
                   color: THEME.AMBER,
-                  fontSize: '1.3vh',
+                  fontSize: '1.6vh',
                   fontFamily: THEME.FONT_PRIMARY,
                   padding: '0.4vh 0.6vw',
                   outline: 'none'
@@ -211,7 +212,7 @@ function LessonEditor() {
                 onClick={() => setEditingTitle(true)}
                 style={{
                   color: THEME.AMBER,
-                  fontSize: '1.3vh',
+                  fontSize: '1.6vh',
                   fontFamily: THEME.FONT_PRIMARY,
                   cursor: 'pointer'
                 }}
@@ -224,13 +225,13 @@ function LessonEditor() {
           {/* Learning Objective Field */}
           <FieldSection label="Learning Objective:" style={{ position: 'relative' }}>
             {primaryLO ? (
-              <div style={{ fontSize: '1.2vh' }}>
+              <div style={{ fontSize: '1.4vh' }}>
                 <span style={{ color: THEME.TEXT_PRIMARY }}>{primaryLO.order}. </span>
                 <span style={{ color: THEME.GREEN_BRIGHT }}>{primaryLO.verb}</span>
                 <span style={{ color: THEME.TEXT_PRIMARY }}> {primaryLO.description}</span>
               </div>
             ) : (
-              <div style={{ fontSize: '1.2vh' }}>
+              <div style={{ fontSize: '1.4vh' }}>
                 <span style={{ color: THEME.TEXT_PRIMARY }}>1. </span>
                 <span style={{ color: THEME.GREEN_BRIGHT }}>EXAMPLE</span>
                 <span style={{ color: THEME.TEXT_PRIMARY }}> Learning Objective Text</span>
@@ -242,7 +243,7 @@ function LessonEditor() {
                 background: 'transparent',
                 border: 'none',
                 color: THEME.TEXT_DIM,
-                fontSize: '1.1vh',
+                fontSize: '1.3vh',
                 cursor: 'pointer',
                 marginTop: '0.4vh',
                 textDecoration: 'underline',
@@ -277,14 +278,14 @@ function LessonEditor() {
           >
             {selectedLesson.topics?.length > 0 ? (
               selectedLesson.topics.map(topic => (
-                <div key={topic.id} style={{ fontSize: '1.2vh', marginBottom: '0.3vh' }}>
+                <div key={topic.id} style={{ fontSize: '1.4vh', marginBottom: '0.3vh' }}>
                   <span style={{ color: THEME.TEXT_PRIMARY }}>{topic.number || '1.1'} </span>
                   <span style={{ color: THEME.GREEN_BRIGHT }}>Add</span>
                   <span style={{ color: THEME.TEXT_PRIMARY }}> {topic.title}</span>
                 </div>
               ))
             ) : (
-              <div style={{ fontSize: '1.2vh' }}>
+              <div style={{ fontSize: '1.4vh' }}>
                 <span style={{ color: THEME.TEXT_PRIMARY }}>1.1 </span>
                 <span style={{ color: THEME.GREEN_BRIGHT }}>Add</span>
                 <span style={{ color: THEME.TEXT_PRIMARY }}> Topic Text</span>
@@ -297,7 +298,7 @@ function LessonEditor() {
             label="Subtopic:"
             action={<button style={plusButtonStyle}>+</button>}
           >
-            <div style={{ fontSize: '1.2vh' }}>
+            <div style={{ fontSize: '1.4vh' }}>
               <span style={{ color: THEME.TEXT_PRIMARY }}>1.1.1 </span>
               <span style={{ color: THEME.GREEN_BRIGHT }}>Add</span>
               <span style={{ color: THEME.TEXT_PRIMARY }}> Subtopic Text</span>
@@ -309,7 +310,7 @@ function LessonEditor() {
             <span
               style={{
                 color: THEME.AMBER,
-                fontSize: '1.3vh',
+                fontSize: '1.6vh',
                 fontFamily: THEME.FONT_PRIMARY
               }}
             >
@@ -320,10 +321,10 @@ function LessonEditor() {
           {/* Timings Field */}
           <FieldSection label="Timings:" noBorder>
             <div style={{ display: 'flex', alignItems: 'center', gap: '2vw' }}>
-              <span style={{ color: THEME.AMBER, fontSize: '1.3vh', fontFamily: THEME.FONT_MONO }}>
+              <span style={{ color: THEME.AMBER, fontSize: '1.6vh', fontFamily: THEME.FONT_MONO }}>
                 {formatTime(selectedLesson.startTime)} - {calculateEndTime()}
               </span>
-              <span style={{ color: THEME.GREEN_BRIGHT, fontSize: '1.3vh', fontFamily: THEME.FONT_MONO }}>
+              <span style={{ color: THEME.GREEN_BRIGHT, fontSize: '1.6vh', fontFamily: THEME.FONT_MONO }}>
                 {selectedLesson.duration} mins
               </span>
             </div>
@@ -337,7 +338,7 @@ function LessonEditor() {
             alignItems: 'center',
             justifyContent: 'center',
             color: THEME.TEXT_DIM,
-            fontSize: '1.2vh',
+            fontSize: '1.4vh',
             fontStyle: 'italic',
             padding: '2vh'
           }}
@@ -365,7 +366,7 @@ function FieldSection({ label, children, action, style = {}, noBorder = false })
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3vh' }}>
         <span
           style={{
-            fontSize: '1.1vh',
+            fontSize: '1.3vh',
             color: THEME.TEXT_DIM,
             fontFamily: THEME.FONT_PRIMARY
           }}
@@ -456,7 +457,7 @@ const plusButtonStyle = {
   background: 'transparent',
   border: 'none',
   color: THEME.AMBER,
-  fontSize: '1.4vh',
+  fontSize: '1.7vh',
   fontWeight: 'bold',
   cursor: 'pointer',
   padding: '0 0.3vw'

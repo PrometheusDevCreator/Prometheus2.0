@@ -90,52 +90,64 @@ function TimeControls({
     <div
       style={{
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0.8vh 1.5vw',
+        justifyContent: 'center',
+        padding: '0.8vh 0',
+        marginTop: '15px',
         background: 'transparent'
       }}
     >
-      {/* LEFT: Start Time Adjuster */}
-      <TimeAdjusterPill
-        time={formatHourDisplay(startHour)}
-        onDecrement={decrementStart}
-        onIncrement={incrementStart}
-        canDecrement={startHour > 6}
-        canIncrement={startHour < 12 && startHour < endHour - 1}
-      />
+      {/* Container aligned with day bars (75% width) */}
+      <div
+        style={{
+          width: '75%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}
+      >
+        {/* LEFT: Start Time Adjuster - aligned with left edge of timetable content */}
+        <div style={{ marginLeft: '15px' }}>
+          <TimeAdjusterPill
+            time={formatHourDisplay(startHour)}
+            onDecrement={decrementStart}
+            onIncrement={incrementStart}
+            canDecrement={startHour > 6}
+            canIncrement={startHour < 12 && startHour < endHour - 1}
+          />
+        </div>
 
-      {/* CENTER: Day Indicator */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4vw' }}>
-        <span
-          style={{
-            fontSize: '1.5vh',
-            color: THEME.TEXT_PRIMARY,
-            fontFamily: THEME.FONT_PRIMARY
-          }}
-        >
-          Day:
-        </span>
-        <span
-          style={{
-            fontSize: '1.5vh',
-            color: THEME.AMBER,
-            fontFamily: THEME.FONT_MONO,
-            fontWeight: 500
-          }}
-        >
-          {currentDay}
-        </span>
+        {/* CENTER: Day Indicator */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4vw' }}>
+          <span
+            style={{
+              fontSize: '1.5vh',
+              color: THEME.TEXT_PRIMARY,
+              fontFamily: THEME.FONT_PRIMARY
+            }}
+          >
+            Day:
+          </span>
+          <span
+            style={{
+              fontSize: '1.5vh',
+              color: THEME.AMBER,
+              fontFamily: THEME.FONT_MONO,
+              fontWeight: 500
+            }}
+          >
+            {currentDay}
+          </span>
+        </div>
+
+        {/* RIGHT: End Time Adjuster - aligned with right edge of timetable */}
+        <TimeAdjusterPill
+          time={formatHourDisplay(endHour)}
+          onDecrement={decrementEnd}
+          onIncrement={incrementEnd}
+          canDecrement={endHour > 12 && endHour > startHour + 1}
+          canIncrement={endHour < 20}
+        />
       </div>
-
-      {/* RIGHT: End Time Adjuster */}
-      <TimeAdjusterPill
-        time={formatHourDisplay(endHour)}
-        onDecrement={decrementEnd}
-        onIncrement={incrementEnd}
-        canDecrement={endHour > 12 && endHour > startHour + 1}
-        canIncrement={endHour < 20}
-      />
     </div>
   )
 }
@@ -153,11 +165,12 @@ function TimeAdjusterPill({ time, onDecrement, onIncrement, canDecrement, canInc
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '0.6vw',
-        padding: '0.5vh 1vw',
+        gap: '0.3vw',
+        padding: '0.5vh 0.5vw',
         border: `1px solid rgba(255, 255, 255, 0.3)`,
         borderRadius: '2vh',
-        background: 'transparent'
+        background: 'transparent',
+        minWidth: '80px'
       }}
     >
       {/* Decrement Button */}
@@ -172,8 +185,8 @@ function TimeAdjusterPill({ time, onDecrement, onIncrement, canDecrement, canInc
           color: !canDecrement
             ? THEME.TEXT_DIM
             : decrementHovered
-              ? THEME.AMBER
-              : THEME.TEXT_PRIMARY,
+              ? THEME.WHITE
+              : THEME.AMBER,
           fontSize: '1.4vh',
           cursor: canDecrement ? 'pointer' : 'default',
           padding: '0 0.2vw',
@@ -190,7 +203,7 @@ function TimeAdjusterPill({ time, onDecrement, onIncrement, canDecrement, canInc
           fontSize: '1.3vh',
           color: THEME.TEXT_PRIMARY,
           fontFamily: THEME.FONT_MONO,
-          minWidth: '3.5vw',
+          minWidth: '2.5vw',
           textAlign: 'center'
         }}
       >
@@ -209,8 +222,8 @@ function TimeAdjusterPill({ time, onDecrement, onIncrement, canDecrement, canInc
           color: !canIncrement
             ? THEME.TEXT_DIM
             : incrementHovered
-              ? THEME.AMBER
-              : THEME.TEXT_PRIMARY,
+              ? THEME.WHITE
+              : THEME.AMBER,
           fontSize: '1.4vh',
           cursor: canIncrement ? 'pointer' : 'default',
           padding: '0 0.2vw',

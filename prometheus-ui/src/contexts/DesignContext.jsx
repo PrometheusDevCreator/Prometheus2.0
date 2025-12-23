@@ -230,7 +230,7 @@ export function DesignProvider({ children, courseData, setCourseData }) {
   // --------------------------------------------
   // EDITOR PANEL STATE
   // --------------------------------------------
-  const [editorCollapsed, setEditorCollapsed] = useState(false)
+  const [editorCollapsed, setEditorCollapsed] = useState(true)
 
   // --------------------------------------------
   // LESSON OPERATIONS (Bidirectional Sync)
