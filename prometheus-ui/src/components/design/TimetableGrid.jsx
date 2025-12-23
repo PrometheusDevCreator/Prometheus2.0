@@ -134,7 +134,7 @@ function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
             DAY
           </div>
 
-          {/* Hour columns - flex to fill available space equally */}
+          {/* Hour columns - flex to fill available space equally, labels left-aligned */}
           <div style={{ flex: 1, display: 'flex' }}>
             {hours.map((hour, idx) => (
               <div
@@ -143,7 +143,7 @@ function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
                   flex: 1,
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
+                  justifyContent: 'flex-start',
                   fontSize: '1.1vh',
                   color: THEME.TEXT_DIM,
                   fontFamily: THEME.FONT_MONO
