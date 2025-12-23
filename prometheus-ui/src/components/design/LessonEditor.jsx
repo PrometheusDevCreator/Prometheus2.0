@@ -121,14 +121,17 @@ function LessonEditor() {
   return (
     <div
       style={{
-        width: '280px',
-        height: '100%',
-        background: THEME.BG_PANEL,
-        borderRight: `1px solid rgba(255, 102, 0, 0.3)`,
+        width: '220px',
+        margin: '8px',
+        marginRight: '12px',
+        background: 'rgba(20, 20, 20, 0.9)',
+        border: '1px solid rgba(100, 100, 100, 0.5)',
+        borderRadius: '8px',
         display: 'flex',
         flexDirection: 'column',
         flexShrink: 0,
-        position: 'relative'
+        position: 'relative',
+        overflow: 'hidden'
       }}
     >
       {/* Panel Header */}

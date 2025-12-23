@@ -17,21 +17,21 @@
  * - Content area (right): Contains lesson blocks
  */
 
-import { useMemo, useCallback, useState } from 'react'
+import React, { useMemo, useCallback, useState, useRef } from 'react'
 import { THEME } from '../../constants/theme'
 import { useDesign } from '../../contexts/DesignContext'
 import LessonBlock from './LessonBlock'
 
 // Constants - Updated per DESIGN_Page mockup
-const DAY_LABEL_WIDTH = 50      // Width of DAY column
-const HOUR_WIDTH = 100          // Width of each hour column
-const DAY_HEIGHT = 60           // Height of each day row
-const HEADER_HEIGHT = 30        // Height of time header
+const DAY_LABEL_WIDTH = 35      // Width of day number column
+const DAY_HEIGHT = 60           // Height of each day row (+20% from 50)
+const HEADER_HEIGHT = 25        // Height of time header
 const NUM_DAYS = 5              // Number of day rows to show
 const ROW_GAP = 8               // Gap between day rows
-const PIXELS_PER_MINUTE = HOUR_WIDTH / 60  // For time calculations
+const ROW_BORDER_RADIUS = 30    // Pill-shaped rounded corners
+const DAY_BAR_WIDTH_PERCENT = 75 // Day bar width as % of available space (-25%)
 
-function TimetableGrid({ startHour = 8, endHour = 17 }) {
+function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
   const {
     scheduledLessons,
     currentDay,
@@ -56,12 +56,8 @@ function TimetableGrid({ startHour = 8, endHour = 17 }) {
     return result
   }, [startHour, endHour])
 
-  // Calculate grid dimensions
-  const gridWidth = hours.length * HOUR_WIDTH
-  const totalWidth = DAY_LABEL_WIDTH + gridWidth
-
-  // Calculate pixels per minute
-  const pixelsPerMinute = HOUR_WIDTH / 60
+  // Number of hours determines spacing
+  const numHours = hours.length
 
   // Get lessons for a specific day (filtered by current week)
   const getLessonsForDay = useCallback((day) => {
@@ -84,20 +80,11 @@ function TimetableGrid({ startHour = 8, endHour = 17 }) {
     clearSelection()
   }, [clearSelection])
 
-  // Determine which days to show based on view mode
+  // Always show 5 day rows per mockup spec
   const daysToShow = useMemo(() => {
-    if (viewMode === 'day') {
-      // Single day view
-      return [currentDay]
-    } else if (viewMode === 'week') {
-      // Show 5 days (one week)
-      return Array.from({ length: NUM_DAYS }, (_, i) => i + 1)
-    } else {
-      // Module view - show all weeks in module
-      // For now, show 5 days per week (could expand based on course data)
-      return Array.from({ length: NUM_DAYS }, (_, i) => i + 1)
-    }
-  }, [viewMode, currentDay])
+    // Always show 5 days in week view format per mockup
+    return Array.from({ length: NUM_DAYS }, (_, i) => i + 1)
+  }, [])
 
   return (
     <div
@@ -105,18 +92,22 @@ function TimetableGrid({ startHour = 8, endHour = 17 }) {
         width: '100%',
         height: '100%',
         overflow: 'auto',
-        background: THEME.BG_DARK
+        background: THEME.BG_DARK,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'flex-start',
+        paddingTop: '1vh'
       }}
     >
       <div
         style={{
-          minWidth: `${totalWidth}px`,
+          width: `${DAY_BAR_WIDTH_PERCENT}%`,
           display: 'flex',
           flexDirection: 'column'
         }}
         onClick={handleGridClick}
       >
-        {/* Time Header Row */}
+        {/* Time Header Row - hours equally spaced */}
         <div
           style={{
             display: 'flex',
@@ -143,24 +134,25 @@ function TimetableGrid({ startHour = 8, endHour = 17 }) {
             DAY
           </div>
 
-          {/* Hour columns */}
-          {hours.map((hour, idx) => (
-            <div
-              key={hour}
-              style={{
-                width: `${HOUR_WIDTH}px`,
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.1vh',
-                color: THEME.TEXT_DIM,
-                fontFamily: THEME.FONT_MONO
-              }}
-            >
-              {hour.toString().padStart(2, '0')}:00
-            </div>
-          ))}
+          {/* Hour columns - flex to fill available space equally */}
+          <div style={{ flex: 1, display: 'flex' }}>
+            {hours.map((hour, idx) => (
+              <div
+                key={hour}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.1vh',
+                  color: THEME.TEXT_DIM,
+                  fontFamily: THEME.FONT_MONO
+                }}
+              >
+                {hour.toString().padStart(2, '0')}:00
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Day Rows */}
@@ -176,14 +168,15 @@ function TimetableGrid({ startHour = 8, endHour = 17 }) {
                 key={day}
                 day={day}
                 hours={hours}
+                numHours={numHours}
                 lessons={getLessonsForDay(day)}
-                pixelsPerMinute={pixelsPerMinute}
                 startHour={startHour}
                 endHour={endHour}
                 isCurrentDay={day === currentDay && viewMode === 'week'}
                 isHighlighted={hasSelectedLesson || hasHoveredLesson}
                 onDrop={(lessonId, newStartTime) => moveLesson(lessonId, day, newStartTime)}
                 onSchedule={(lessonId, newStartTime) => scheduleLesson(lessonId, day, newStartTime)}
+                onSchedulePending={(newStartTime) => onSchedulePending?.(day, newStartTime)}
                 onLessonHover={(isHovered) => setHoveredLessonDay(isHovered ? day : null)}
               />
             )
@@ -217,39 +210,49 @@ function TimetableGrid({ startHour = 8, endHour = 17 }) {
 function DayRow({
   day,
   hours,
+  numHours,
   lessons,
-  pixelsPerMinute,
   startHour,
   endHour,
   isCurrentDay,
   isHighlighted,
   onDrop,
   onSchedule,
+  onSchedulePending,
   onLessonHover
 }) {
   const [isDragOver, setIsDragOver] = useState(false)
+  const contentRef = useRef(null)
 
-  // Get block left position
-  const getBlockLeft = (lesson) => {
+  // Calculate lesson position as percentage of content area
+  const getLessonLeftPercent = (lesson) => {
     if (!lesson.startTime) return 0
     const hour = parseInt(lesson.startTime.slice(0, 2))
     const min = parseInt(lesson.startTime.slice(2, 4)) || 0
     const minutesFromStart = (hour - startHour) * 60 + min
-    return minutesFromStart * pixelsPerMinute
+    const totalMinutes = (endHour - startHour) * 60
+    return (minutesFromStart / totalMinutes) * 100
   }
 
-  // Calculate time from drop position (with optional grab offset)
+  // Calculate lesson width as percentage
+  const getLessonWidthPercent = (lesson) => {
+    const totalMinutes = (endHour - startHour) * 60
+    return (lesson.duration / totalMinutes) * 100
+  }
+
+  // Calculate time from drop position
   const getTimeFromPosition = (clientX, containerRect, grabOffsetX = 0) => {
-    // Adjust clientX by the grab offset to get the left edge position
     const adjustedClientX = clientX - grabOffsetX
     const relativeX = adjustedClientX - containerRect.left
-    const minutesFromStart = relativeX / pixelsPerMinute
+    const containerWidth = containerRect.width
+    const percentX = relativeX / containerWidth
+    const totalMinutes = (endHour - startHour) * 60
+    const minutesFromStart = percentX * totalMinutes
     // Snap to 5-minute increments
     const snappedMinutes = Math.round(minutesFromStart / 5) * 5
-    const totalMinutes = startHour * 60 + snappedMinutes
+    const totalTime = startHour * 60 + snappedMinutes
     // Clamp to grid bounds
-    const maxMinutes = endHour * 60
-    const clampedMinutes = Math.max(startHour * 60, Math.min(maxMinutes, totalMinutes))
+    const clampedMinutes = Math.max(startHour * 60, Math.min(endHour * 60, totalTime))
     const hour = Math.floor(clampedMinutes / 60)
     const min = clampedMinutes % 60
     return `${hour.toString().padStart(2, '0')}${min.toString().padStart(2, '0')}`
@@ -264,7 +267,6 @@ function DayRow({
 
   // Handle drag leave
   const handleDragLeave = useCallback((e) => {
-    // Only set false if we're leaving the container, not entering a child
     if (!e.currentTarget.contains(e.relatedTarget)) {
       setIsDragOver(false)
     }
@@ -280,41 +282,40 @@ function DayRow({
 
     const contentArea = e.currentTarget
     const rect = contentArea.getBoundingClientRect()
-
-    // Get grab offset for accurate positioning (move operations store this)
     const grabOffsetX = parseFloat(e.dataTransfer.getData('grabOffsetX')) || 0
-
-    // Check if this is from library (schedule) or from grid (move)
     const dragType = e.dataTransfer.getData('dragType')
-
-    // Only use grab offset for move operations (not schedule from library)
     const effectiveOffset = dragType === 'move' ? grabOffsetX : 0
     const newStartTime = getTimeFromPosition(e.clientX, rect, effectiveOffset)
 
     if (dragType === 'move') {
       onDrop(lessonId, newStartTime)
+    } else if (dragType === 'pending') {
+      // Handle pending lesson drop - create new lesson
+      onSchedulePending?.(newStartTime)
     } else {
-      // From library - schedule it
       onSchedule(lessonId, newStartTime)
     }
-  }, [onDrop, onSchedule, pixelsPerMinute, startHour, endHour])
+  }, [onDrop, onSchedule, onSchedulePending, startHour, endHour])
+
+  // Vertical padding for lesson cards inside day bar
+  const lessonPadding = 6
 
   return (
     <div
       style={{
         display: 'flex',
         height: `${DAY_HEIGHT}px`,
-        borderRadius: '4px',
+        borderRadius: `${ROW_BORDER_RADIUS}px`,
         overflow: 'hidden',
-        border: `1px solid ${THEME.BORDER}`,
+        border: `1px solid rgba(120, 120, 120, 0.4)`,
         background: isDragOver
           ? 'rgba(212, 115, 12, 0.15)'
           : isCurrentDay
-            ? 'rgba(212, 115, 12, 0.05)'
-            : THEME.BG_PANEL
+            ? 'rgba(212, 115, 12, 0.08)'
+            : 'rgba(30, 30, 30, 0.6)'
       }}
     >
-      {/* Day Label - Just the number */}
+      {/* Day Label */}
       <div
         style={{
           width: `${DAY_LABEL_WIDTH}px`,
@@ -322,10 +323,9 @@ function DayRow({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '1.5vh',
+          fontSize: '1.4vh',
           color: isHighlighted ? THEME.AMBER : THEME.TEXT_PRIMARY,
           fontFamily: THEME.FONT_MONO,
-          borderRight: `1px solid ${THEME.BORDER}`,
           background: 'transparent',
           transition: 'color 0.2s ease'
         }}
@@ -333,41 +333,27 @@ function DayRow({
         {day}
       </div>
 
-      {/* Content Area (with hour grid lines) - DROP ZONE */}
+      {/* Content Area - DROP ZONE */}
       <div
+        ref={contentRef}
         style={{
           flex: 1,
-          position: 'relative',
-          minWidth: `${hours.length * HOUR_WIDTH}px`
+          position: 'relative'
         }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {/* Hour grid lines */}
-        {hours.map((hour, idx) => (
-          <div
-            key={hour}
-            style={{
-              position: 'absolute',
-              left: `${idx * HOUR_WIDTH}px`,
-              top: 0,
-              bottom: 0,
-              width: `${HOUR_WIDTH}px`,
-              borderRight: idx < hours.length - 1 ? `1px solid ${THEME.BORDER}` : 'none',
-              opacity: 0.5
-            }}
-          />
-        ))}
-
-        {/* Lesson Blocks */}
+        {/* Lesson Blocks - positioned by percentage */}
         {lessons.map(lesson => (
           <div
             key={lesson.id}
             style={{
               position: 'absolute',
-              left: `${getBlockLeft(lesson)}px`,
-              top: '5px',
+              left: `${getLessonLeftPercent(lesson)}%`,
+              width: `${getLessonWidthPercent(lesson)}%`,
+              top: `${lessonPadding}px`,
+              bottom: `${lessonPadding}px`,
               zIndex: 2
             }}
             onMouseEnter={() => onLessonHover?.(true)}
@@ -375,30 +361,12 @@ function DayRow({
           >
             <LessonBlock
               lesson={lesson}
-              pixelsPerMinute={pixelsPerMinute}
               dayHeight={DAY_HEIGHT}
               startHour={startHour}
+              useFullWidth={true}
             />
           </div>
         ))}
-
-        {/* Empty day indicator */}
-        {lessons.length === 0 && (
-          <div
-            style={{
-              position: 'absolute',
-              left: '50%',
-              top: '50%',
-              transform: 'translate(-50%, -50%)',
-              fontSize: '1.2vh',
-              color: THEME.TEXT_DIM,
-              opacity: 0.5,
-              fontStyle: 'italic'
-            }}
-          >
-            Drop lessons here
-          </div>
-        )}
       </div>
     </div>
   )

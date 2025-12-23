@@ -33,7 +33,8 @@ function LessonBlock({
   lesson,
   pixelsPerMinute = 2,  // How many pixels per minute of duration
   dayHeight = 50,       // Height of each day row
-  startHour = 8         // Grid start hour for time calculations
+  startHour = 8,        // Grid start hour for time calculations
+  useFullWidth = false  // When true, fills container width (for percentage-based layout)
 }) {
   const {
     selection,
@@ -67,8 +68,9 @@ function LessonBlock({
   )
 
   // Calculate block dimensions
-  const blockWidth = Math.max(lesson.duration * pixelsPerMinute, 60) // Minimum 60px
-  const blockHeight = dayHeight - 10 // Leave some padding
+  // When useFullWidth=true, width is controlled by parent container
+  const blockWidth = useFullWidth ? '100%' : Math.max(lesson.duration * pixelsPerMinute, 60)
+  const blockHeight = '100%' // Fill the container height
 
   // Calculate time display
   const formatTime = (timeStr) => {
@@ -261,29 +263,29 @@ function LessonBlock({
       onDragStart={handleDragStart}
       style={{
         position: 'relative',
-        width: `${blockWidth}px`,
-        height: `${blockHeight}px`,
-        background: getBackground(),
-        border: getBorderStyle(),
-        borderRadius: '0.6vh',
+        width: useFullWidth ? blockWidth : `${blockWidth}px`,
+        height: blockHeight,
+        background: 'rgba(25, 25, 25, 0.95)',
+        border: isSelected || isEditing
+          ? `1px solid ${THEME.AMBER}`
+          : `1px solid rgba(100, 100, 100, 0.5)`,
+        borderRadius: '16px',
         cursor: 'grab',
         overflow: 'hidden',
         transition: 'border 0.15s ease, box-shadow 0.15s ease',
         boxShadow: getBoxShadow(),
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'row',
         userSelect: 'none'
       }}
     >
-      {/* Type Accent Stripe */}
+      {/* Left Accent Bar */}
       <div
         style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '3px',
-          background: lessonType.color
+          width: '5px',
+          flexShrink: 0,
+          background: lessonType.color,
+          borderRadius: '16px 0 0 16px'
         }}
       />
 
@@ -293,33 +295,18 @@ function LessonBlock({
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'center',
-          padding: '4px 8px',
-          paddingTop: '6px', // Account for stripe
-          gap: '2px',
+          justifyContent: 'space-between',
+          padding: '6px 10px',
           overflow: 'hidden'
         }}
       >
-        {/* Time Range */}
-        <div
-          style={{
-            fontSize: '1.1vh',
-            color: THEME.TEXT_DIM,
-            fontFamily: THEME.FONT_MONO,
-            whiteSpace: 'nowrap'
-          }}
-        >
-          {formatTime(lesson.startTime)}-{calculateEndTime()}
-        </div>
-
-        {/* Lesson Title */}
+        {/* Lesson Title - Top */}
         <div
           style={{
             fontSize: '1.3vh',
             color: isSelected ? THEME.WHITE : THEME.TEXT_PRIMARY,
             fontFamily: THEME.FONT_PRIMARY,
-            fontWeight: isSelected ? 500 : 400,
-            letterSpacing: '0.05vw',
+            fontWeight: 400,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis'
@@ -328,20 +315,36 @@ function LessonBlock({
           {lesson.title}
         </div>
 
-        {/* Topic References (if any) */}
-        {lesson.topics.length > 0 && (
-          <div
+        {/* Bottom row: Time Range + Duration */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}
+        >
+          {/* Time Range */}
+          <span
             style={{
               fontSize: '1.0vh',
               color: THEME.TEXT_DIM,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis'
+              fontFamily: THEME.FONT_MONO
             }}
           >
-            {lesson.topics.length} topic{lesson.topics.length > 1 ? 's' : ''}
-          </div>
-        )}
+            {formatTime(lesson.startTime)}-{calculateEndTime()}
+          </span>
+
+          {/* Duration */}
+          <span
+            style={{
+              fontSize: '1.0vh',
+              color: THEME.TEXT_DIM,
+              fontFamily: THEME.FONT_MONO
+            }}
+          >
+            {lesson.duration}mins
+          </span>
+        </div>
       </div>
 
       {/* EDITING Label */}
@@ -349,12 +352,12 @@ function LessonBlock({
         <div
           style={{
             position: 'absolute',
-            bottom: '2px',
+            top: '2px',
             right: '4px',
-            fontSize: '0.85vh',
+            fontSize: '0.75vh',
             color: THEME.AMBER,
             fontFamily: THEME.FONT_MONO,
-            letterSpacing: '0.05vw',
+            letterSpacing: '0.03vw',
             textTransform: 'uppercase'
           }}
         >
@@ -369,13 +372,12 @@ function LessonBlock({
           <div
             style={{
               position: 'absolute',
-              left: 0,
+              left: '4px',
               top: '20%',
               bottom: '20%',
-              width: '6px',
+              width: '4px',
               cursor: 'ew-resize',
-              background: isHovered ? THEME.AMBER : 'rgba(212, 115, 12, 0.3)',
-              borderRadius: '2px 0 0 2px'
+              background: 'transparent'
             }}
             onMouseDown={handleResizeLeft}
             draggable={false}
@@ -390,8 +392,8 @@ function LessonBlock({
               bottom: '20%',
               width: '6px',
               cursor: 'ew-resize',
-              background: isHovered ? THEME.AMBER : 'rgba(212, 115, 12, 0.3)',
-              borderRadius: '0 2px 2px 0'
+              background: isHovered ? 'rgba(212, 115, 12, 0.5)' : 'transparent',
+              borderRadius: '0 4px 4px 0'
             }}
             onMouseDown={handleResizeRight}
             draggable={false}

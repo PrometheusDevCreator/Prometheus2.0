@@ -117,7 +117,7 @@ export function DesignProvider({ children, courseData, setCourseData }) {
   // NAVIGATION STATE
   // --------------------------------------------
   const [activeTab, setActiveTab] = useState('timetable') // 'timetable' | 'scalar'
-  const [viewMode, setViewMode] = useState('day') // 'day' | 'week' | 'module'
+  const [viewMode, setViewMode] = useState('week') // 'day' | 'week' | 'module'
   const [currentModule, setCurrentModule] = useState(1)
   const [currentWeek, setCurrentWeek] = useState(1)
   const [currentDay, setCurrentDay] = useState(1)

@@ -18,66 +18,66 @@ import TimetableGrid from './TimetableGrid'
 function TimetableWorkspace() {
   const {
     LESSON_TYPES,
-    addLesson,
+    createLesson,
     scheduledLessons,
-    select
+    select,
+    scheduleLesson
   } = useDesign()
 
   // Time range state (shared with TimeControls and TimetableGrid)
   const [startHour, setStartHour] = useState(8)
   const [endHour, setEndHour] = useState(14)
 
-  // New lesson preview state
-  const [newLessonType, setNewLessonType] = useState('instructor-led')
+  // Pending lesson state - appears above PKE when type is clicked
+  const [pendingLesson, setPendingLesson] = useState(null)
 
-  // Get next available time slot
-  const getNextAvailableSlot = useCallback(() => {
-    // Simple implementation: find the latest end time on day 1, or default to startHour
-    const day1Lessons = scheduledLessons.filter(l => l.day === 1 && l.week === 1)
-    if (day1Lessons.length === 0) {
-      return { hour: startHour, minute: 0 }
-    }
-
-    // Find latest end time
-    let latestEnd = startHour * 60
-    day1Lessons.forEach(lesson => {
-      if (lesson.startTime) {
-        const start = parseInt(lesson.startTime.slice(0, 2)) * 60 + parseInt(lesson.startTime.slice(2, 4) || 0)
-        const end = start + lesson.duration
-        if (end > latestEnd) latestEnd = end
-      }
-    })
-
-    return {
-      hour: Math.floor(latestEnd / 60),
-      minute: latestEnd % 60
-    }
-  }, [scheduledLessons, startHour])
-
-  // Handle creating new lesson from palette
-  const handleCreateLesson = useCallback((typeId) => {
-    setNewLessonType(typeId)
-    const slot = getNextAvailableSlot()
-    const startTime = `${slot.hour.toString().padStart(2, '0')}${slot.minute.toString().padStart(2, '0')}`
-
-    addLesson({
+  // Handle clicking a lesson type - creates pending lesson above PKE
+  const handleTypeClick = useCallback((typeId) => {
+    const type = LESSON_TYPES.find(t => t.id === typeId) || LESSON_TYPES[0]
+    setPendingLesson({
+      id: `pending-${Date.now()}`,
       title: 'New Lesson',
       type: typeId,
       duration: 60,
+      color: type.color
+    })
+  }, [LESSON_TYPES])
+
+  // Handle scheduling the pending lesson (drag to grid or confirm)
+  const handleSchedulePending = useCallback((day, startTime) => {
+    if (!pendingLesson) return
+
+    createLesson({
+      title: pendingLesson.title,
+      type: pendingLesson.type,
+      duration: pendingLesson.duration,
       startTime,
-      day: 1,
+      day,
       week: 1,
       scheduled: true
     })
-  }, [addLesson, getNextAvailableSlot])
+    setPendingLesson(null)
+  }, [pendingLesson, createLesson])
 
-  // Handle adding new lesson from preview card
-  const handleAddNewLesson = useCallback(() => {
-    handleCreateLesson(newLessonType)
-  }, [handleCreateLesson, newLessonType])
+  // Handle cancelling pending lesson
+  const handleCancelPending = useCallback(() => {
+    setPendingLesson(null)
+  }, [])
 
-  // Get lesson type info
-  const currentType = LESSON_TYPES.find(t => t.id === newLessonType) || LESSON_TYPES[0]
+  // Handle drag start for pending lesson
+  const handlePendingDragStart = useCallback((e) => {
+    if (!pendingLesson) return
+    e.dataTransfer.setData('lessonId', pendingLesson.id)
+    e.dataTransfer.setData('dragType', 'pending')
+    e.dataTransfer.setData('pendingType', pendingLesson.type)
+    e.dataTransfer.setData('pendingDuration', pendingLesson.duration.toString())
+    e.dataTransfer.effectAllowed = 'move'
+  }, [pendingLesson])
+
+  // Get lesson type info for preview
+  const currentType = pendingLesson
+    ? LESSON_TYPES.find(t => t.id === pendingLesson.type) || LESSON_TYPES[0]
+    : LESSON_TYPES[0]
 
   return (
     <div
@@ -86,7 +86,8 @@ function TimetableWorkspace() {
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        background: THEME.BG_DARK
+        background: THEME.BG_DARK,
+        position: 'relative'
       }}
     >
       {/* Time Controls Row */}
@@ -102,16 +103,121 @@ function TimetableWorkspace() {
         <TimetableGrid
           startHour={Math.floor(startHour)}
           endHour={Math.floor(endHour)}
+          onSchedulePending={handleSchedulePending}
         />
       </div>
+
+      {/* Pending Lesson Card - appears centered above PKE */}
+      {pendingLesson && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '14vh',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 100
+          }}
+        >
+          <PendingLessonCard
+            lesson={pendingLesson}
+            type={currentType}
+            onDragStart={handlePendingDragStart}
+            onCancel={handleCancelPending}
+          />
+        </div>
+      )}
 
       {/* Control Zone */}
       <ControlZone
         lessonTypes={LESSON_TYPES}
         currentType={currentType}
-        onTypeSelect={handleCreateLesson}
-        onAddLesson={handleAddNewLesson}
+        onTypeSelect={handleTypeClick}
+        hasPendingLesson={!!pendingLesson}
       />
+    </div>
+  )
+}
+
+// ============================================
+// PENDING LESSON CARD (appears above PKE)
+// ============================================
+
+function PendingLessonCard({ lesson, type, onDragStart, onCancel }) {
+  return (
+    <div
+      draggable
+      onDragStart={onDragStart}
+      style={{
+        width: '12vw',
+        minWidth: '160px',
+        height: '5vh',
+        minHeight: '50px',
+        background: 'rgba(25, 25, 25, 0.95)',
+        border: `2px solid ${THEME.AMBER}`,
+        borderRadius: '20px',
+        cursor: 'grab',
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'stretch',
+        overflow: 'hidden',
+        boxShadow: `0 0 20px rgba(255, 102, 0, 0.4)`,
+        position: 'relative'
+      }}
+    >
+      {/* Left accent bar */}
+      <div
+        style={{
+          width: '6px',
+          background: type.color,
+          borderRadius: '20px 0 0 20px'
+        }}
+      />
+      {/* Content */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          padding: '0.5vh 1vw'
+        }}
+      >
+        <span
+          style={{
+            fontSize: '1.3vh',
+            color: THEME.AMBER,
+            fontFamily: THEME.FONT_PRIMARY,
+            marginBottom: '0.2vh'
+          }}
+        >
+          {lesson.title}
+        </span>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: '1vh', color: THEME.TEXT_DIM, fontFamily: THEME.FONT_MONO }}>
+            Drag to schedule
+          </span>
+          <span style={{ fontSize: '1vh', color: THEME.TEXT_DIM, fontFamily: THEME.FONT_MONO }}>
+            {lesson.duration}mins
+          </span>
+        </div>
+      </div>
+      {/* Cancel button */}
+      <button
+        onClick={onCancel}
+        style={{
+          position: 'absolute',
+          top: '2px',
+          right: '6px',
+          background: 'transparent',
+          border: 'none',
+          color: THEME.TEXT_DIM,
+          fontSize: '1.2vh',
+          cursor: 'pointer',
+          padding: '2px'
+        }}
+      >
+        ×
+      </button>
     </div>
   )
 }
@@ -120,7 +226,7 @@ function TimetableWorkspace() {
 // CONTROL ZONE COMPONENT
 // ============================================
 
-function ControlZone({ lessonTypes, currentType, onTypeSelect, onAddLesson }) {
+function ControlZone({ lessonTypes, currentType, onTypeSelect, hasPendingLesson }) {
   // Split types into two rows (5 each)
   const row1Types = lessonTypes.slice(0, 5)
   const row2Types = lessonTypes.slice(5, 10)
@@ -128,65 +234,60 @@ function ControlZone({ lessonTypes, currentType, onTypeSelect, onAddLesson }) {
   return (
     <div
       style={{
-        padding: '1vh 1.5vw',
+        padding: '1vh 0',
         borderTop: `1px solid ${THEME.BORDER}`,
         background: THEME.BG_DARK,
         display: 'flex',
-        alignItems: 'center',
-        gap: '2vw'
+        justifyContent: 'center'
       }}
     >
-      {/* Lesson Type Palette - 2x5 Grid */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5vh' }}>
-        {/* Row 1 */}
-        <div style={{ display: 'flex', gap: '0.4vw' }}>
-          {row1Types.map(type => (
-            <LessonTypeButton
-              key={type.id}
-              type={type}
-              onClick={() => onTypeSelect(type.id)}
-            />
-          ))}
-        </div>
-        {/* Row 2 */}
-        <div style={{ display: 'flex', gap: '0.4vw' }}>
-          {row2Types.map(type => (
-            <LessonTypeButton
-              key={type.id}
-              type={type}
-              onClick={() => onTypeSelect(type.id)}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Spacer */}
-      <div style={{ flex: 1 }} />
-
-      {/* New Lesson Card Preview */}
-      <NewLessonCard
-        type={currentType}
-        onClick={onAddLesson}
-      />
-
-      {/* Lesson Navigation */}
+      {/* Container aligned with day bars (75% width) */}
       <div
         style={{
+          width: '75%',
           display: 'flex',
           alignItems: 'center',
-          gap: '0.8vw',
-          fontSize: '1.4vh',
-          color: THEME.TEXT_DIM
+          justifyContent: 'space-between'
         }}
       >
-        <span style={{ cursor: 'pointer' }}>{'<'}</span>
-        <span
-          style={{ color: THEME.AMBER, cursor: 'pointer' }}
-          onClick={onAddLesson}
+        {/* Lesson Type Palette - 2x5 Grid - aligned left */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5vh', marginLeft: '35px' }}>
+          {/* Row 1 */}
+          <div style={{ display: 'flex', gap: '0.4vw' }}>
+            {row1Types.map(type => (
+              <LessonTypeButton
+                key={type.id}
+                type={type}
+                onClick={() => onTypeSelect(type.id)}
+              />
+            ))}
+          </div>
+          {/* Row 2 */}
+          <div style={{ display: 'flex', gap: '0.4vw' }}>
+            {row2Types.map(type => (
+              <LessonTypeButton
+                key={type.id}
+                type={type}
+                onClick={() => onTypeSelect(type.id)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Navigation Controls - aligned right */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.8vw',
+            fontSize: '1.4vh',
+            color: THEME.TEXT_DIM
+          }}
         >
-          +
-        </span>
-        <span style={{ cursor: 'pointer' }}>{'>'}</span>
+          <span style={{ cursor: 'pointer' }}>{'<'}</span>
+          <span style={{ color: THEME.AMBER, cursor: 'pointer' }}>+</span>
+          <span style={{ cursor: 'pointer' }}>{'>'}</span>
+        </div>
       </div>
     </div>
   )
@@ -205,127 +306,51 @@ function LessonTypeButton({ type, onClick }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        width: '5vw',
-        minWidth: '70px',
-        height: '4vh',
-        minHeight: '35px',
+        width: '4.7vw',
+        minWidth: '64px',
+        height: '3vh',
+        minHeight: '28px',
         background: THEME.BG_PANEL,
-        border: `1px solid ${hovered ? type.color : 'rgba(255, 255, 255, 0.2)'}`,
-        borderRadius: '0.4vh',
+        border: `1px solid ${hovered ? type.color : 'rgba(255, 255, 255, 0.3)'}`,
+        borderRadius: '14px',
         cursor: 'pointer',
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'flex-end',
-        padding: '0.3vh',
+        justifyContent: 'flex-start',
+        padding: '0 0.5vw',
+        gap: '0.4vw',
         position: 'relative',
         overflow: 'hidden',
-        transition: 'border-color 0.2s ease'
+        transition: 'border-color 0.2s ease, background 0.2s ease'
       }}
     >
-      {/* Top accent bar */}
+      {/* Left accent bar */}
       <div
         style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '3px',
-          background: type.color
+          width: '4px',
+          height: '60%',
+          background: type.color,
+          borderRadius: '2px',
+          flexShrink: 0
         }}
       />
       {/* Label */}
       <span
         style={{
-          fontSize: '0.9vh',
+          fontSize: '0.85vh',
           color: THEME.TEXT_PRIMARY,
           fontFamily: THEME.FONT_PRIMARY,
-          textAlign: 'center',
-          lineHeight: 1.2
+          textAlign: 'left',
+          lineHeight: 1.2,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
         }}
       >
         {type.name}
       </span>
     </button>
-  )
-}
-
-// ============================================
-// NEW LESSON CARD PREVIEW
-// ============================================
-
-function NewLessonCard({ type, onClick }) {
-  const [hovered, setHovered] = useState(false)
-
-  return (
-    <div
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        width: '10vw',
-        minWidth: '140px',
-        height: '6vh',
-        minHeight: '55px',
-        background: THEME.BG_PANEL,
-        border: `1px solid ${THEME.AMBER}`,
-        borderRadius: '0.6vh',
-        cursor: 'pointer',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        padding: '0.5vh 0.8vw',
-        position: 'relative',
-        overflow: 'hidden',
-        boxShadow: hovered
-          ? `0 0 12px rgba(255, 102, 0, 0.5)`
-          : `0 0 8px rgba(255, 102, 0, 0.3)`,
-        transition: 'box-shadow 0.2s ease'
-      }}
-    >
-      {/* Top accent bar */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '3px',
-          background: type.color
-        }}
-      />
-      {/* Content */}
-      <span
-        style={{
-          fontSize: '1.2vh',
-          color: THEME.AMBER,
-          fontFamily: THEME.FONT_PRIMARY,
-          marginBottom: '0.3vh'
-        }}
-      >
-        New Lesson
-      </span>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span
-          style={{
-            fontSize: '1vh',
-            color: THEME.TEXT_DIM,
-            fontFamily: THEME.FONT_MONO
-          }}
-        >
-          09:00-10:00
-        </span>
-        <span
-          style={{
-            fontSize: '1vh',
-            color: THEME.TEXT_PRIMARY,
-            fontFamily: THEME.FONT_MONO
-          }}
-        >
-          60mins
-        </span>
-      </div>
-    </div>
   )
 }
 
