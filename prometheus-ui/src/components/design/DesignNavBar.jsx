@@ -1,21 +1,19 @@
 /**
  * DesignNavBar.jsx - Navigation Bar for DESIGN Section
  *
- * APPROVED IMPLEMENTATION PLAN - Phase 1
+ * REVISED IMPLEMENTATION - Per DESIGN_Page Mockup
  *
  * Layout: Single row with three zones — Left | Centre | Right
  *
  * Left Zone:
- * - Section subtitle: "COURSE PLANNER"
- * - Course title in accent orange
+ * - "ACTIVE LESSON: [Lesson Title]" indicator
  *
  * Centre Zone:
- * - Module control: Label + arrows + editable name
- * - Week control: Label + arrows
+ * - "< TIMETABLE >" / "< SCALAR >" toggle with arrows
+ * - "< WEEK N > ∨" week/day/module selector below
  *
  * Right Zone:
- * - Primary Tabs: TIMETABLE | SCALAR
- * - View Toggle: DAY | WEEK | MODULE (when TIMETABLE active)
+ * - "Total: Xhr" display
  */
 
 import { useState } from 'react'
@@ -28,42 +26,45 @@ function DesignNavBar() {
     setActiveTab,
     viewMode,
     setViewMode,
-    currentModule,
-    setCurrentModule,
     currentWeek,
     setCurrentWeek,
-    currentDay,
-    setCurrentDay,
-    courseData
+    selectedLesson,
+    scheduledLessons
   } = useDesign()
 
-  // Module name editing state
-  const [editingModuleName, setEditingModuleName] = useState(false)
-  const [moduleNameValue, setModuleNameValue] = useState('')
+  // Dropdown state for view mode selector
+  const [viewDropdownOpen, setViewDropdownOpen] = useState(false)
 
-  // Get module name from course data or default
-  const moduleName = courseData?.moduleTitles?.[currentModule - 1] || `Module ${currentModule}`
-  const courseTitle = courseData?.title || '---'
+  // Get active lesson title
+  const activeLessonTitle = selectedLesson?.title || 'None Selected'
 
-  // Calculate total modules/weeks from course data
-  const totalModules = courseData?.module || 1
-  const totalWeeks = (() => {
-    const duration = courseData?.duration || 1
-    const unit = courseData?.durationUnit || 'Days'
-    if (unit === 'Days' || unit === 'DAYS') return Math.ceil(duration / 5)
-    if (unit === 'Weeks' || unit === 'WKS') return duration
-    return 1
-  })()
+  // Calculate total scheduled hours
+  const totalMinutes = scheduledLessons.reduce((sum, lesson) => sum + lesson.duration, 0)
+  const totalHours = Math.floor(totalMinutes / 60)
+  const remainingMins = totalMinutes % 60
 
-  // Handle module name edit
-  const handleModuleNameEdit = () => {
-    setModuleNameValue(moduleName)
-    setEditingModuleName(true)
+  const formatTotalTime = () => {
+    if (totalMinutes === 0) return '0hr'
+    if (remainingMins === 0) return `${totalHours}hr`
+    return `${totalHours}h${remainingMins}m`
   }
 
-  const handleModuleNameCommit = () => {
-    // TODO: Update module name in course data
-    setEditingModuleName(false)
+  // Toggle between TIMETABLE and SCALAR
+  const handleTabToggle = (direction) => {
+    if (direction === 'left' && activeTab === 'scalar') {
+      setActiveTab('timetable')
+    } else if (direction === 'right' && activeTab === 'timetable') {
+      setActiveTab('scalar')
+    }
+  }
+
+  // View mode labels
+  const viewModeLabel = viewMode === 'day' ? 'DAY' : viewMode === 'week' ? 'WEEK' : 'MODULE'
+
+  // Handle view mode change
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode)
+    setViewDropdownOpen(false)
   }
 
   return (
@@ -72,169 +73,171 @@ function DesignNavBar() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0.8vh 1.5vw',
+        padding: '1vh 2vw',
         borderBottom: `1px solid ${THEME.BORDER}`,
         background: THEME.BG_DARK,
-        minHeight: '5vh'
+        minHeight: '6vh'
       }}
     >
-      {/* LEFT ZONE: Section Label + Course Title */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1vw', flex: 1 }}>
+      {/* LEFT ZONE: Active Lesson Indicator */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw', flex: 1 }}>
         <span
           style={{
-            fontSize: '1.5vh',
-            letterSpacing: '0.15vw',
-            color: THEME.TEXT_DIM,
+            fontSize: '1.4vh',
+            letterSpacing: '0.1vw',
+            color: THEME.TEXT_PRIMARY,
             fontFamily: THEME.FONT_PRIMARY,
             textTransform: 'uppercase'
           }}
         >
-          ACTIVE COURSE:
+          ACTIVE LESSON:
         </span>
         <span
           style={{
-            fontSize: '1.7vh',
-            letterSpacing: '0.15vw',
-            color: THEME.GREEN_BRIGHT,
+            fontSize: '1.4vh',
+            letterSpacing: '0.1vw',
+            color: THEME.AMBER,
             fontFamily: THEME.FONT_PRIMARY,
-            fontWeight: 500
+            fontWeight: 500,
+            textTransform: 'uppercase'
           }}
         >
-          {courseTitle}
+          {activeLessonTitle}
         </span>
       </div>
 
-      {/* CENTRE ZONE: Module + Week Navigation */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '2vw' }}>
-        {/* Module Control */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
-          <span style={labelStyle}>Module:</span>
+      {/* CENTRE ZONE: View Toggle + Week Selector */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3vh' }}>
+        {/* TIMETABLE / SCALAR Toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8vw' }}>
           <NavArrow
             direction="left"
-            disabled={currentModule <= 1}
-            onClick={() => setCurrentModule(m => Math.max(1, m - 1))}
+            disabled={activeTab === 'timetable'}
+            onClick={() => handleTabToggle('left')}
           />
-          {editingModuleName ? (
-            <input
-              autoFocus
-              type="text"
-              value={moduleNameValue}
-              onChange={(e) => setModuleNameValue(e.target.value)}
-              onBlur={handleModuleNameCommit}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleModuleNameCommit()
-                if (e.key === 'Escape') setEditingModuleName(false)
-              }}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                borderBottom: `1px solid ${THEME.AMBER}`,
-                color: THEME.WHITE,
-                fontSize: '1.4vh',
-                fontFamily: THEME.FONT_PRIMARY,
-                width: '10vw',
-                outline: 'none',
-                textAlign: 'center'
-              }}
-            />
-          ) : (
-            <span
-              onClick={handleModuleNameEdit}
-              style={{
-                color: THEME.WHITE,
-                fontSize: '1.4vh',
-                fontFamily: THEME.FONT_PRIMARY,
-                cursor: 'pointer',
-                minWidth: '8vw',
-                textAlign: 'center'
-              }}
-              title="Click to edit module name"
-            >
-              {moduleName}
-            </span>
-          )}
-          <NavArrow
-            direction="right"
-            disabled={currentModule >= totalModules}
-            onClick={() => setCurrentModule(m => Math.min(totalModules, m + 1))}
-          />
-        </div>
-
-        {/* Week Control */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
-          <span style={labelStyle}>Week:</span>
-          <NavArrow
-            direction="left"
-            disabled={currentWeek <= 1}
-            onClick={() => setCurrentWeek(w => Math.max(1, w - 1))}
-          />
-          <span style={{ color: THEME.WHITE, fontSize: '1.4vh', fontFamily: THEME.FONT_PRIMARY }}>
-            {currentWeek}
+          <span
+            style={{
+              fontSize: '1.8vh',
+              letterSpacing: '0.2vw',
+              color: THEME.TEXT_PRIMARY,
+              fontFamily: THEME.FONT_PRIMARY,
+              textTransform: 'uppercase',
+              minWidth: '8vw',
+              textAlign: 'center'
+            }}
+          >
+            {activeTab === 'timetable' ? 'TIMETABLE' : 'SCALAR'}
           </span>
           <NavArrow
             direction="right"
-            disabled={currentWeek >= totalWeeks}
-            onClick={() => setCurrentWeek(w => Math.min(totalWeeks, w + 1))}
+            disabled={activeTab === 'scalar'}
+            onClick={() => handleTabToggle('right')}
           />
         </div>
 
-        {/* Day Control (only in DAY view mode) */}
-        {viewMode === 'day' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
-            <span style={labelStyle}>Day:</span>
+        {/* Week/Day/Module Selector - only show for timetable */}
+        {activeTab === 'timetable' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw', position: 'relative' }}>
             <NavArrow
               direction="left"
-              disabled={currentDay <= 1}
-              onClick={() => setCurrentDay(d => Math.max(1, d - 1))}
+              disabled={currentWeek <= 1}
+              onClick={() => setCurrentWeek(w => Math.max(1, w - 1))}
+              small
             />
-            <span style={{ color: THEME.AMBER, fontSize: '1.4vh', fontFamily: THEME.FONT_PRIMARY, fontWeight: 500 }}>
-              {currentDay}
+            <span
+              style={{
+                fontSize: '1.3vh',
+                color: THEME.TEXT_PRIMARY,
+                fontFamily: THEME.FONT_PRIMARY
+              }}
+            >
+              {viewModeLabel}{' '}
+              <span style={{ color: THEME.AMBER }}>{currentWeek}</span>
             </span>
             <NavArrow
               direction="right"
-              disabled={currentDay >= 5}
-              onClick={() => setCurrentDay(d => Math.min(5, d + 1))}
+              onClick={() => setCurrentWeek(w => w + 1)}
+              small
             />
+            {/* Dropdown toggle */}
+            <button
+              onClick={() => setViewDropdownOpen(!viewDropdownOpen)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: THEME.TEXT_PRIMARY,
+                fontSize: '1.2vh',
+                cursor: 'pointer',
+                padding: '0 0.3vw',
+                transform: viewDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s ease'
+              }}
+            >
+              ∨
+            </button>
+
+            {/* View Mode Dropdown */}
+            {viewDropdownOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  marginTop: '0.5vh',
+                  background: THEME.BG_PANEL,
+                  border: `1px solid ${THEME.BORDER_LIGHT}`,
+                  borderRadius: '0.4vh',
+                  zIndex: 100,
+                  minWidth: '6vw',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
+                }}
+              >
+                {['week', 'day', 'module'].map(mode => (
+                  <div
+                    key={mode}
+                    onClick={() => handleViewModeChange(mode)}
+                    style={{
+                      padding: '0.6vh 1vw',
+                      fontSize: '1.2vh',
+                      color: viewMode === mode ? THEME.AMBER : THEME.TEXT_PRIMARY,
+                      cursor: 'pointer',
+                      textTransform: 'uppercase',
+                      background: viewMode === mode ? THEME.AMBER_DARK : 'transparent',
+                      transition: 'background 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = THEME.BG_DARK}
+                    onMouseLeave={(e) => e.currentTarget.style.background = viewMode === mode ? THEME.AMBER_DARK : 'transparent'}
+                  >
+                    {mode}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* RIGHT ZONE: Tabs + View Toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1vw', flex: 1, justifyContent: 'flex-end' }}>
-        {/* View Toggle (only when TIMETABLE active) */}
-        {activeTab === 'timetable' && (
-          <div style={{ display: 'flex', gap: '0.3vw', marginRight: '1vw' }}>
-            <ViewToggleButton
-              label="DAY"
-              active={viewMode === 'day'}
-              onClick={() => setViewMode('day')}
-            />
-            <ViewToggleButton
-              label="WEEK"
-              active={viewMode === 'week'}
-              onClick={() => setViewMode('week')}
-            />
-            <ViewToggleButton
-              label="MODULE"
-              active={viewMode === 'module'}
-              onClick={() => setViewMode('module')}
-            />
-          </div>
-        )}
-
-        {/* Primary Tabs */}
-        <div style={{ display: 'flex', gap: '0.6vw' }}>
-          <TabButton
-            label="TIMETABLE"
-            active={activeTab === 'timetable'}
-            onClick={() => setActiveTab('timetable')}
-          />
-          <TabButton
-            label="SCALAR"
-            active={activeTab === 'scalar'}
-            onClick={() => setActiveTab('scalar')}
-          />
-        </div>
+      {/* RIGHT ZONE: Total Hours */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw', flex: 1, justifyContent: 'flex-end' }}>
+        <span
+          style={{
+            fontSize: '1.4vh',
+            color: THEME.TEXT_PRIMARY,
+            fontFamily: THEME.FONT_PRIMARY
+          }}
+        >
+          Total:
+        </span>
+        <span
+          style={{
+            fontSize: '1.4vh',
+            color: THEME.AMBER,
+            fontFamily: THEME.FONT_MONO
+          }}
+        >
+          {formatTotalTime()}
+        </span>
       </div>
     </div>
   )
@@ -244,7 +247,7 @@ function DesignNavBar() {
 // SUB-COMPONENTS
 // ============================================
 
-function NavArrow({ direction, disabled, onClick }) {
+function NavArrow({ direction, disabled, onClick, small }) {
   const [hovered, setHovered] = useState(false)
 
   return (
@@ -260,81 +263,17 @@ function NavArrow({ direction, disabled, onClick }) {
           ? THEME.TEXT_DIM
           : hovered
             ? THEME.AMBER
-            : THEME.WHITE,
-        fontSize: '1.6vh',
+            : THEME.TEXT_PRIMARY,
+        fontSize: small ? '1.3vh' : '1.8vh',
         cursor: disabled ? 'default' : 'pointer',
-        padding: '0.2vh 0.4vw',
+        padding: small ? '0.1vh 0.2vw' : '0.2vh 0.4vw',
         opacity: disabled ? 0.4 : 1,
         transition: 'color 0.2s ease'
       }}
     >
-      {direction === 'left' ? '‹' : '›'}
+      {direction === 'left' ? '<' : '>'}
     </button>
   )
-}
-
-function TabButton({ label, active, onClick }) {
-  const [hovered, setHovered] = useState(false)
-
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        padding: '1vh 1.8vw',
-        fontSize: '1.3vh',
-        letterSpacing: '0.15vw',
-        fontFamily: THEME.FONT_PRIMARY,
-        background: active ? THEME.GRADIENT_BUTTON : 'transparent',
-        border: `1px solid ${active ? THEME.AMBER : THEME.BORDER}`,
-        borderRadius: '1.8vh',
-        color: active ? THEME.WHITE : hovered ? THEME.AMBER : THEME.TEXT_SECONDARY,
-        cursor: 'pointer',
-        transition: 'all 0.2s ease'
-      }}
-    >
-      {label}
-    </button>
-  )
-}
-
-function ViewToggleButton({ label, active, onClick }) {
-  const [hovered, setHovered] = useState(false)
-
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        padding: '0.6vh 0.8vw',
-        fontSize: '1.1vh',
-        letterSpacing: '0.1vw',
-        fontFamily: THEME.FONT_PRIMARY,
-        background: active ? THEME.AMBER_DARK : 'transparent',
-        border: `1px solid ${active ? THEME.AMBER : THEME.BORDER}`,
-        borderRadius: '0.8vh',
-        color: active ? THEME.WHITE : hovered ? THEME.AMBER : THEME.TEXT_DIM,
-        cursor: 'pointer',
-        transition: 'all 0.2s ease'
-      }}
-    >
-      {label}
-    </button>
-  )
-}
-
-// ============================================
-// STYLES
-// ============================================
-
-const labelStyle = {
-  fontSize: '1.2vh',
-  letterSpacing: '0.1vw',
-  color: THEME.TEXT_DIM,
-  fontFamily: THEME.FONT_PRIMARY,
-  textTransform: 'uppercase'
 }
 
 export default DesignNavBar

@@ -22,12 +22,13 @@ import { THEME } from '../../constants/theme'
 import { useDesign } from '../../contexts/DesignContext'
 import LessonBlock from './LessonBlock'
 
-// Constants - Updated for improved readability
-const DAY_LABEL_WIDTH = 70      // Width of day label column
-const HOUR_WIDTH = 110          // Width of each hour column (+20% from 92)
-const DAY_HEIGHT = 69           // Height of each day row
-const HEADER_HEIGHT = 35        // Height of time header
+// Constants - Updated per DESIGN_Page mockup
+const DAY_LABEL_WIDTH = 50      // Width of DAY column
+const HOUR_WIDTH = 100          // Width of each hour column
+const DAY_HEIGHT = 60           // Height of each day row
+const HEADER_HEIGHT = 30        // Height of time header
 const NUM_DAYS = 5              // Number of day rows to show
+const ROW_GAP = 8               // Gap between day rows
 const PIXELS_PER_MINUTE = HOUR_WIDTH / 60  // For time calculations
 
 function TimetableGrid({ startHour = 8, endHour = 17 }) {
@@ -120,18 +121,27 @@ function TimetableGrid({ startHour = 8, endHour = 17 }) {
           style={{
             display: 'flex',
             height: `${HEADER_HEIGHT}px`,
-            borderBottom: `1px solid ${THEME.BORDER}`,
-            flexShrink: 0
+            flexShrink: 0,
+            alignItems: 'center'
           }}
         >
-          {/* Day label spacer */}
+          {/* DAY column header */}
           <div
             style={{
               width: `${DAY_LABEL_WIDTH}px`,
               flexShrink: 0,
-              borderRight: `1px solid ${THEME.BORDER}`
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.1vh',
+              color: THEME.TEXT_DIM,
+              fontFamily: THEME.FONT_PRIMARY,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1vw'
             }}
-          />
+          >
+            DAY
+          </div>
 
           {/* Hour columns */}
           {hours.map((hour, idx) => (
@@ -143,44 +153,42 @@ function TimetableGrid({ startHour = 8, endHour = 17 }) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.3vh',
+                fontSize: '1.1vh',
                 color: THEME.TEXT_DIM,
-                fontFamily: THEME.FONT_MONO,
-                borderRight: idx < hours.length - 1 ? `1px solid ${THEME.BORDER}` : 'none',
-                background: hour === Math.floor(new Date().getHours())
-                  ? 'rgba(212, 115, 12, 0.1)'
-                  : 'transparent'
+                fontFamily: THEME.FONT_MONO
               }}
             >
-              {hour.toString().padStart(2, '0')}00
+              {hour.toString().padStart(2, '0')}:00
             </div>
           ))}
         </div>
 
         {/* Day Rows */}
-        {daysToShow.map(day => {
-          // Check if this day has the selected lesson
-          const hasSelectedLesson = selectedLesson && selectedLesson.day === day && selectedLesson.week === currentWeek
-          // Check if this day has a hovered lesson
-          const hasHoveredLesson = hoveredLessonDay === day
+        <div style={{ display: 'flex', flexDirection: 'column', gap: `${ROW_GAP}px` }}>
+          {daysToShow.map(day => {
+            // Check if this day has the selected lesson
+            const hasSelectedLesson = selectedLesson && selectedLesson.day === day && selectedLesson.week === currentWeek
+            // Check if this day has a hovered lesson
+            const hasHoveredLesson = hoveredLessonDay === day
 
-          return (
-            <DayRow
-              key={day}
-              day={day}
-              hours={hours}
-              lessons={getLessonsForDay(day)}
-              pixelsPerMinute={pixelsPerMinute}
-              startHour={startHour}
-              endHour={endHour}
-              isCurrentDay={day === currentDay && viewMode === 'week'}
-              isHighlighted={hasSelectedLesson || hasHoveredLesson}
-              onDrop={(lessonId, newStartTime) => moveLesson(lessonId, day, newStartTime)}
-              onSchedule={(lessonId, newStartTime) => scheduleLesson(lessonId, day, newStartTime)}
-              onLessonHover={(isHovered) => setHoveredLessonDay(isHovered ? day : null)}
-            />
-          )
-        })}
+            return (
+              <DayRow
+                key={day}
+                day={day}
+                hours={hours}
+                lessons={getLessonsForDay(day)}
+                pixelsPerMinute={pixelsPerMinute}
+                startHour={startHour}
+                endHour={endHour}
+                isCurrentDay={day === currentDay && viewMode === 'week'}
+                isHighlighted={hasSelectedLesson || hasHoveredLesson}
+                onDrop={(lessonId, newStartTime) => moveLesson(lessonId, day, newStartTime)}
+                onSchedule={(lessonId, newStartTime) => scheduleLesson(lessonId, day, newStartTime)}
+                onLessonHover={(isHovered) => setHoveredLessonDay(isHovered ? day : null)}
+              />
+            )
+          })}
+        </div>
 
         {/* Empty state if no days */}
         {daysToShow.length === 0 && (
@@ -296,31 +304,33 @@ function DayRow({
       style={{
         display: 'flex',
         height: `${DAY_HEIGHT}px`,
-        borderBottom: `1px solid ${THEME.BORDER}`,
+        borderRadius: '4px',
+        overflow: 'hidden',
+        border: `1px solid ${THEME.BORDER}`,
         background: isDragOver
           ? 'rgba(212, 115, 12, 0.15)'
           : isCurrentDay
             ? 'rgba(212, 115, 12, 0.05)'
-            : 'transparent'
+            : THEME.BG_PANEL
       }}
     >
-      {/* Day Label */}
+      {/* Day Label - Just the number */}
       <div
         style={{
           width: `${DAY_LABEL_WIDTH}px`,
           flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
-          paddingLeft: '0.8vw',
-          fontSize: '1.3vh',
-          color: isHighlighted ? THEME.AMBER : THEME.WHITE,
-          fontFamily: THEME.FONT_PRIMARY,
+          justifyContent: 'center',
+          fontSize: '1.5vh',
+          color: isHighlighted ? THEME.AMBER : THEME.TEXT_PRIMARY,
+          fontFamily: THEME.FONT_MONO,
           borderRight: `1px solid ${THEME.BORDER}`,
-          background: THEME.BG_PANEL,
+          background: 'transparent',
           transition: 'color 0.2s ease'
         }}
       >
-        Day {day}
+        {day}
       </div>
 
       {/* Content Area (with hour grid lines) - DROP ZONE */}

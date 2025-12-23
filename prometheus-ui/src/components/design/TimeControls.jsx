@@ -1,21 +1,22 @@
 /**
- * TimeControls.jsx - Time Range Slider and Info Display
+ * TimeControls.jsx - Pill-shaped Time Adjusters and Day Indicator
  *
- * APPROVED IMPLEMENTATION PLAN - Phase 2
+ * REVISED IMPLEMENTATION - Per DESIGN_Page Mockup
  *
- * Layout: Flex row, distributed across width
+ * Layout: Left | Center | Right
  *
- * Left — Time range slider:
- * - Start time label
- * - Slider with two draggable handles
- * - Fill between handles in accent colour
- * - End time label
+ * Left — Start time adjuster:
+ * - "- 08:00 +" pill-shaped button
+ * - Range: 06:00-12:00
+ * - Increments: 30 minutes
  *
- * Centre — Course hours:
- * - "Total Course Hours: [X] hr"
+ * Centre — Day indicator:
+ * - "Day: 1" (number in orange)
  *
- * Right — Day indicator:
- * - "Day: [X]"
+ * Right — End time adjuster:
+ * - "- 14:00 +" pill-shaped button
+ * - Range: 12:00-20:00
+ * - Increments: 30 minutes
  */
 
 import { useState, useCallback } from 'react'
@@ -26,224 +27,201 @@ function TimeControls({
   startHour: propStartHour,
   endHour: propEndHour,
   onStartChange,
-  onEndChange,
-  editorCollapsed = false,
-  onExpandEditor
+  onEndChange
 }) {
-  const {
-    currentDay,
-    scheduledLessons,
-    viewMode
-  } = useDesign()
+  const { currentDay } = useDesign()
 
   // Use props if provided, otherwise use local state
   const [localStartHour, setLocalStartHour] = useState(8)
-  const [localEndHour, setLocalEndHour] = useState(17)
+  const [localEndHour, setLocalEndHour] = useState(14)
 
   const startHour = propStartHour ?? localStartHour
   const endHour = propEndHour ?? localEndHour
 
-  // Calculate total scheduled hours
-  const totalMinutes = scheduledLessons.reduce((sum, lesson) => sum + lesson.duration, 0)
-  const totalHours = Math.floor(totalMinutes / 60)
-  const remainingMins = totalMinutes % 60
-
-  const formatTotalTime = () => {
-    if (remainingMins === 0) return `${totalHours} hr`
-    return `${totalHours}h ${remainingMins}m`
+  // Format time for display (hour to "HH:00")
+  const formatTime = (hour) => {
+    return `${hour.toString().padStart(2, '0')}:00`
   }
 
-  // Handle start time change (range: 6-12, i.e., 0600-1200)
-  const handleStartChange = useCallback((e) => {
-    const value = parseInt(e.target.value)
-    // Clamp to valid range and ensure at least 2 hours before end
-    if (value >= 6 && value <= 12 && value < endHour - 1) {
-      if (onStartChange) onStartChange(value)
-      else setLocalStartHour(value)
+  // Handle start time decrement (30-min intervals, min 6)
+  const decrementStart = useCallback(() => {
+    const newHour = startHour - 0.5
+    if (newHour >= 6) {
+      if (onStartChange) onStartChange(newHour)
+      else setLocalStartHour(newHour)
     }
-  }, [endHour, onStartChange])
+  }, [startHour, onStartChange])
 
-  // Handle end time change (range: 12-20, i.e., 1200-2000)
-  const handleEndChange = useCallback((e) => {
-    const value = parseInt(e.target.value)
-    // Clamp to valid range and ensure at least 2 hours after start
-    if (value >= 12 && value <= 20 && value > startHour + 1) {
-      if (onEndChange) onEndChange(value)
-      else setLocalEndHour(value)
+  // Handle start time increment (30-min intervals, max 12, must be < endHour)
+  const incrementStart = useCallback(() => {
+    const newHour = startHour + 0.5
+    if (newHour <= 12 && newHour < endHour - 1) {
+      if (onStartChange) onStartChange(newHour)
+      else setLocalStartHour(newHour)
     }
-  }, [startHour, onEndChange])
+  }, [startHour, endHour, onStartChange])
 
-  // Hover state for editor tab
-  const [editorTabHovered, setEditorTabHovered] = useState(false)
+  // Handle end time decrement (30-min intervals, min 12, must be > startHour)
+  const decrementEnd = useCallback(() => {
+    const newHour = endHour - 0.5
+    if (newHour >= 12 && newHour > startHour + 1) {
+      if (onEndChange) onEndChange(newHour)
+      else setLocalEndHour(newHour)
+    }
+  }, [endHour, startHour, onEndChange])
+
+  // Handle end time increment (30-min intervals, max 20)
+  const incrementEnd = useCallback(() => {
+    const newHour = endHour + 0.5
+    if (newHour <= 20) {
+      if (onEndChange) onEndChange(newHour)
+      else setLocalEndHour(newHour)
+    }
+  }, [endHour, onEndChange])
+
+  // Format hour to display (handles half hours)
+  const formatHourDisplay = (hour) => {
+    const h = Math.floor(hour)
+    const m = (hour % 1) * 60
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
+  }
 
   return (
     <div
       style={{
         display: 'flex',
         alignItems: 'center',
-        padding: '1vh 1.5vw',
-        borderBottom: `1px solid ${THEME.BORDER}`,
-        background: THEME.BG_DARK,
-        gap: '1.5vw'
+        justifyContent: 'space-between',
+        padding: '0.8vh 1.5vw',
+        background: 'transparent'
       }}
     >
-      {/* LEFT: Lesson Editor Tab (when collapsed) */}
-      {editorCollapsed && (
-        <button
-          onClick={onExpandEditor}
-          onMouseEnter={() => setEditorTabHovered(true)}
-          onMouseLeave={() => setEditorTabHovered(false)}
+      {/* LEFT: Start Time Adjuster */}
+      <TimeAdjusterPill
+        time={formatHourDisplay(startHour)}
+        onDecrement={decrementStart}
+        onIncrement={incrementStart}
+        canDecrement={startHour > 6}
+        canIncrement={startHour < 12 && startHour < endHour - 1}
+      />
+
+      {/* CENTER: Day Indicator */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4vw' }}>
+        <span
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4vw',
-            padding: '0.6vh 1vw',
-            background: editorTabHovered ? THEME.AMBER_DARK : THEME.BG_PANEL,
-            border: `1px solid ${editorTabHovered ? THEME.AMBER : THEME.BORDER}`,
-            borderRadius: '0.4vh',
-            color: editorTabHovered ? THEME.AMBER : THEME.TEXT_DIM,
-            fontSize: '1.2vh',
-            fontFamily: THEME.FONT_PRIMARY,
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            flexShrink: 0
+            fontSize: '1.5vh',
+            color: THEME.TEXT_PRIMARY,
+            fontFamily: THEME.FONT_PRIMARY
           }}
         >
-          Lesson Editor
-          <span style={{ fontSize: '1.4vh' }}>›</span>
-        </button>
-      )}
-
-      {/* Spacer to push slider to center */}
-      <div style={{ flex: 1 }} />
-
-      {/* CENTER: Time Range Slider */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8vw' }}>
-        {/* Start Time Label */}
-        <span style={timeLabelStyle}>
-          {startHour.toString().padStart(2, '0')}00
+          Day:
         </span>
-
-        {/* Dual Range Slider Container */}
-        <div style={{ position: 'relative', width: '12vw', height: '2vh' }}>
-          {/* Track background */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              left: 0,
-              right: 0,
-              height: '0.4vh',
-              background: THEME.BORDER,
-              borderRadius: '0.2vh'
-            }}
-          />
-
-          {/* Active fill between handles */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              left: `${((startHour - 6) / 14) * 100}%`,
-              right: `${100 - ((endHour - 6) / 14) * 100}%`,
-              height: '0.4vh',
-              background: THEME.AMBER,
-              borderRadius: '0.2vh'
-            }}
-          />
-
-          {/* Start slider (0600-1200) */}
-          <input
-            type="range"
-            min={6}
-            max={12}
-            value={startHour}
-            onChange={handleStartChange}
-            style={{
-              ...sliderStyle,
-              zIndex: 3
-            }}
-          />
-
-          {/* End slider (1200-2000) */}
-          <input
-            type="range"
-            min={12}
-            max={20}
-            value={endHour}
-            onChange={handleEndChange}
-            style={{
-              ...sliderStyle,
-              zIndex: 4
-            }}
-          />
-        </div>
-
-        {/* End Time Label */}
-        <span style={timeLabelStyle}>
-          {endHour.toString().padStart(2, '0')}00
+        <span
+          style={{
+            fontSize: '1.5vh',
+            color: THEME.AMBER,
+            fontFamily: THEME.FONT_MONO,
+            fontWeight: 500
+          }}
+        >
+          {currentDay}
         </span>
       </div>
 
-      {/* Spacer to push slider to center */}
-      <div style={{ flex: 1 }} />
-
-      {/* RIGHT: Total Course Hours + Day Indicator */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5vw', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
-          <span style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM, fontFamily: THEME.FONT_PRIMARY }}>
-            Total:
-          </span>
-          <span style={{ fontSize: '1.3vh', color: THEME.GREEN_BRIGHT, fontFamily: THEME.FONT_MONO }}>
-            {formatTotalTime()}
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
-          <span style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM, fontFamily: THEME.FONT_PRIMARY }}>
-            {viewMode === 'day' ? 'Day:' : viewMode === 'week' ? 'Week View' : 'Module View'}
-          </span>
-          {viewMode === 'day' && (
-            <span style={{ fontSize: '1.3vh', color: THEME.AMBER, fontFamily: THEME.FONT_MONO }}>
-              {currentDay}
-            </span>
-          )}
-        </div>
-      </div>
+      {/* RIGHT: End Time Adjuster */}
+      <TimeAdjusterPill
+        time={formatHourDisplay(endHour)}
+        onDecrement={decrementEnd}
+        onIncrement={incrementEnd}
+        canDecrement={endHour > 12 && endHour > startHour + 1}
+        canIncrement={endHour < 20}
+      />
     </div>
   )
 }
 
 // ============================================
-// STYLES
+// TIME ADJUSTER PILL COMPONENT
 // ============================================
 
-const timeLabelStyle = {
-  fontSize: '1.2vh',
-  color: THEME.TEXT_DIM,
-  fontFamily: THEME.FONT_MONO,
-  minWidth: '3vw'
-}
+function TimeAdjusterPill({ time, onDecrement, onIncrement, canDecrement, canIncrement }) {
+  const [decrementHovered, setDecrementHovered] = useState(false)
+  const [incrementHovered, setIncrementHovered] = useState(false)
 
-const sliderStyle = {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  width: '100%',
-  height: '100%',
-  WebkitAppearance: 'none',
-  appearance: 'none',
-  background: 'transparent',
-  cursor: 'pointer',
-  pointerEvents: 'auto'
-}
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.6vw',
+        padding: '0.5vh 1vw',
+        border: `1px solid rgba(255, 255, 255, 0.3)`,
+        borderRadius: '2vh',
+        background: 'transparent'
+      }}
+    >
+      {/* Decrement Button */}
+      <button
+        onClick={onDecrement}
+        disabled={!canDecrement}
+        onMouseEnter={() => setDecrementHovered(true)}
+        onMouseLeave={() => setDecrementHovered(false)}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: !canDecrement
+            ? THEME.TEXT_DIM
+            : decrementHovered
+              ? THEME.AMBER
+              : THEME.TEXT_PRIMARY,
+          fontSize: '1.4vh',
+          cursor: canDecrement ? 'pointer' : 'default',
+          padding: '0 0.2vw',
+          opacity: canDecrement ? 1 : 0.4,
+          transition: 'color 0.15s ease'
+        }}
+      >
+        -
+      </button>
 
-// Add custom slider thumb styles via CSS (would need to be in a CSS file)
-// For now using inline which has limitations
+      {/* Time Display */}
+      <span
+        style={{
+          fontSize: '1.3vh',
+          color: THEME.TEXT_PRIMARY,
+          fontFamily: THEME.FONT_MONO,
+          minWidth: '3.5vw',
+          textAlign: 'center'
+        }}
+      >
+        {time}
+      </span>
+
+      {/* Increment Button */}
+      <button
+        onClick={onIncrement}
+        disabled={!canIncrement}
+        onMouseEnter={() => setIncrementHovered(true)}
+        onMouseLeave={() => setIncrementHovered(false)}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: !canIncrement
+            ? THEME.TEXT_DIM
+            : incrementHovered
+              ? THEME.AMBER
+              : THEME.TEXT_PRIMARY,
+          fontSize: '1.4vh',
+          cursor: canIncrement ? 'pointer' : 'default',
+          padding: '0 0.2vw',
+          opacity: canIncrement ? 1 : 0.4,
+          transition: 'color 0.15s ease'
+        }}
+      >
+        +
+      </button>
+    </div>
+  )
+}
 
 export default TimeControls
-
-// Export time range for use by TimetableGrid
-export { TimeControls }

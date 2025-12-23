@@ -93,28 +93,18 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState }) {
           position: 'relative'
         }}
       >
-        {/* Lesson Editor Panel (Left) */}
+        {/* Lesson Editor Panel (Left) - renders collapsed tab or expanded panel */}
         <LessonEditor />
 
-        {/* Spacer Column - 50% narrower than DAY column (70px/2 = 35px) */}
-        {!editorCollapsed && (
-          <div
-            style={{
-              width: '35px',
-              flexShrink: 0,
-              background: 'transparent'
-            }}
-          />
-        )}
-
-        {/* Workspace Area (Right) */}
+        {/* Workspace Area (fills remaining space) */}
         <div
           style={{
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            position: 'relative'
+            position: 'relative',
+            marginLeft: editorCollapsed ? '24px' : '0' // Account for collapsed tab width
           }}
         >
           {/* Workspace Content - switches based on active tab */}

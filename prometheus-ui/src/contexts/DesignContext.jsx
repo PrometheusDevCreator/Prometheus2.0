@@ -87,18 +87,21 @@ function snapToGrid(minutes, gridSize = 5) {
 }
 
 // ============================================
-// LESSON TYPES
+// LESSON TYPES - 10 types per DESIGN_Page mockup
 // ============================================
 export const LESSON_TYPES = [
-  { id: 'instructor-led', label: 'Instructor Led', color: '#D65700' },
-  { id: 'discussion', label: 'Group Discussion', color: '#2E7D32' },
-  { id: 'project', label: 'Group Project', color: '#1565C0' },
-  { id: 'practical', label: 'Practical', color: '#6A1B9A' },
-  { id: 'seminar', label: 'Seminar', color: '#00838F' },
-  { id: 'online', label: 'Online', color: '#558B2F' },
-  { id: 'admin', label: 'Admin', color: '#5D4037' },
-  { id: 'assessment', label: 'Assessment', color: '#C62828' },
-  { id: 'break', label: 'Break', color: '#616161' }
+  // Row 1
+  { id: 'instructor-led', name: 'Instructor Led', label: 'Instructor Led', color: '#FF6600' },
+  { id: 'group-discussion', name: 'Group Discussion', label: 'Group Discussion', color: '#00FF00' },
+  { id: 'practical', name: 'Practical', label: 'Practical', color: '#00BFFF' },
+  { id: 'assessment', name: 'Assessment', label: 'Assessment', color: '#FF4444' },
+  { id: 'break', name: 'Break', label: 'Break', color: '#FFD700' },
+  // Row 2
+  { id: 'student-led', name: 'Student Led', label: 'Student Led', color: '#FFFFFF' },
+  { id: 'research', name: 'Research', label: 'Research', color: '#00FF00' },
+  { id: 'external-lecturer', name: 'External Lecturer', label: 'External Lecturer', color: '#FF6600' },
+  { id: 'admin', name: 'Admin', label: 'Admin', color: '#FFD700' },
+  { id: 'user-defined', name: 'User Defined', label: 'User Defined', color: '#FF00FF' }
 ]
 
 // ============================================
