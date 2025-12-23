@@ -106,7 +106,7 @@ function TimeControls({
         }}
       >
         {/* LEFT: Start Time Adjuster - aligned with left edge of timetable content */}
-        <div style={{ marginLeft: '15px' }}>
+        <div style={{ marginLeft: '-5px' }}>
           <TimeAdjusterPill
             time={formatHourDisplay(startHour)}
             onDecrement={decrementStart}

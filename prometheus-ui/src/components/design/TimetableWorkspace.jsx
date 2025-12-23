@@ -238,7 +238,7 @@ function ControlZone({ lessonTypes, currentType, onTypeSelect, hasPendingLesson 
         background: THEME.BG_DARK,
         display: 'flex',
         justifyContent: 'center',
-        marginTop: '-125px',
+        marginTop: '-175px',
         position: 'relative',
         zIndex: 10
       }}

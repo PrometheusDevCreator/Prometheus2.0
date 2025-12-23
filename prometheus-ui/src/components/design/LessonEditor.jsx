@@ -124,7 +124,7 @@ function LessonEditor() {
         width: '270px',
         maxHeight: 'calc(100% - 140px)',
         position: 'absolute',
-        left: '108px',
+        left: '8px',
         top: '23px',
         background: 'rgba(20, 20, 20, 0.95)',
         border: '1px solid rgba(100, 100, 100, 0.5)',
