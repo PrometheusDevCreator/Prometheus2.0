@@ -309,61 +309,146 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     updateLesson(lessonId, { saved: true })
   }, [updateLesson])
 
-  // Toggle LO assignment for a lesson
-  const toggleLessonLO = useCallback((lessonId, loId) => {
-    setLessons(prev => prev.map(lesson => {
+  // Helper: Get LO order from scalar data
+  const getLOOrder = useCallback((loId) => {
+    if (!loId) return null
+    for (const module of scalarData.modules) {
+      const lo = module.learningObjectives.find(l => l.id === loId)
+      if (lo) return lo.order
+    }
+    return null
+  }, [scalarData])
+
+  // Helper: Recalculate topic numbers for a lesson based on LO assignment
+  const recalculateLessonTopicNumbers = useCallback((lessons, lessonId) => {
+    return lessons.map(lesson => {
       if (lesson.id !== lessonId) return lesson
-      const currentLOs = lesson.learningObjectives || []
-      const hasLO = currentLOs.includes(loId)
+
+      const primaryLOId = lesson.learningObjectives?.[0] || null
+      const loOrder = getLOOrder(primaryLOId)
+
+      // If no LO assigned, set all topics to "x.x"
+      if (!loOrder) {
+        return {
+          ...lesson,
+          topics: (lesson.topics || []).map((t, idx) => ({
+            ...t,
+            number: 'x.x',
+            loId: null
+          }))
+        }
+      }
+
+      // Calculate sequential numbers based on LO and position
+      // Find max topic number for this LO in earlier lessons (by day, startTime)
+      let baseTopicNum = 0
+      lessons.forEach(l => {
+        if (l.id === lessonId) return // Skip current lesson
+        const loPrimary = l.learningObjectives?.[0]
+        if (loPrimary === primaryLOId) {
+          // Check if this lesson comes before current lesson
+          const isBefore = (l.day < lesson.day) ||
+            (l.day === lesson.day && (l.startTime || '0000') < (lesson.startTime || '0000'))
+          if (isBefore) {
+            l.topics?.forEach(t => {
+              const match = t.number?.match(/^\d+\.(\d+)$/)
+              if (match) {
+                baseTopicNum = Math.max(baseTopicNum, parseInt(match[1]))
+              }
+            })
+          }
+        }
+      })
+
+      // Renumber topics sequentially
       return {
         ...lesson,
-        learningObjectives: hasLO
-          ? currentLOs.filter(id => id !== loId)
-          : [...currentLOs, loId]
+        topics: (lesson.topics || []).map((t, idx) => ({
+          ...t,
+          number: `${loOrder}.${baseTopicNum + idx + 1}`,
+          loId: primaryLOId
+        }))
       }
-    }))
-  }, [])
+    })
+  }, [getLOOrder])
 
-  // Add topic to a lesson (with LO-based numbering)
+  // Toggle LO assignment for a lesson (with topic renumbering)
+  const toggleLessonLO = useCallback((lessonId, loId) => {
+    setLessons(prev => {
+      // First toggle the LO
+      const updated = prev.map(lesson => {
+        if (lesson.id !== lessonId) return lesson
+        const currentLOs = lesson.learningObjectives || []
+        const hasLO = currentLOs.includes(loId)
+        return {
+          ...lesson,
+          learningObjectives: hasLO
+            ? currentLOs.filter(id => id !== loId)
+            : [...currentLOs, loId]
+        }
+      })
+
+      // Then recalculate topic numbers for this lesson
+      return recalculateLessonTopicNumbers(updated, lessonId)
+    })
+  }, [recalculateLessonTopicNumbers])
+
+  // Add topic to a lesson (with LO-based numbering and Scalar auto-sync)
   const addTopicToLesson = useCallback((lessonId, topicTitle = 'New Topic') => {
+    const timestamp = Date.now()
+    const lessonTopicId = `topic-lesson-${timestamp}`
+    const scalarTopicId = `topic-scalar-${timestamp}`
+
     setLessons(prev => {
       const lesson = prev.find(l => l.id === lessonId)
       if (!lesson) return prev
 
-      // Get the primary LO for numbering (first assigned LO, or 1 if none)
+      // Get the primary LO for numbering
       const primaryLOId = lesson.learningObjectives?.[0] || null
-      let loOrder = 1
+      const loOrder = getLOOrder(primaryLOId)
 
-      // Find the LO order from scalar data if assigned
-      if (primaryLOId) {
-        for (const module of scalarData.modules) {
-          const lo = module.learningObjectives.find(l => l.id === primaryLOId)
-          if (lo) {
-            loOrder = lo.order
-            break
-          }
+      // If no LO assigned, use "x.x" placeholder (no Scalar sync)
+      if (!loOrder) {
+        const newTopic = {
+          id: lessonTopicId,
+          title: topicTitle,
+          number: 'x.x',
+          loId: null,
+          scalarTopicId: null // No scalar link when no LO
         }
+        return prev.map(l =>
+          l.id === lessonId
+            ? { ...l, topics: [...(l.topics || []), newTopic] }
+            : l
+        )
       }
 
       // Calculate next topic number for this LO across all lessons
+      // Consider lesson ordering (by day, startTime)
       let maxTopicNum = 0
       prev.forEach(l => {
         const loPrimary = l.learningObjectives?.[0]
-        if (loPrimary === primaryLOId || (!loPrimary && !primaryLOId)) {
-          l.topics?.forEach(t => {
-            const match = t.number?.match(/^\d+\.(\d+)$/)
-            if (match) {
-              maxTopicNum = Math.max(maxTopicNum, parseInt(match[1]))
-            }
-          })
+        if (loPrimary === primaryLOId) {
+          // Check if this lesson is same or before current lesson
+          const isSameOrBefore = (l.day < lesson.day) ||
+            (l.day === lesson.day && (l.startTime || '0000') <= (lesson.startTime || '0000'))
+          if (isSameOrBefore) {
+            l.topics?.forEach(t => {
+              const match = t.number?.match(/^\d+\.(\d+)$/)
+              if (match) {
+                maxTopicNum = Math.max(maxTopicNum, parseInt(match[1]))
+              }
+            })
+          }
         }
       })
 
       const newTopic = {
-        id: `topic-lesson-${Date.now()}`,
+        id: lessonTopicId,
         title: topicTitle,
         number: `${loOrder}.${maxTopicNum + 1}`,
-        loId: primaryLOId
+        loId: primaryLOId,
+        scalarTopicId: scalarTopicId // Link to scalar topic
       }
 
       return prev.map(l =>
@@ -372,7 +457,48 @@ export function DesignProvider({ children, courseData, setCourseData }) {
           : l
       )
     })
-  }, [scalarData])
+
+    // Auto-sync: Also add to Scalar under the assigned LO
+    // Need to get the LO ID from the lesson
+    setLessons(currentLessons => {
+      const lesson = currentLessons.find(l => l.id === lessonId)
+      const primaryLOId = lesson?.learningObjectives?.[0] || null
+
+      if (primaryLOId) {
+        // Add topic to scalar data under the LO
+        setScalarData(prev => {
+          const newData = { ...prev, modules: [...prev.modules] }
+
+          for (let m = 0; m < newData.modules.length; m++) {
+            const module = { ...newData.modules[m] }
+            newData.modules[m] = module
+            module.learningObjectives = [...module.learningObjectives]
+
+            for (let l = 0; l < module.learningObjectives.length; l++) {
+              const lo = { ...module.learningObjectives[l] }
+              module.learningObjectives[l] = lo
+
+              if (lo.id === primaryLOId) {
+                lo.topics = [...lo.topics]
+                const newScalarTopic = {
+                  id: scalarTopicId,
+                  title: topicTitle,
+                  order: lo.topics.length + 1,
+                  expanded: false,
+                  subtopics: []
+                }
+                lo.topics.push(newScalarTopic)
+                return newData
+              }
+            }
+          }
+          return prev
+        })
+      }
+
+      return currentLessons // Return unchanged
+    })
+  }, [getLOOrder])
 
   // Remove topic from a lesson
   const removeTopicFromLesson = useCallback((lessonId, topicId) => {
@@ -383,18 +509,220 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     ))
   }, [])
 
-  // Update topic in a lesson
+  // Update topic in a lesson (with Scalar auto-sync)
   const updateLessonTopic = useCallback((lessonId, topicId, updates) => {
-    setLessons(prev => prev.map(lesson =>
-      lesson.id === lessonId
-        ? {
-            ...lesson,
-            topics: (lesson.topics || []).map(t =>
-              t.id === topicId ? { ...t, ...updates } : t
-            )
+    // First update the lesson topic
+    setLessons(prev => {
+      const lesson = prev.find(l => l.id === lessonId)
+      if (!lesson) return prev
+
+      const topic = (lesson.topics || []).find(t => t.id === topicId)
+      const scalarTopicId = topic?.scalarTopicId
+
+      // If there's a linked scalar topic and title is being updated, sync to scalar
+      if (scalarTopicId && updates.title) {
+        setScalarData(prevScalar => {
+          const newData = { ...prevScalar, modules: [...prevScalar.modules] }
+
+          for (let m = 0; m < newData.modules.length; m++) {
+            const module = { ...newData.modules[m] }
+            newData.modules[m] = module
+            module.learningObjectives = [...module.learningObjectives]
+
+            for (let l = 0; l < module.learningObjectives.length; l++) {
+              const lo = { ...module.learningObjectives[l] }
+              module.learningObjectives[l] = lo
+              lo.topics = [...lo.topics]
+
+              for (let t = 0; t < lo.topics.length; t++) {
+                if (lo.topics[t].id === scalarTopicId) {
+                  lo.topics[t] = { ...lo.topics[t], title: updates.title }
+                  return newData
+                }
+              }
+            }
           }
-        : lesson
-    ))
+          return prevScalar
+        })
+      }
+
+      return prev.map(lesson =>
+        lesson.id === lessonId
+          ? {
+              ...lesson,
+              topics: (lesson.topics || []).map(t =>
+                t.id === topicId ? { ...t, ...updates } : t
+              )
+            }
+          : lesson
+      )
+    })
+  }, [])
+
+  // Add subtopic to a lesson topic (with Scalar auto-sync)
+  const addSubtopicToLessonTopic = useCallback((lessonId, topicId, subtopicTitle = 'New Subtopic') => {
+    const timestamp = Date.now()
+    const lessonSubtopicId = `subtopic-lesson-${timestamp}`
+    const scalarSubtopicId = `subtopic-scalar-${timestamp}`
+
+    setLessons(prev => {
+      const lesson = prev.find(l => l.id === lessonId)
+      if (!lesson) return prev
+
+      const topic = (lesson.topics || []).find(t => t.id === topicId)
+      if (!topic) return prev
+
+      // Get the topic number prefix for subtopic numbering
+      const topicNumber = topic.number || 'x.x'
+      const hasValidNumber = topicNumber !== 'x.x'
+      const scalarTopicId = topic.scalarTopicId
+
+      // Calculate next subtopic number
+      const existingSubtopics = topic.subtopics || []
+      let maxSubNum = 0
+      existingSubtopics.forEach(s => {
+        const match = s.number?.match(/\d+\.\d+\.(\d+)$/)
+        if (match) {
+          maxSubNum = Math.max(maxSubNum, parseInt(match[1]))
+        }
+      })
+
+      const newSubtopic = {
+        id: lessonSubtopicId,
+        title: subtopicTitle,
+        number: hasValidNumber ? `${topicNumber}.${maxSubNum + 1}` : 'x.x.x',
+        scalarSubtopicId: scalarTopicId ? scalarSubtopicId : null // Link to scalar if parent topic is linked
+      }
+
+      // Auto-sync: Add subtopic to scalar if parent topic has a scalar link
+      if (scalarTopicId) {
+        setScalarData(prevScalar => {
+          const newData = { ...prevScalar, modules: [...prevScalar.modules] }
+
+          for (let m = 0; m < newData.modules.length; m++) {
+            const module = { ...newData.modules[m] }
+            newData.modules[m] = module
+            module.learningObjectives = [...module.learningObjectives]
+
+            for (let l = 0; l < module.learningObjectives.length; l++) {
+              const lo = { ...module.learningObjectives[l] }
+              module.learningObjectives[l] = lo
+              lo.topics = [...lo.topics]
+
+              for (let t = 0; t < lo.topics.length; t++) {
+                const scalarTopic = { ...lo.topics[t] }
+                lo.topics[t] = scalarTopic
+
+                if (scalarTopic.id === scalarTopicId) {
+                  scalarTopic.subtopics = [...(scalarTopic.subtopics || [])]
+                  const newScalarSubtopic = {
+                    id: scalarSubtopicId,
+                    title: subtopicTitle,
+                    order: scalarTopic.subtopics.length + 1
+                  }
+                  scalarTopic.subtopics.push(newScalarSubtopic)
+                  scalarTopic.expanded = true
+                  return newData
+                }
+              }
+            }
+          }
+          return prevScalar
+        })
+      }
+
+      return prev.map(l =>
+        l.id === lessonId
+          ? {
+              ...l,
+              topics: (l.topics || []).map(t =>
+                t.id === topicId
+                  ? { ...t, subtopics: [...(t.subtopics || []), newSubtopic] }
+                  : t
+              )
+            }
+          : l
+      )
+    })
+  }, [])
+
+  // Remove subtopic from a lesson topic
+  const removeSubtopicFromLessonTopic = useCallback((lessonId, topicId, subtopicId) => {
+    setLessons(prev => prev.map(lesson => {
+      if (lesson.id !== lessonId) return lesson
+      return {
+        ...lesson,
+        topics: (lesson.topics || []).map(t =>
+          t.id === topicId
+            ? { ...t, subtopics: (t.subtopics || []).filter(s => s.id !== subtopicId) }
+            : t
+        )
+      }
+    }))
+  }, [])
+
+  // Update subtopic in a lesson topic (with Scalar auto-sync)
+  const updateLessonSubtopic = useCallback((lessonId, topicId, subtopicId, updates) => {
+    setLessons(prev => {
+      const lesson = prev.find(l => l.id === lessonId)
+      if (!lesson) return prev
+
+      const topic = (lesson.topics || []).find(t => t.id === topicId)
+      if (!topic) return prev
+
+      const subtopic = (topic.subtopics || []).find(s => s.id === subtopicId)
+      const scalarSubtopicId = subtopic?.scalarSubtopicId
+
+      // If there's a linked scalar subtopic and title is being updated, sync to scalar
+      if (scalarSubtopicId && updates.title) {
+        setScalarData(prevScalar => {
+          const newData = { ...prevScalar, modules: [...prevScalar.modules] }
+
+          for (let m = 0; m < newData.modules.length; m++) {
+            const module = { ...newData.modules[m] }
+            newData.modules[m] = module
+            module.learningObjectives = [...module.learningObjectives]
+
+            for (let l = 0; l < module.learningObjectives.length; l++) {
+              const lo = { ...module.learningObjectives[l] }
+              module.learningObjectives[l] = lo
+              lo.topics = [...lo.topics]
+
+              for (let t = 0; t < lo.topics.length; t++) {
+                const scalarTopic = { ...lo.topics[t] }
+                lo.topics[t] = scalarTopic
+                scalarTopic.subtopics = [...(scalarTopic.subtopics || [])]
+
+                for (let s = 0; s < scalarTopic.subtopics.length; s++) {
+                  if (scalarTopic.subtopics[s].id === scalarSubtopicId) {
+                    scalarTopic.subtopics[s] = { ...scalarTopic.subtopics[s], title: updates.title }
+                    return newData
+                  }
+                }
+              }
+            }
+          }
+          return prevScalar
+        })
+      }
+
+      return prev.map(l => {
+        if (l.id !== lessonId) return l
+        return {
+          ...l,
+          topics: (l.topics || []).map(t =>
+            t.id === topicId
+              ? {
+                  ...t,
+                  subtopics: (t.subtopics || []).map(s =>
+                    s.id === subtopicId ? { ...s, ...updates } : s
+                  )
+                }
+              : t
+          )
+        }
+      })
+    })
   }, [])
 
   // --------------------------------------------
@@ -796,6 +1124,9 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     addTopicToLesson,
     removeTopicFromLesson,
     updateLessonTopic,
+    addSubtopicToLessonTopic,
+    removeSubtopicFromLessonTopic,
+    updateLessonSubtopic,
 
     // Scalar
     scalarData,
@@ -836,6 +1167,7 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     updateLesson, createLesson, deleteLesson, duplicateLesson,
     scheduleLesson, unscheduleLesson, saveToLibrary, toggleLessonLO,
     addTopicToLesson, removeTopicFromLesson, updateLessonTopic,
+    addSubtopicToLessonTopic, removeSubtopicFromLessonTopic, updateLessonSubtopic,
     moveLesson, resizeLesson, checkCollision, findAvailableSlot,
     scalarData, selectedScalarItem, toggleScalarExpand,
     addLearningObjective, addTopic, addSubtopic, updateScalarNode, deleteScalarNode,

@@ -12,7 +12,7 @@
  * - Fields: Title, Learning Objective, Topic, Subtopic, Lesson Type, Timings
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { THEME } from '../../constants/theme'
 import { useDesign } from '../../contexts/DesignContext'
 
@@ -23,6 +23,11 @@ function LessonEditor() {
     selectedLesson,
     updateLesson,
     addTopicToLesson,
+    removeTopicFromLesson,
+    updateLessonTopic,
+    addSubtopicToLessonTopic,
+    removeSubtopicFromLessonTopic,
+    updateLessonSubtopic,
     toggleLessonLO,
     scalarData,
     currentModule,
@@ -33,6 +38,10 @@ function LessonEditor() {
   const [showLODropdown, setShowLODropdown] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
 
+  // Topic modal state
+  const [showTopicModal, setShowTopicModal] = useState(false)
+  const [editingTopicId, setEditingTopicId] = useState(null)
+
   // Get module LOs for dropdown
   const module = scalarData?.modules?.find(m => m.order === currentModule) || scalarData?.modules?.[0]
   const moduleLOs = module?.learningObjectives || []
@@ -40,6 +49,86 @@ function LessonEditor() {
   // Get primary assigned LO
   const primaryLOId = selectedLesson?.learningObjectives?.[0]
   const primaryLO = primaryLOId ? moduleLOs.find(lo => lo.id === primaryLOId) : null
+
+  // Get existing topics from scalar for dropdown selection
+  const existingScalarTopics = useMemo(() => {
+    const topics = []
+    moduleLOs.forEach(lo => {
+      (lo.topics || []).forEach(topic => {
+        topics.push({
+          id: topic.id,
+          title: topic.title,
+          loId: lo.id,
+          loOrder: lo.order,
+          number: `${lo.order}.${topic.order}`
+        })
+      })
+    })
+    return topics
+  }, [moduleLOs])
+
+  // Check if lesson has an assigned LO (for numbering display)
+  const hasAssignedLO = selectedLesson?.learningObjectives?.length > 0
+
+  // Handle adding a new topic
+  const handleAddTopic = useCallback((title, selectFromScalar = null) => {
+    if (!selectedLesson) return
+    if (selectFromScalar) {
+      // Link existing scalar topic to lesson
+      addTopicToLesson(selectedLesson.id, selectFromScalar.title)
+    } else {
+      // Create new topic
+      addTopicToLesson(selectedLesson.id, title)
+    }
+    setShowTopicModal(false)
+  }, [selectedLesson, addTopicToLesson])
+
+  // Handle editing a topic
+  const handleEditTopic = useCallback((topicId, newTitle) => {
+    if (!selectedLesson) return
+    updateLessonTopic(selectedLesson.id, topicId, { title: newTitle })
+    setEditingTopicId(null)
+  }, [selectedLesson, updateLessonTopic])
+
+  // Handle removing a topic (unlink only)
+  const handleRemoveTopic = useCallback((topicId) => {
+    if (!selectedLesson) return
+    removeTopicFromLesson(selectedLesson.id, topicId)
+  }, [selectedLesson, removeTopicFromLesson])
+
+  // Subtopic modal state
+  const [showSubtopicModal, setShowSubtopicModal] = useState(false)
+  const [subtopicParentTopicId, setSubtopicParentTopicId] = useState(null)
+  const [editingSubtopicId, setEditingSubtopicId] = useState(null)
+  const [editingSubtopicParentId, setEditingSubtopicParentId] = useState(null)
+
+  // Handle adding a subtopic
+  const handleAddSubtopic = useCallback((topicId, title) => {
+    if (!selectedLesson) return
+    addSubtopicToLessonTopic(selectedLesson.id, topicId, title)
+    setShowSubtopicModal(false)
+    setSubtopicParentTopicId(null)
+  }, [selectedLesson, addSubtopicToLessonTopic])
+
+  // Handle editing a subtopic
+  const handleEditSubtopic = useCallback((topicId, subtopicId, newTitle) => {
+    if (!selectedLesson) return
+    updateLessonSubtopic(selectedLesson.id, topicId, subtopicId, { title: newTitle })
+    setEditingSubtopicId(null)
+    setEditingSubtopicParentId(null)
+  }, [selectedLesson, updateLessonSubtopic])
+
+  // Handle removing a subtopic
+  const handleRemoveSubtopic = useCallback((topicId, subtopicId) => {
+    if (!selectedLesson) return
+    removeSubtopicFromLessonTopic(selectedLesson.id, topicId, subtopicId)
+  }, [selectedLesson, removeSubtopicFromLessonTopic])
+
+  // Open subtopic modal for a specific topic
+  const openSubtopicModal = useCallback((topicId) => {
+    setSubtopicParentTopicId(topicId)
+    setShowSubtopicModal(true)
+  }, [])
 
   // Get lesson type info
   const lessonType = selectedLesson
@@ -269,40 +358,118 @@ function LessonEditor() {
             label="Topic:"
             action={
               <button
-                onClick={() => addTopicToLesson(selectedLesson.id, 'Topic Text')}
+                onClick={() => setShowTopicModal(true)}
                 style={plusButtonStyle}
               >
                 +
               </button>
             }
+            style={{ position: 'relative' }}
           >
             {selectedLesson.topics?.length > 0 ? (
               selectedLesson.topics.map(topic => (
-                <div key={topic.id} style={{ fontSize: '1.4vh', marginBottom: '0.3vh' }}>
-                  <span style={{ color: THEME.TEXT_PRIMARY }}>{topic.number || '1.1'} </span>
-                  <span style={{ color: THEME.GREEN_BRIGHT }}>Add</span>
-                  <span style={{ color: THEME.TEXT_PRIMARY }}> {topic.title}</span>
-                </div>
+                <TopicItem
+                  key={topic.id}
+                  topic={topic}
+                  hasAssignedLO={hasAssignedLO}
+                  isEditing={editingTopicId === topic.id}
+                  onEdit={() => setEditingTopicId(topic.id)}
+                  onSave={(newTitle) => handleEditTopic(topic.id, newTitle)}
+                  onCancel={() => setEditingTopicId(null)}
+                  onRemove={() => handleRemoveTopic(topic.id)}
+                />
               ))
             ) : (
-              <div style={{ fontSize: '1.4vh' }}>
-                <span style={{ color: THEME.TEXT_PRIMARY }}>1.1 </span>
-                <span style={{ color: THEME.GREEN_BRIGHT }}>Add</span>
-                <span style={{ color: THEME.TEXT_PRIMARY }}> Topic Text</span>
+              <div style={{ fontSize: '1.4vh', color: THEME.TEXT_DIM, fontStyle: 'italic' }}>
+                Click + to add a topic
               </div>
+            )}
+
+            {/* Topic Entry Modal */}
+            {showTopicModal && (
+              <TopicEntryModal
+                existingTopics={existingScalarTopics}
+                hasAssignedLO={hasAssignedLO}
+                primaryLO={primaryLO}
+                onAdd={handleAddTopic}
+                onClose={() => setShowTopicModal(false)}
+              />
             )}
           </FieldSection>
 
-          {/* Subtopic Field */}
+          {/* Subtopic Field - shows subtopics grouped by topic */}
           <FieldSection
             label="Subtopic:"
-            action={<button style={plusButtonStyle}>+</button>}
+            style={{ position: 'relative' }}
           >
-            <div style={{ fontSize: '1.4vh' }}>
-              <span style={{ color: THEME.TEXT_PRIMARY }}>1.1.1 </span>
-              <span style={{ color: THEME.GREEN_BRIGHT }}>Add</span>
-              <span style={{ color: THEME.TEXT_PRIMARY }}> Subtopic Text</span>
-            </div>
+            {selectedLesson.topics?.length > 0 ? (
+              selectedLesson.topics.map(topic => {
+                const subtopics = topic.subtopics || []
+                return (
+                  <div key={topic.id} style={{ marginBottom: '0.5vh' }}>
+                    {/* Topic header with + button for adding subtopics */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontSize: '1.2vh',
+                      color: THEME.TEXT_DIM,
+                      marginBottom: '0.2vh'
+                    }}>
+                      <span>{topic.number} {topic.title}</span>
+                      <button
+                        onClick={() => openSubtopicModal(topic.id)}
+                        style={plusButtonStyle}
+                      >
+                        +
+                      </button>
+                    </div>
+                    {/* Subtopics for this topic */}
+                    {subtopics.length > 0 ? (
+                      subtopics.map(subtopic => (
+                        <SubtopicItem
+                          key={subtopic.id}
+                          subtopic={subtopic}
+                          hasAssignedLO={hasAssignedLO}
+                          isEditing={editingSubtopicId === subtopic.id && editingSubtopicParentId === topic.id}
+                          onEdit={() => {
+                            setEditingSubtopicId(subtopic.id)
+                            setEditingSubtopicParentId(topic.id)
+                          }}
+                          onSave={(newTitle) => handleEditSubtopic(topic.id, subtopic.id, newTitle)}
+                          onCancel={() => {
+                            setEditingSubtopicId(null)
+                            setEditingSubtopicParentId(null)
+                          }}
+                          onRemove={() => handleRemoveSubtopic(topic.id, subtopic.id)}
+                        />
+                      ))
+                    ) : (
+                      <div style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM, fontStyle: 'italic', marginLeft: '1vw' }}>
+                        No subtopics
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            ) : (
+              <div style={{ fontSize: '1.4vh', color: THEME.TEXT_DIM, fontStyle: 'italic' }}>
+                Add topics first to create subtopics
+              </div>
+            )}
+
+            {/* Subtopic Entry Modal */}
+            {showSubtopicModal && subtopicParentTopicId && (
+              <SubtopicEntryModal
+                parentTopic={selectedLesson.topics?.find(t => t.id === subtopicParentTopicId)}
+                hasAssignedLO={hasAssignedLO}
+                onAdd={(title) => handleAddSubtopic(subtopicParentTopicId, title)}
+                onClose={() => {
+                  setShowSubtopicModal(false)
+                  setSubtopicParentTopicId(null)
+                }}
+              />
+            )}
           </FieldSection>
 
           {/* Lesson Type Field */}
@@ -446,6 +613,520 @@ function LODropdown({ moduleLOs, selectedLOs, onToggle, onClose }) {
         Close
       </div>
     </div>
+  )
+}
+
+// ============================================
+// TOPIC ITEM COMPONENT
+// ============================================
+
+function TopicItem({ topic, hasAssignedLO, isEditing, onEdit, onSave, onCancel, onRemove }) {
+  const [editValue, setEditValue] = useState(topic.title)
+  const [hovered, setHovered] = useState(false)
+
+  // Display number: actual number if LO assigned, "x.x" in red if not
+  const displayNumber = hasAssignedLO ? (topic.number || 'x.x') : 'x.x'
+  const numberColor = hasAssignedLO ? THEME.TEXT_PRIMARY : '#ff4444'
+
+  if (isEditing) {
+    return (
+      <div style={{ fontSize: '1.4vh', marginBottom: '0.3vh', display: 'flex', alignItems: 'center', gap: '0.3vw' }}>
+        <span style={{ color: numberColor }}>{displayNumber}</span>
+        <input
+          autoFocus
+          type="text"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={() => onSave(editValue)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onSave(editValue)
+            if (e.key === 'Escape') onCancel()
+          }}
+          style={{
+            flex: 1,
+            background: THEME.BG_INPUT,
+            border: `1px solid ${THEME.AMBER}`,
+            borderRadius: '0.3vh',
+            color: THEME.TEXT_PRIMARY,
+            fontSize: '1.3vh',
+            fontFamily: THEME.FONT_PRIMARY,
+            padding: '0.2vh 0.4vw',
+            outline: 'none'
+          }}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div
+      style={{
+        fontSize: '1.4vh',
+        marginBottom: '0.3vh',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.3vw',
+        cursor: 'pointer'
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <span style={{ color: numberColor }}>{displayNumber}</span>
+      <span
+        onClick={onEdit}
+        style={{
+          color: THEME.TEXT_PRIMARY,
+          flex: 1,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}
+      >
+        {topic.title}
+      </span>
+      {hovered && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onRemove() }}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: '#ff4444',
+            fontSize: '1.2vh',
+            cursor: 'pointer',
+            padding: '0 0.2vw',
+            lineHeight: 1
+          }}
+        >
+          ×
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ============================================
+// TOPIC ENTRY MODAL COMPONENT
+// ============================================
+
+function TopicEntryModal({ existingTopics, hasAssignedLO, primaryLO, onAdd, onClose }) {
+  const [mode, setMode] = useState('new') // 'new' or 'existing'
+  const [newTitle, setNewTitle] = useState('')
+  const [searchFilter, setSearchFilter] = useState('')
+
+  // Filter existing topics by search
+  const filteredTopics = existingTopics.filter(t =>
+    t.title.toLowerCase().includes(searchFilter.toLowerCase())
+  )
+
+  // Preview number for new topic
+  const previewNumber = hasAssignedLO && primaryLO ? `${primaryLO.order}.?` : 'x.x'
+  const previewNumberColor = hasAssignedLO ? THEME.TEXT_PRIMARY : '#ff4444'
+
+  const handleSubmit = () => {
+    if (newTitle.trim()) {
+      onAdd(newTitle.trim())
+    }
+  }
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 199
+        }}
+      />
+      {/* Modal */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 0,
+          zIndex: 200,
+          background: THEME.BG_PANEL,
+          border: `1px solid ${THEME.BORDER_LIGHT}`,
+          borderRadius: '0.4vh',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+          padding: '1vh 0.8vw'
+        }}
+      >
+        {/* Mode Tabs */}
+        <div style={{ display: 'flex', gap: '1vw', marginBottom: '0.8vh' }}>
+          <button
+            onClick={() => setMode('new')}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: mode === 'new' ? THEME.AMBER : THEME.TEXT_DIM,
+              fontSize: '1.2vh',
+              cursor: 'pointer',
+              padding: 0,
+              borderBottom: mode === 'new' ? `1px solid ${THEME.AMBER}` : 'none'
+            }}
+          >
+            Create New
+          </button>
+          <button
+            onClick={() => setMode('existing')}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: mode === 'existing' ? THEME.AMBER : THEME.TEXT_DIM,
+              fontSize: '1.2vh',
+              cursor: 'pointer',
+              padding: 0,
+              borderBottom: mode === 'existing' ? `1px solid ${THEME.AMBER}` : 'none'
+            }}
+          >
+            Select Existing
+          </button>
+        </div>
+
+        {mode === 'new' ? (
+          <>
+            {/* Number Preview */}
+            <div style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM, marginBottom: '0.4vh' }}>
+              Number: <span style={{ color: previewNumberColor }}>{previewNumber}</span>
+              {!hasAssignedLO && (
+                <span style={{ color: '#ff4444', marginLeft: '0.5vw' }}>(Assign LO for numbering)</span>
+              )}
+            </div>
+            {/* Title Input */}
+            <div style={{ display: 'flex', gap: '0.4vw' }}>
+              <input
+                autoFocus
+                type="text"
+                placeholder="Enter topic title..."
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSubmit()
+                  if (e.key === 'Escape') onClose()
+                }}
+                style={{
+                  flex: 1,
+                  background: THEME.BG_INPUT,
+                  border: `1px solid ${THEME.BORDER}`,
+                  borderRadius: '0.3vh',
+                  color: THEME.TEXT_PRIMARY,
+                  fontSize: '1.3vh',
+                  fontFamily: THEME.FONT_PRIMARY,
+                  padding: '0.4vh 0.6vw',
+                  outline: 'none'
+                }}
+              />
+              <button
+                onClick={handleSubmit}
+                disabled={!newTitle.trim()}
+                style={{
+                  background: newTitle.trim() ? THEME.AMBER : THEME.BG_DARK,
+                  border: 'none',
+                  borderRadius: '0.3vh',
+                  color: newTitle.trim() ? THEME.BG_DARK : THEME.TEXT_DIM,
+                  fontSize: '1.2vh',
+                  cursor: newTitle.trim() ? 'pointer' : 'default',
+                  padding: '0.4vh 0.8vw'
+                }}
+              >
+                Add
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Search Input */}
+            <input
+              autoFocus
+              type="text"
+              placeholder="Search existing topics..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              style={{
+                width: '100%',
+                background: THEME.BG_INPUT,
+                border: `1px solid ${THEME.BORDER}`,
+                borderRadius: '0.3vh',
+                color: THEME.TEXT_PRIMARY,
+                fontSize: '1.2vh',
+                fontFamily: THEME.FONT_PRIMARY,
+                padding: '0.4vh 0.6vw',
+                marginBottom: '0.6vh',
+                outline: 'none'
+              }}
+            />
+            {/* Existing Topics List */}
+            <div style={{ maxHeight: '15vh', overflow: 'auto' }}>
+              {filteredTopics.length === 0 ? (
+                <div style={{ color: THEME.TEXT_DIM, fontSize: '1.1vh', fontStyle: 'italic', padding: '0.4vh 0' }}>
+                  {existingTopics.length === 0 ? 'No topics in Scalar yet' : 'No matching topics'}
+                </div>
+              ) : (
+                filteredTopics.map(topic => (
+                  <div
+                    key={topic.id}
+                    onClick={() => onAdd(topic.title, topic)}
+                    style={{
+                      padding: '0.4vh 0.4vw',
+                      fontSize: '1.2vh',
+                      color: THEME.TEXT_PRIMARY,
+                      cursor: 'pointer',
+                      borderRadius: '0.2vh',
+                      display: 'flex',
+                      gap: '0.4vw'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = THEME.BG_DARK}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <span style={{ color: THEME.TEXT_DIM, minWidth: '2vw' }}>{topic.number}</span>
+                    <span>{topic.title}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Close Button */}
+        <div
+          onClick={onClose}
+          style={{
+            marginTop: '0.6vh',
+            padding: '0.3vh 0',
+            fontSize: '1vh',
+            color: THEME.TEXT_DIM,
+            borderTop: `1px solid ${THEME.BORDER}`,
+            textAlign: 'center',
+            cursor: 'pointer'
+          }}
+        >
+          Cancel
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ============================================
+// SUBTOPIC ITEM COMPONENT
+// ============================================
+
+function SubtopicItem({ subtopic, hasAssignedLO, isEditing, onEdit, onSave, onCancel, onRemove }) {
+  const [editValue, setEditValue] = useState(subtopic.title)
+  const [hovered, setHovered] = useState(false)
+
+  // Display number: actual number if parent topic has valid number, "x.x.x" in red if not
+  const displayNumber = (hasAssignedLO && subtopic.number && subtopic.number !== 'x.x.x')
+    ? subtopic.number
+    : 'x.x.x'
+  const numberColor = (hasAssignedLO && subtopic.number && subtopic.number !== 'x.x.x')
+    ? THEME.TEXT_PRIMARY
+    : '#ff4444'
+
+  if (isEditing) {
+    return (
+      <div style={{ fontSize: '1.3vh', marginBottom: '0.2vh', marginLeft: '1vw', display: 'flex', alignItems: 'center', gap: '0.3vw' }}>
+        <span style={{ color: numberColor }}>{displayNumber}</span>
+        <input
+          autoFocus
+          type="text"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={() => onSave(editValue)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onSave(editValue)
+            if (e.key === 'Escape') onCancel()
+          }}
+          style={{
+            flex: 1,
+            background: THEME.BG_INPUT,
+            border: `1px solid ${THEME.AMBER}`,
+            borderRadius: '0.3vh',
+            color: THEME.TEXT_PRIMARY,
+            fontSize: '1.2vh',
+            fontFamily: THEME.FONT_PRIMARY,
+            padding: '0.2vh 0.4vw',
+            outline: 'none'
+          }}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div
+      style={{
+        fontSize: '1.3vh',
+        marginBottom: '0.2vh',
+        marginLeft: '1vw',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.3vw',
+        cursor: 'pointer'
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <span style={{ color: numberColor }}>{displayNumber}</span>
+      <span
+        onClick={onEdit}
+        style={{
+          color: THEME.TEXT_PRIMARY,
+          flex: 1,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}
+      >
+        {subtopic.title}
+      </span>
+      {hovered && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onRemove() }}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: '#ff4444',
+            fontSize: '1.1vh',
+            cursor: 'pointer',
+            padding: '0 0.2vw',
+            lineHeight: 1
+          }}
+        >
+          ×
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ============================================
+// SUBTOPIC ENTRY MODAL COMPONENT
+// ============================================
+
+function SubtopicEntryModal({ parentTopic, hasAssignedLO, onAdd, onClose }) {
+  const [newTitle, setNewTitle] = useState('')
+
+  // Preview number for new subtopic
+  const topicNumber = parentTopic?.number || 'x.x'
+  const hasValidTopicNumber = topicNumber !== 'x.x' && hasAssignedLO
+  const previewNumber = hasValidTopicNumber ? `${topicNumber}.?` : 'x.x.x'
+  const previewNumberColor = hasValidTopicNumber ? THEME.TEXT_PRIMARY : '#ff4444'
+
+  const handleSubmit = () => {
+    if (newTitle.trim()) {
+      onAdd(newTitle.trim())
+    }
+  }
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 199
+        }}
+      />
+      {/* Modal */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 0,
+          zIndex: 200,
+          background: THEME.BG_PANEL,
+          border: `1px solid ${THEME.BORDER_LIGHT}`,
+          borderRadius: '0.4vh',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+          padding: '1vh 0.8vw'
+        }}
+      >
+        {/* Parent Topic Info */}
+        <div style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM, marginBottom: '0.6vh' }}>
+          Adding subtopic to: <span style={{ color: THEME.TEXT_PRIMARY }}>{parentTopic?.title || 'Topic'}</span>
+        </div>
+
+        {/* Number Preview */}
+        <div style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM, marginBottom: '0.4vh' }}>
+          Number: <span style={{ color: previewNumberColor }}>{previewNumber}</span>
+          {!hasValidTopicNumber && (
+            <span style={{ color: '#ff4444', marginLeft: '0.5vw' }}>(Assign LO for numbering)</span>
+          )}
+        </div>
+
+        {/* Title Input */}
+        <div style={{ display: 'flex', gap: '0.4vw' }}>
+          <input
+            autoFocus
+            type="text"
+            placeholder="Enter subtopic title..."
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSubmit()
+              if (e.key === 'Escape') onClose()
+            }}
+            style={{
+              flex: 1,
+              background: THEME.BG_INPUT,
+              border: `1px solid ${THEME.BORDER}`,
+              borderRadius: '0.3vh',
+              color: THEME.TEXT_PRIMARY,
+              fontSize: '1.3vh',
+              fontFamily: THEME.FONT_PRIMARY,
+              padding: '0.4vh 0.6vw',
+              outline: 'none'
+            }}
+          />
+          <button
+            onClick={handleSubmit}
+            disabled={!newTitle.trim()}
+            style={{
+              background: newTitle.trim() ? THEME.AMBER : THEME.BG_DARK,
+              border: 'none',
+              borderRadius: '0.3vh',
+              color: newTitle.trim() ? THEME.BG_DARK : THEME.TEXT_DIM,
+              fontSize: '1.2vh',
+              cursor: newTitle.trim() ? 'pointer' : 'default',
+              padding: '0.4vh 0.8vw'
+            }}
+          >
+            Add
+          </button>
+        </div>
+
+        {/* Close Button */}
+        <div
+          onClick={onClose}
+          style={{
+            marginTop: '0.6vh',
+            padding: '0.3vh 0',
+            fontSize: '1vh',
+            color: THEME.TEXT_DIM,
+            borderTop: `1px solid ${THEME.BORDER}`,
+            textAlign: 'center',
+            cursor: 'pointer'
+          }}
+        >
+          Cancel
+        </div>
+      </div>
+    </>
   )
 }
 
