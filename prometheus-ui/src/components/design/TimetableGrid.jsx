@@ -29,7 +29,7 @@ const HEADER_HEIGHT = 25        // Height of time header
 const NUM_DAYS = 5              // Number of day rows to show
 const ROW_GAP = 8               // Gap between day rows
 const ROW_BORDER_RADIUS = 30    // Pill-shaped rounded corners
-const DAY_BAR_WIDTH_PERCENT = 75 // Day bar width as % of available space (-25%)
+const DAY_BAR_WIDTH = 'calc(75% - 150px)' // Day bar width (reduced by 75px from each side)
 
 function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
   const {
@@ -101,7 +101,7 @@ function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
     >
       <div
         style={{
-          width: `${DAY_BAR_WIDTH_PERCENT}%`,
+          width: DAY_BAR_WIDTH,
           display: 'flex',
           flexDirection: 'column'
         }}
@@ -134,24 +134,32 @@ function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
             DAY
           </div>
 
-          {/* Hour columns - flex to fill available space equally, labels left-aligned */}
-          <div style={{ flex: 1, display: 'flex' }}>
-            {hours.map((hour, idx) => (
-              <div
-                key={hour}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'flex-start',
-                  fontSize: '1.1vh',
-                  color: THEME.TEXT_DIM,
-                  fontFamily: THEME.FONT_MONO
-                }}
-              >
-                {hour.toString().padStart(2, '0')}:00
-              </div>
-            ))}
+          {/* Hour labels - positioned to align with lesson blocks */}
+          <div style={{ flex: 1, position: 'relative' }}>
+            {hours.map((hour, idx) => {
+              // Position each label at the same percentage as lessons use
+              const totalHours = endHour - startHour
+              const leftPercent = ((hour - startHour) / totalHours) * 100
+              const isLastLabel = idx === hours.length - 1
+
+              return (
+                <div
+                  key={hour}
+                  style={{
+                    position: 'absolute',
+                    left: `${leftPercent}%`,
+                    transform: isLastLabel ? 'translateX(-100%)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    fontSize: '1.1vh',
+                    color: THEME.TEXT_DIM,
+                    fontFamily: THEME.FONT_MONO
+                  }}
+                >
+                  {hour.toString().padStart(2, '0')}:00
+                </div>
+              )
+            })}
           </div>
         </div>
 

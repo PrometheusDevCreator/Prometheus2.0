@@ -243,10 +243,10 @@ function ControlZone({ lessonTypes, currentType, onTypeSelect, hasPendingLesson 
         zIndex: 10
       }}
     >
-      {/* Container aligned with day bars (75% width) */}
+      {/* Container aligned with day bars (reduced width) */}
       <div
         style={{
-          width: '75%',
+          width: 'calc(75% - 150px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between'
