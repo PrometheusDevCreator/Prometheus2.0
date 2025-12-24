@@ -37,6 +37,7 @@ function ScalarColumns({ module }) {
     addSubtopic,
     createLessonFromScalar,
     addPerformanceCriteria,
+    updatePerformanceCriteria,
     updateHighlightedItems,
     clearHighlights,
     isItemHighlighted,
@@ -68,16 +69,30 @@ function ScalarColumns({ module }) {
 
   const performanceCriteria = scalarData.performanceCriteria || []
 
-  // Handle item click for highlighting
-  const handleItemClick = useCallback((type, id) => {
+  // Track selected PC for shift-click linking
+  const [selectedPCId, setSelectedPCId] = useState(null)
+
+  // Handle item click for highlighting, or shift-click to link to PC
+  const handleItemClick = useCallback((type, id, event) => {
+    // If shift is held and a PC is selected, link this item to the PC
+    if (event?.shiftKey && selectedPCId) {
+      linkItemToPC(selectedPCId, type, id)
+      return
+    }
     select(type, id)
     updateHighlightedItems(type, id)
-  }, [select, updateHighlightedItems])
+  }, [select, updateHighlightedItems, selectedPCId, linkItemToPC])
+
+  // Handle PC click - select for linking mode
+  const handlePCClick = useCallback((pcId) => {
+    setSelectedPCId(prev => prev === pcId ? null : pcId)
+  }, [])
 
   // Handle background click to clear
   const handleBackgroundClick = useCallback((e) => {
     if (e.target === e.currentTarget) {
       clearHighlights()
+      setSelectedPCId(null)
     }
   }, [clearHighlights])
 
@@ -106,7 +121,7 @@ function ScalarColumns({ module }) {
             isHighlighted={isItemHighlighted('lo', lo.id)}
             isSelected={selection.type === 'lo' && selection.id === lo.id}
             pcBadges={getLinkedPCs('lo', lo.id)}
-            onClick={() => handleItemClick('lo', lo.id)}
+            onClick={(e) => handleItemClick('lo', lo.id, e)}
             onUpdate={(updates) => updateScalarNode('lo', lo.id, updates)}
             onDelete={() => deleteScalarNode('lo', lo.id)}
             performanceCriteria={performanceCriteria}
@@ -133,7 +148,7 @@ function ScalarColumns({ module }) {
             isHighlighted={isItemHighlighted('topic', topic.id)}
             isSelected={selection.type === 'topic' && selection.id === topic.id}
             pcBadges={getLinkedPCs('topic', topic.id)}
-            onClick={() => handleItemClick('topic', topic.id)}
+            onClick={(e) => handleItemClick('topic', topic.id, e)}
             onUpdate={(updates) => updateScalarNode('topic', topic.id, updates)}
             onDelete={() => deleteScalarNode('topic', topic.id)}
             performanceCriteria={performanceCriteria}
@@ -165,7 +180,7 @@ function ScalarColumns({ module }) {
             isHighlighted={isItemHighlighted('subtopic', sub.id)}
             isSelected={selection.type === 'subtopic' && selection.id === sub.id}
             pcBadges={getLinkedPCs('subtopic', sub.id)}
-            onClick={() => handleItemClick('subtopic', sub.id)}
+            onClick={(e) => handleItemClick('subtopic', sub.id, e)}
             onUpdate={(updates) => updateScalarNode('subtopic', sub.id, updates)}
             onDelete={() => deleteScalarNode('subtopic', sub.id)}
             performanceCriteria={performanceCriteria}
@@ -197,7 +212,7 @@ function ScalarColumns({ module }) {
             isHighlighted={isItemHighlighted('lesson', lesson.id)}
             isSelected={selection.type === 'lesson' && selection.id === lesson.id}
             pcBadges={getLinkedPCs('lesson', lesson.id)}
-            onClick={() => handleItemClick('lesson', lesson.id)}
+            onClick={(e) => handleItemClick('lesson', lesson.id, e)}
             typeColor={getLessonTypeColor(lesson.type)}
             performanceCriteria={performanceCriteria}
             onLinkToPC={(pcId) => linkItemToPC(pcId, 'lesson', lesson.id)}
@@ -215,9 +230,12 @@ function ScalarColumns({ module }) {
         scalarData={scalarData}
         scheduledLessons={scheduledLessons}
         onAdd={() => addPerformanceCriteria()}
+        onUpdate={updatePerformanceCriteria}
         onDelete={deletePerformanceCriteria}
         onUnlink={unlinkItemFromPC}
         onItemClick={handleItemClick}
+        selectedPCId={selectedPCId}
+        onPCClick={handlePCClick}
       />
     </div>
   )
@@ -283,10 +301,10 @@ function ScalarColumn({ title, items, renderItem, onAdd, addLabel, accentColor }
             style={{
               background: 'transparent',
               border: `1px dashed ${accentColor}`,
-              borderRadius: '0.5vh',
+              borderRadius: '14px',
               color: accentColor,
               fontSize: FONT.BUTTON,
-              padding: '0.4vh 0.6vw',
+              padding: '0.4vh 0.8vw',
               cursor: 'pointer'
             }}
           >
@@ -710,9 +728,12 @@ function PCColumn({
   scalarData,
   scheduledLessons,
   onAdd,
+  onUpdate,
   onDelete,
   onUnlink,
-  onItemClick
+  onItemClick,
+  selectedPCId,
+  onPCClick
 }) {
   return (
     <div
@@ -751,10 +772,10 @@ function PCColumn({
           style={{
             background: 'transparent',
             border: `1px dashed ${THEME.AMBER}`,
-            borderRadius: '0.5vh',
+            borderRadius: '14px',
             color: THEME.AMBER,
             fontSize: FONT.BUTTON,
-            padding: '0.4vh 0.6vw',
+            padding: '0.4vh 0.8vw',
             cursor: 'pointer'
           }}
         >
@@ -789,9 +810,12 @@ function PCColumn({
               pc={pc}
               scalarData={scalarData}
               scheduledLessons={scheduledLessons}
+              onUpdate={(updates) => onUpdate(pc.id, updates)}
               onDelete={() => onDelete(pc.id)}
               onUnlink={(itemType, itemId) => onUnlink(pc.id, itemType, itemId)}
               onItemClick={onItemClick}
+              isSelectedForLinking={selectedPCId === pc.id}
+              onPCClick={() => onPCClick(pc.id)}
             />
           ))
         )}
@@ -804,8 +828,31 @@ function PCColumn({
 // PC ITEM COMPONENT
 // ============================================
 
-function PCItem({ pc, scalarData, scheduledLessons, onDelete, onUnlink, onItemClick }) {
+function PCItem({ pc, scalarData, scheduledLessons, onUpdate, onDelete, onUnlink, onItemClick, isSelectedForLinking, onPCClick }) {
   const [expanded, setExpanded] = useState(true)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(pc.name)
+
+  // Handle double-click to edit
+  const handleDoubleClick = useCallback((e) => {
+    e.stopPropagation()
+    setEditValue(pc.name)
+    setIsEditing(true)
+  }, [pc.name])
+
+  // Handle save edit
+  const handleSave = useCallback(() => {
+    if (editValue.trim() && editValue.trim() !== pc.name) {
+      onUpdate?.({ name: editValue.trim() })
+    }
+    setIsEditing(false)
+  }, [editValue, pc.name, onUpdate])
+
+  // Handle cancel edit
+  const handleCancel = useCallback(() => {
+    setEditValue(pc.name)
+    setIsEditing(false)
+  }, [pc.name])
 
   // Get linked item details
   const getLinkedItems = () => {
@@ -865,9 +912,10 @@ function PCItem({ pc, scalarData, scheduledLessons, onDelete, onUnlink, onItemCl
     <div
       style={{
         marginBottom: '0.8vh',
-        background: 'rgba(212, 115, 12, 0.08)',
+        background: isSelectedForLinking ? 'rgba(212, 115, 12, 0.25)' : 'rgba(212, 115, 12, 0.08)',
         borderRadius: '0.5vh',
-        border: `1px solid ${THEME.BORDER}`
+        border: `1px solid ${isSelectedForLinking ? THEME.AMBER : THEME.BORDER}`,
+        transition: 'all 0.15s ease'
       }}
     >
       {/* PC Header */}
@@ -879,31 +927,69 @@ function PCItem({ pc, scalarData, scheduledLessons, onDelete, onUnlink, onItemCl
           padding: '0.6vh 0.6vw',
           cursor: 'pointer'
         }}
-        onClick={() => setExpanded(!expanded)}
+        onClick={(e) => {
+          // Single click selects/deselects for linking
+          onPCClick?.()
+        }}
       >
         {/* Expand toggle */}
         <span
           style={{
             fontSize: FONT.NUMBER,
             color: THEME.TEXT_DIM,
-            width: '1.5vh'
+            width: '1.5vh',
+            cursor: hasItems ? 'pointer' : 'default'
+          }}
+          onClick={(e) => {
+            if (hasItems) {
+              e.stopPropagation()
+              setExpanded(!expanded)
+            }
           }}
         >
           {hasItems ? (expanded ? '−' : '+') : '○'}
         </span>
 
-        {/* PC Name */}
-        <span
-          style={{
-            flex: 1,
-            fontSize: FONT.LABEL,
-            fontFamily: THEME.FONT_PRIMARY,
-            color: THEME.AMBER,
-            fontWeight: 500
-          }}
-        >
-          {pc.name}
-        </span>
+        {/* PC Name - editable on double-click */}
+        {isEditing ? (
+          <input
+            type="text"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={handleSave}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSave()
+              if (e.key === 'Escape') handleCancel()
+            }}
+            onClick={(e) => e.stopPropagation()}
+            autoFocus
+            style={{
+              flex: 1,
+              fontSize: FONT.LABEL,
+              fontFamily: THEME.FONT_PRIMARY,
+              color: THEME.WHITE,
+              background: THEME.BG_INPUT,
+              border: `1px solid ${THEME.AMBER}`,
+              borderRadius: '0.3vh',
+              padding: '0.2vh 0.4vw',
+              outline: 'none'
+            }}
+          />
+        ) : (
+          <span
+            style={{
+              flex: 1,
+              fontSize: FONT.LABEL,
+              fontFamily: THEME.FONT_PRIMARY,
+              color: THEME.AMBER,
+              fontWeight: 500,
+              cursor: 'text'
+            }}
+            onDoubleClick={handleDoubleClick}
+          >
+            {pc.name}
+          </span>
+        )}
 
         {/* Item count */}
         <span

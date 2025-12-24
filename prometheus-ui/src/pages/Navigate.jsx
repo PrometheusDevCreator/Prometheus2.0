@@ -23,6 +23,27 @@ function Navigate({ onNavigate, courseData = {}, setCourseData, user, courseStat
   // Mock saved courses - in production this would come from backend/state
   const savedCourses = [
     {
+      id: 'test-course',
+      name: 'TEST-000: Test Course for Development',
+      title: 'Test Course for Development',
+      description: 'A comprehensive test course with 4 Learning Objectives for testing Scalar, Timetable, and Performance Criteria features.',
+      duration: 5,
+      durationUnit: 'Days',
+      level: 'Intermediate',
+      thematic: 'Development & Testing',
+      owner: 'Developer',
+      startDate: '24/12/25',
+      status: 'IN PROGRESS',
+      progress: 0,
+      approved: 'N',
+      learningObjectives: [
+        'IDENTIFY the key components of the Prometheus courseware system',
+        'EXPLAIN how Learning Objectives relate to Topics and Subtopics',
+        'DEMONSTRATE the use of Performance Criteria for course alignment',
+        'ANALYZE lesson scheduling and timetable management workflows'
+      ]
+    },
+    {
       id: 'course-1',
       name: 'INT-001: Introduction to Intelligence Analysis',
       title: 'Introduction to Intelligence Analysis',
@@ -117,10 +138,12 @@ function Navigate({ onNavigate, courseData = {}, setCourseData, user, courseStat
       setCourseData(prev => ({
         ...prev,
         title: course.title,
+        description: course.description,
         duration: course.duration,
         durationUnit: course.durationUnit,
         level: course.level,
-        thematic: course.thematic
+        thematic: course.thematic,
+        learningObjectives: course.learningObjectives || []
       }))
     }
 

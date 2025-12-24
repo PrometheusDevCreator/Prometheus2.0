@@ -34,11 +34,13 @@ function TimetableWorkspace() {
   // Handle clicking a lesson type - creates pending lesson above PKE
   const handleTypeClick = useCallback((typeId) => {
     const type = LESSON_TYPES.find(t => t.id === typeId) || LESSON_TYPES[0]
+    // BREAK type defaults to "BREAK" title and 30 minutes
+    const isBreak = typeId === 'break'
     setPendingLesson({
       id: `pending-${Date.now()}`,
-      title: 'New Lesson',
+      title: isBreak ? 'BREAK' : 'New Lesson',
       type: typeId,
-      duration: 60,
+      duration: isBreak ? 30 : 60,
       color: type.color
     })
   }, [LESSON_TYPES])

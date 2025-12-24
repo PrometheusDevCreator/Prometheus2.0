@@ -6,7 +6,8 @@
  * Layout: Single row with three zones — Left | Centre | Right
  *
  * Left Zone:
- * - "ACTIVE LESSON: [Lesson Title]" indicator
+ * - "ACTIVE COURSE: [Course Title]" (20% larger, title in Burnt Orange)
+ * - "ACTIVE LESSON: [Lesson Title]" (title in Luminous Green)
  *
  * Centre Zone:
  * - "< TIMETABLE >" / "< SCALAR >" toggle with arrows
@@ -29,13 +30,15 @@ function DesignNavBar() {
     currentWeek,
     setCurrentWeek,
     selectedLesson,
-    scheduledLessons
+    scheduledLessons,
+    courseData
   } = useDesign()
 
   // Dropdown state for view mode selector
   const [viewDropdownOpen, setViewDropdownOpen] = useState(false)
 
-  // Get active lesson title
+  // Get active course and lesson titles
+  const activeCourseTitle = courseData?.title || 'No Course Loaded'
   const activeLessonTitle = selectedLesson?.title || 'None Selected'
 
   // Calculate total scheduled hours
@@ -79,31 +82,60 @@ function DesignNavBar() {
         minHeight: '6vh'
       }}
     >
-      {/* LEFT ZONE: Active Lesson Indicator */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw', flex: 1 }}>
-        <span
-          style={{
-            fontSize: '1.4vh',
-            letterSpacing: '0.1vw',
-            color: THEME.TEXT_PRIMARY,
-            fontFamily: THEME.FONT_PRIMARY,
-            textTransform: 'uppercase'
-          }}
-        >
-          ACTIVE LESSON:
-        </span>
-        <span
-          style={{
-            fontSize: '1.4vh',
-            letterSpacing: '0.1vw',
-            color: THEME.AMBER,
-            fontFamily: THEME.FONT_PRIMARY,
-            fontWeight: 500,
-            textTransform: 'uppercase'
-          }}
-        >
-          {activeLessonTitle}
-        </span>
+      {/* LEFT ZONE: Active Course & Lesson Indicator */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3vh', flex: 1 }}>
+        {/* Active Course - 20% larger */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
+          <span
+            style={{
+              fontSize: '1.7vh',
+              letterSpacing: '0.1vw',
+              color: THEME.TEXT_PRIMARY,
+              fontFamily: THEME.FONT_PRIMARY,
+              textTransform: 'uppercase'
+            }}
+          >
+            ACTIVE COURSE:
+          </span>
+          <span
+            style={{
+              fontSize: '1.7vh',
+              letterSpacing: '0.1vw',
+              color: THEME.AMBER,
+              fontFamily: THEME.FONT_PRIMARY,
+              fontWeight: 500,
+              textTransform: 'uppercase'
+            }}
+          >
+            {activeCourseTitle}
+          </span>
+        </div>
+        {/* Active Lesson */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
+          <span
+            style={{
+              fontSize: '1.4vh',
+              letterSpacing: '0.1vw',
+              color: THEME.TEXT_PRIMARY,
+              fontFamily: THEME.FONT_PRIMARY,
+              textTransform: 'uppercase'
+            }}
+          >
+            ACTIVE LESSON:
+          </span>
+          <span
+            style={{
+              fontSize: '1.4vh',
+              letterSpacing: '0.1vw',
+              color: '#00FF00',
+              fontFamily: THEME.FONT_PRIMARY,
+              fontWeight: 500,
+              textTransform: 'uppercase'
+            }}
+          >
+            {activeLessonTitle}
+          </span>
+        </div>
       </div>
 
       {/* CENTRE ZONE: View Toggle + Week Selector */}
