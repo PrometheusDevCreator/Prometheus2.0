@@ -200,7 +200,17 @@ export function DesignProvider({ children, courseData, setCourseData }) {
         expanded: true,
         learningObjectives: initialLOs
       }
-    ]
+    ],
+    // Performance Criteria - tagging system across hierarchy
+    performanceCriteria: []
+  })
+
+  // Highlighted items for cross-column highlighting in Scalar
+  const [highlightedItems, setHighlightedItems] = useState({
+    los: new Set(),
+    topics: new Set(),
+    subtopics: new Set(),
+    lessons: new Set()
   })
 
   // Sync scalarData when courseData.learningObjectives changes
@@ -399,13 +409,17 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     const lessonTopicId = `topic-lesson-${timestamp}`
     const scalarTopicId = `topic-scalar-${timestamp}`
 
-    setLessons(prev => {
-      const lesson = prev.find(l => l.id === lessonId)
-      if (!lesson) return prev
+    // Read current lesson to get LO info (lessons state is stable for this read)
+    const lesson = lessons.find(l => l.id === lessonId)
+    if (!lesson) return
 
-      // Get the primary LO for numbering
-      const primaryLOId = lesson.learningObjectives?.[0] || null
-      const loOrder = getLOOrder(primaryLOId)
+    const primaryLOId = lesson.learningObjectives?.[0] || null
+    const loOrder = getLOOrder(primaryLOId)
+
+    // Update lessons state
+    setLessons(prev => {
+      const currentLesson = prev.find(l => l.id === lessonId)
+      if (!currentLesson) return prev
 
       // If no LO assigned, use "x.x" placeholder (no Scalar sync)
       if (!loOrder) {
@@ -414,7 +428,7 @@ export function DesignProvider({ children, courseData, setCourseData }) {
           title: topicTitle,
           number: 'x.x',
           loId: null,
-          scalarTopicId: null // No scalar link when no LO
+          scalarTopicId: null
         }
         return prev.map(l =>
           l.id === lessonId
@@ -424,14 +438,12 @@ export function DesignProvider({ children, courseData, setCourseData }) {
       }
 
       // Calculate next topic number for this LO across all lessons
-      // Consider lesson ordering (by day, startTime)
       let maxTopicNum = 0
       prev.forEach(l => {
         const loPrimary = l.learningObjectives?.[0]
         if (loPrimary === primaryLOId) {
-          // Check if this lesson is same or before current lesson
-          const isSameOrBefore = (l.day < lesson.day) ||
-            (l.day === lesson.day && (l.startTime || '0000') <= (lesson.startTime || '0000'))
+          const isSameOrBefore = (l.day < currentLesson.day) ||
+            (l.day === currentLesson.day && (l.startTime || '0000') <= (currentLesson.startTime || '0000'))
           if (isSameOrBefore) {
             l.topics?.forEach(t => {
               const match = t.number?.match(/^\d+\.(\d+)$/)
@@ -448,7 +460,7 @@ export function DesignProvider({ children, courseData, setCourseData }) {
         title: topicTitle,
         number: `${loOrder}.${maxTopicNum + 1}`,
         loId: primaryLOId,
-        scalarTopicId: scalarTopicId // Link to scalar topic
+        scalarTopicId: scalarTopicId
       }
 
       return prev.map(l =>
@@ -458,47 +470,38 @@ export function DesignProvider({ children, courseData, setCourseData }) {
       )
     })
 
-    // Auto-sync: Also add to Scalar under the assigned LO
-    // Need to get the LO ID from the lesson
-    setLessons(currentLessons => {
-      const lesson = currentLessons.find(l => l.id === lessonId)
-      const primaryLOId = lesson?.learningObjectives?.[0] || null
+    // Sync to Scalar separately (only if LO is assigned)
+    if (loOrder && primaryLOId) {
+      setScalarData(prev => {
+        const newData = { ...prev, modules: [...prev.modules] }
 
-      if (primaryLOId) {
-        // Add topic to scalar data under the LO
-        setScalarData(prev => {
-          const newData = { ...prev, modules: [...prev.modules] }
+        for (let m = 0; m < newData.modules.length; m++) {
+          const module = { ...newData.modules[m] }
+          newData.modules[m] = module
+          module.learningObjectives = [...module.learningObjectives]
 
-          for (let m = 0; m < newData.modules.length; m++) {
-            const module = { ...newData.modules[m] }
-            newData.modules[m] = module
-            module.learningObjectives = [...module.learningObjectives]
+          for (let l = 0; l < module.learningObjectives.length; l++) {
+            const lo = { ...module.learningObjectives[l] }
+            module.learningObjectives[l] = lo
 
-            for (let l = 0; l < module.learningObjectives.length; l++) {
-              const lo = { ...module.learningObjectives[l] }
-              module.learningObjectives[l] = lo
-
-              if (lo.id === primaryLOId) {
-                lo.topics = [...lo.topics]
-                const newScalarTopic = {
-                  id: scalarTopicId,
-                  title: topicTitle,
-                  order: lo.topics.length + 1,
-                  expanded: false,
-                  subtopics: []
-                }
-                lo.topics.push(newScalarTopic)
-                return newData
+            if (lo.id === primaryLOId) {
+              lo.topics = [...lo.topics]
+              const newScalarTopic = {
+                id: scalarTopicId,
+                title: topicTitle,
+                order: lo.topics.length + 1,
+                expanded: false,
+                subtopics: []
               }
+              lo.topics.push(newScalarTopic)
+              return newData
             }
           }
-          return prev
-        })
-      }
-
-      return currentLessons // Return unchanged
-    })
-  }, [getLOOrder])
+        }
+        return prev
+      })
+    }
+  }, [lessons, getLOOrder])
 
   // Remove topic from a lesson
   const removeTopicFromLesson = useCallback((lessonId, topicId) => {
@@ -1023,6 +1026,224 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     })
   }, [])
 
+  // --------------------------------------------
+  // PERFORMANCE CRITERIA OPERATIONS
+  // --------------------------------------------
+
+  // Add new Performance Criteria
+  const addPerformanceCriteria = useCallback((name) => {
+    setScalarData(prev => {
+      const newPC = {
+        id: `pc-${Date.now()}`,
+        name: name || `PC${(prev.performanceCriteria?.length || 0) + 1}`,
+        order: (prev.performanceCriteria?.length || 0) + 1,
+        linkedItems: {
+          los: [],
+          topics: [],
+          subtopics: [],
+          lessons: []
+        }
+      }
+      return {
+        ...prev,
+        performanceCriteria: [...(prev.performanceCriteria || []), newPC]
+      }
+    })
+  }, [])
+
+  // Update Performance Criteria
+  const updatePerformanceCriteria = useCallback((pcId, updates) => {
+    setScalarData(prev => ({
+      ...prev,
+      performanceCriteria: (prev.performanceCriteria || []).map(pc =>
+        pc.id === pcId ? { ...pc, ...updates } : pc
+      )
+    }))
+  }, [])
+
+  // Delete Performance Criteria
+  const deletePerformanceCriteria = useCallback((pcId) => {
+    setScalarData(prev => ({
+      ...prev,
+      performanceCriteria: (prev.performanceCriteria || [])
+        .filter(pc => pc.id !== pcId)
+        .map((pc, idx) => ({ ...pc, order: idx + 1 }))
+    }))
+  }, [])
+
+  // Link an item to a Performance Criteria
+  const linkItemToPC = useCallback((pcId, itemType, itemId) => {
+    setScalarData(prev => ({
+      ...prev,
+      performanceCriteria: (prev.performanceCriteria || []).map(pc => {
+        if (pc.id !== pcId) return pc
+        const typeKey = itemType === 'lo' ? 'los' : `${itemType}s`
+        if (pc.linkedItems[typeKey]?.includes(itemId)) return pc // Already linked
+        return {
+          ...pc,
+          linkedItems: {
+            ...pc.linkedItems,
+            [typeKey]: [...(pc.linkedItems[typeKey] || []), itemId]
+          }
+        }
+      })
+    }))
+  }, [])
+
+  // Unlink an item from a Performance Criteria
+  const unlinkItemFromPC = useCallback((pcId, itemType, itemId) => {
+    setScalarData(prev => ({
+      ...prev,
+      performanceCriteria: (prev.performanceCriteria || []).map(pc => {
+        if (pc.id !== pcId) return pc
+        const typeKey = itemType === 'lo' ? 'los' : `${itemType}s`
+        return {
+          ...pc,
+          linkedItems: {
+            ...pc.linkedItems,
+            [typeKey]: (pc.linkedItems[typeKey] || []).filter(id => id !== itemId)
+          }
+        }
+      })
+    }))
+  }, [])
+
+  // Get linked PCs for an item (returns array of PC names for badge display)
+  const getLinkedPCs = useCallback((itemType, itemId) => {
+    const typeKey = itemType === 'lo' ? 'los' : `${itemType}s`
+    return (scalarData.performanceCriteria || [])
+      .filter(pc => pc.linkedItems[typeKey]?.includes(itemId))
+      .map(pc => pc.name)
+  }, [scalarData.performanceCriteria])
+
+  // --------------------------------------------
+  // CROSS-COLUMN HIGHLIGHTING
+  // --------------------------------------------
+
+  // Set highlighted items based on clicked item
+  const updateHighlightedItems = useCallback((itemType, itemId) => {
+    const newHighlights = {
+      los: new Set(),
+      topics: new Set(),
+      subtopics: new Set(),
+      lessons: new Set()
+    }
+
+    // Helper to find relationships in scalar data
+    const findRelationships = () => {
+      for (const module of scalarData.modules) {
+        for (const lo of module.learningObjectives) {
+          if (itemType === 'lo' && lo.id === itemId) {
+            // Clicked LO → highlight all its Topics, Subtopics, and linked Lessons
+            newHighlights.los.add(lo.id)
+            lo.topics?.forEach(topic => {
+              newHighlights.topics.add(topic.id)
+              topic.subtopics?.forEach(sub => newHighlights.subtopics.add(sub.id))
+            })
+            // Find lessons that have this LO
+            lessons.forEach(lesson => {
+              if (lesson.learningObjectives?.includes(lo.id)) {
+                newHighlights.lessons.add(lesson.id)
+              }
+            })
+            return
+          }
+
+          for (const topic of lo.topics || []) {
+            if (itemType === 'topic' && topic.id === itemId) {
+              // Clicked Topic → highlight parent LO, all Subtopics, and linked Lessons
+              newHighlights.los.add(lo.id)
+              newHighlights.topics.add(topic.id)
+              topic.subtopics?.forEach(sub => newHighlights.subtopics.add(sub.id))
+              // Find lessons that have this topic
+              lessons.forEach(lesson => {
+                if (lesson.topics?.some(t => t.scalarTopicId === topic.id || t.id === topic.id)) {
+                  newHighlights.lessons.add(lesson.id)
+                }
+              })
+              return
+            }
+
+            for (const subtopic of topic.subtopics || []) {
+              if (itemType === 'subtopic' && subtopic.id === itemId) {
+                // Clicked Subtopic → highlight parent Topic, grandparent LO, and linked Lessons
+                newHighlights.los.add(lo.id)
+                newHighlights.topics.add(topic.id)
+                newHighlights.subtopics.add(subtopic.id)
+                // Find lessons that have this subtopic
+                lessons.forEach(lesson => {
+                  lesson.topics?.forEach(t => {
+                    if (t.subtopics?.some(s => s.scalarSubtopicId === subtopic.id || s.id === subtopic.id)) {
+                      newHighlights.lessons.add(lesson.id)
+                    }
+                  })
+                })
+                return
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Handle lesson click
+    if (itemType === 'lesson') {
+      const lesson = lessons.find(l => l.id === itemId)
+      if (lesson) {
+        newHighlights.lessons.add(lesson.id)
+        // Highlight all LOs assigned to this lesson
+        lesson.learningObjectives?.forEach(loId => newHighlights.los.add(loId))
+        // Highlight all topics and subtopics
+        lesson.topics?.forEach(topic => {
+          if (topic.scalarTopicId) newHighlights.topics.add(topic.scalarTopicId)
+          topic.subtopics?.forEach(sub => {
+            if (sub.scalarSubtopicId) newHighlights.subtopics.add(sub.scalarSubtopicId)
+          })
+        })
+      }
+    } else {
+      findRelationships()
+    }
+
+    setHighlightedItems(newHighlights)
+  }, [scalarData.modules, lessons])
+
+  // Clear all highlights
+  const clearHighlights = useCallback(() => {
+    setHighlightedItems({
+      los: new Set(),
+      topics: new Set(),
+      subtopics: new Set(),
+      lessons: new Set()
+    })
+  }, [])
+
+  // Check if an item is highlighted
+  const isItemHighlighted = useCallback((itemType, itemId) => {
+    const typeKey = itemType === 'lo' ? 'los' : `${itemType}s`
+    return highlightedItems[typeKey]?.has(itemId) || false
+  }, [highlightedItems])
+
+  // Create lesson from Scalar (for Lesson Titles column)
+  const createLessonFromScalar = useCallback((title) => {
+    const newLesson = {
+      id: `lesson-${Date.now()}`,
+      title: title || 'NEW LESSON',
+      type: 'instructor-led',
+      duration: 60,
+      startTime: '0900',
+      day: currentDay,
+      week: currentWeek,
+      module: currentModule,
+      topics: [],
+      learningObjectives: [],
+      scheduled: false,  // Starts unscheduled, available in library
+      saved: false
+    }
+    setLessons(prev => [...prev, newLesson])
+    return newLesson.id
+  }, [currentDay, currentWeek, currentModule])
+
   // Get selected scalar item
   const selectedScalarItem = useMemo(() => {
     if (!selection.type || selection.type === 'lesson') return null
@@ -1136,6 +1357,21 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     addLearningObjective,
     addTopic,
     addSubtopic,
+    createLessonFromScalar,
+
+    // Performance Criteria
+    addPerformanceCriteria,
+    updatePerformanceCriteria,
+    deletePerformanceCriteria,
+    linkItemToPC,
+    unlinkItemFromPC,
+    getLinkedPCs,
+
+    // Cross-column highlighting
+    highlightedItems,
+    updateHighlightedItems,
+    clearHighlights,
+    isItemHighlighted,
     updateScalarNode,
     deleteScalarNode,
 
@@ -1171,6 +1407,10 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     moveLesson, resizeLesson, checkCollision, findAvailableSlot,
     scalarData, selectedScalarItem, toggleScalarExpand,
     addLearningObjective, addTopic, addSubtopic, updateScalarNode, deleteScalarNode,
+    createLessonFromScalar,
+    addPerformanceCriteria, updatePerformanceCriteria, deletePerformanceCriteria,
+    linkItemToPC, unlinkItemFromPC, getLinkedPCs,
+    highlightedItems, updateHighlightedItems, clearHighlights, isItemHighlighted,
     selection, select, startEditing, clearSelection,
     editorCollapsed, courseData, setCourseData
   ])

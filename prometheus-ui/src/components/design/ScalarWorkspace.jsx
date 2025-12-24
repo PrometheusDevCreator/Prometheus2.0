@@ -1,24 +1,29 @@
 /**
  * ScalarWorkspace.jsx - Scalar Tab Content
  *
- * APPROVED IMPLEMENTATION PLAN - Phase 5
+ * REDESIGNED: Multi-Column View
  *
- * Displays hierarchical tree view:
- * Module > Learning Objective > Topic > Subtopic
+ * Displays 5 columns:
+ * - Learning Objectives
+ * - Topics
+ * - Subtopics
+ * - Lesson Titles
+ * - Performance Criteria
  *
  * Features:
- * - Expand/collapse nodes
- * - Add new items at each level
- * - Select items to edit in Editor panel
- * - Visual hierarchy with indentation and connectors
+ * - Cross-column highlighting on click
+ * - PC badges on linked items
+ * - Inline editing
+ * - Add/delete functionality
+ * - 75% larger fonts
  */
 
 import { THEME } from '../../constants/theme'
 import { useDesign } from '../../contexts/DesignContext'
-import ScalarTree from './ScalarTree'
+import ScalarColumns from './ScalarColumns'
 
 function ScalarWorkspace() {
-  const { scalarData, currentModule, addLearningObjective } = useDesign()
+  const { scalarData, currentModule } = useDesign()
 
   // Get current module data
   const module = scalarData.modules.find(m => m.order === currentModule) || scalarData.modules[0]
@@ -33,21 +38,22 @@ function ScalarWorkspace() {
         background: THEME.BG_DARK
       }}
     >
-      {/* Header Controls */}
+      {/* Module Header */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '1vh 1.5vw',
+          padding: '0.8vh 1.5vw',
           borderBottom: `1px solid ${THEME.BORDER}`,
-          background: THEME.BG_PANEL
+          background: THEME.BG_PANEL,
+          flexShrink: 0
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '1vw' }}>
           <span
             style={{
-              fontSize: '1.4vh',
+              fontSize: '2vh',
               letterSpacing: '0.1vw',
               color: THEME.WHITE,
               fontFamily: THEME.FONT_PRIMARY,
@@ -58,7 +64,7 @@ function ScalarWorkspace() {
           </span>
           <span
             style={{
-              fontSize: '1.1vh',
+              fontSize: '1.5vh',
               color: THEME.TEXT_DIM,
               fontFamily: THEME.FONT_MONO
             }}
@@ -66,93 +72,26 @@ function ScalarWorkspace() {
             {module?.learningObjectives?.length || 0} LOs
           </span>
         </div>
+      </div>
 
-        <button
-          onClick={() => module && addLearningObjective(module.id)}
+      {/* Multi-Column View */}
+      {module ? (
+        <ScalarColumns module={module} />
+      ) : (
+        <div
           style={{
-            background: 'transparent',
-            border: `1px dashed ${THEME.AMBER}`,
-            borderRadius: '0.5vh',
-            color: THEME.AMBER,
-            fontSize: '1.1vh',
-            padding: '0.5vh 1vw',
-            cursor: 'pointer',
+            flex: 1,
             display: 'flex',
             alignItems: 'center',
-            gap: '0.3vw',
-            transition: 'all 0.2s ease'
+            justifyContent: 'center',
+            color: THEME.TEXT_DIM,
+            fontSize: '1.8vh',
+            fontStyle: 'italic'
           }}
         >
-          <span style={{ fontSize: '1.3vh' }}>+</span>
-          Add LO
-        </button>
-      </div>
-
-      {/* Tree View */}
-      <div
-        style={{
-          flex: 1,
-          overflow: 'auto',
-          padding: '1vh 1vw'
-        }}
-      >
-        {module ? (
-          <ScalarTree module={module} />
-        ) : (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: '100%',
-              color: THEME.TEXT_DIM,
-              fontSize: '1.2vh',
-              fontStyle: 'italic'
-            }}
-          >
-            No module data available
-          </div>
-        )}
-      </div>
-
-      {/* Legend */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '2vw',
-          padding: '0.8vh 1.5vw',
-          borderTop: `1px solid ${THEME.BORDER}`,
-          background: THEME.BG_PANEL
-        }}
-      >
-        <LegendItem label="Learning Objective" color={THEME.AMBER} />
-        <LegendItem label="Topic" color="#4a9eff" />
-        <LegendItem label="Subtopic" color="#9b59b6" />
-      </div>
-    </div>
-  )
-}
-
-function LegendItem({ label, color }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4vw' }}>
-      <div
-        style={{
-          width: '0.8vh',
-          height: '0.8vh',
-          borderRadius: '50%',
-          background: color
-        }}
-      />
-      <span
-        style={{
-          fontSize: '1vh',
-          color: THEME.TEXT_DIM,
-          fontFamily: THEME.FONT_PRIMARY
-        }}
-      >
-        {label}
-      </span>
+          No module data available
+        </div>
+      )}
     </div>
   )
 }
