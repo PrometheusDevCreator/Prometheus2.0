@@ -303,7 +303,7 @@ function LessonBlock({
         {/* Lesson Title - Top */}
         <div
           style={{
-            fontSize: '1.3vh',
+            fontSize: '1.4vh',
             color: isSelected ? THEME.WHITE : THEME.TEXT_PRIMARY,
             fontFamily: THEME.FONT_PRIMARY,
             fontWeight: 400,
@@ -326,7 +326,7 @@ function LessonBlock({
           {/* Time Range */}
           <span
             style={{
-              fontSize: '1.0vh',
+              fontSize: '1.1vh',
               color: THEME.TEXT_DIM,
               fontFamily: THEME.FONT_MONO
             }}
@@ -337,7 +337,7 @@ function LessonBlock({
           {/* Duration */}
           <span
             style={{
-              fontSize: '1.0vh',
+              fontSize: '1.1vh',
               color: THEME.TEXT_DIM,
               fontFamily: THEME.FONT_MONO
             }}
@@ -354,7 +354,7 @@ function LessonBlock({
             position: 'absolute',
             top: '2px',
             right: '4px',
-            fontSize: '0.75vh',
+            fontSize: '0.85vh',
             color: THEME.AMBER,
             fontFamily: THEME.FONT_MONO,
             letterSpacing: '0.03vw',
@@ -481,7 +481,7 @@ function ContextMenuItem({ label, hint, onClick, disabled, danger }) {
       onMouseLeave={() => setHovered(false)}
       style={{
         padding: '0.8vh 1vw',
-        fontSize: '1.3vh',
+        fontSize: '1.4vh',
         fontFamily: THEME.FONT_PRIMARY,
         color: disabled
           ? THEME.TEXT_DIM
@@ -498,7 +498,7 @@ function ContextMenuItem({ label, hint, onClick, disabled, danger }) {
     >
       <span>{label}</span>
       {hint && (
-        <span style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM, marginLeft: '1vw' }}>
+        <span style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM, marginLeft: '1vw' }}>
           {hint}
         </span>
       )}

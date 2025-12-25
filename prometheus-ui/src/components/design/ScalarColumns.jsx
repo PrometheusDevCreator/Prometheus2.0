@@ -19,13 +19,13 @@ import { useState, useCallback } from 'react'
 import { THEME } from '../../constants/theme'
 import { useDesign } from '../../contexts/DesignContext'
 
-// Font sizes - 75% larger than original
+// Font sizes - 75% larger than original, then reduced by 10%
 const FONT = {
-  HEADER: '2.45vh',      // was 1.4vh
-  NUMBER: '1.75vh',      // was 1.0vh
-  LABEL: '1.9vh',        // was 1.1vh
-  BADGE: '1.4vh',        // was 0.8vh
-  BUTTON: '1.6vh'        // was 0.9vh
+  HEADER: '2.2vh',       // was 2.45vh
+  NUMBER: '1.6vh',       // was 1.75vh
+  LABEL: '1.7vh',        // was 1.9vh
+  BADGE: '1.25vh',       // was 1.4vh
+  BUTTON: '1.45vh'       // was 1.6vh
 }
 
 function ScalarColumns({ module }) {
@@ -71,6 +71,25 @@ function ScalarColumns({ module }) {
 
   // Track selected PC for shift-click linking
   const [selectedPCId, setSelectedPCId] = useState(null)
+
+  // Track expanded topics (for collapsing subtopics)
+  const [expandedTopics, setExpandedTopics] = useState(new Set())
+
+  // Toggle topic expansion
+  const toggleTopicExpand = useCallback((topicId) => {
+    setExpandedTopics(prev => {
+      const next = new Set(prev)
+      if (next.has(topicId)) {
+        next.delete(topicId)
+      } else {
+        next.add(topicId)
+      }
+      return next
+    })
+  }, [])
+
+  // Filter subtopics to only show those with expanded parent topics
+  const visibleSubtopics = allSubtopics.filter(sub => expandedTopics.has(sub.topicId))
 
   // Handle item click for highlighting, or shift-click to link to PC
   const handleItemClick = useCallback((type, id, event) => {
@@ -138,24 +157,36 @@ function ScalarColumns({ module }) {
       <ScalarColumn
         title="Topics"
         items={allTopics}
-        renderItem={(topic) => (
-          <ScalarColumnItem
-            key={topic.id}
-            id={topic.id}
-            type="topic"
-            number={`${topic.loOrder}.${topic.order}`}
-            label={topic.title}
-            isHighlighted={isItemHighlighted('topic', topic.id)}
-            isSelected={selection.type === 'topic' && selection.id === topic.id}
-            pcBadges={getLinkedPCs('topic', topic.id)}
-            onClick={(e) => handleItemClick('topic', topic.id, e)}
-            onUpdate={(updates) => updateScalarNode('topic', topic.id, updates)}
-            onDelete={() => deleteScalarNode('topic', topic.id)}
-            performanceCriteria={performanceCriteria}
-            onLinkToPC={(pcId) => linkItemToPC(pcId, 'topic', topic.id)}
-            onUnlinkFromPC={(pcId) => unlinkItemFromPC(pcId, 'topic', topic.id)}
-          />
-        )}
+        renderItem={(topic) => {
+          const hasSubtopics = (topic.subtopics || []).length > 0
+          const isExpanded = expandedTopics.has(topic.id)
+          return (
+            <ScalarColumnItem
+              key={topic.id}
+              id={topic.id}
+              type="topic"
+              number={`${topic.loOrder}.${topic.order}`}
+              label={topic.title}
+              isHighlighted={isItemHighlighted('topic', topic.id)}
+              isSelected={selection.type === 'topic' && selection.id === topic.id}
+              pcBadges={getLinkedPCs('topic', topic.id)}
+              onClick={(e) => {
+                handleItemClick('topic', topic.id, e)
+                // Also toggle expansion when clicking
+                if (hasSubtopics) {
+                  toggleTopicExpand(topic.id)
+                }
+              }}
+              onUpdate={(updates) => updateScalarNode('topic', topic.id, updates)}
+              onDelete={() => deleteScalarNode('topic', topic.id)}
+              performanceCriteria={performanceCriteria}
+              onLinkToPC={(pcId) => linkItemToPC(pcId, 'topic', topic.id)}
+              onUnlinkFromPC={(pcId) => unlinkItemFromPC(pcId, 'topic', topic.id)}
+              hasChildren={hasSubtopics}
+              isExpanded={isExpanded}
+            />
+          )
+        }}
         onAdd={() => {
           // Add to first LO if available
           if (learningObjectives.length > 0) {
@@ -169,7 +200,7 @@ function ScalarColumns({ module }) {
       {/* Subtopics Column */}
       <ScalarColumn
         title="Subtopics"
-        items={allSubtopics}
+        items={visibleSubtopics}
         renderItem={(sub) => (
           <ScalarColumnItem
             key={sub.id}
@@ -359,7 +390,9 @@ function ScalarColumnItem({
   typeColor,
   performanceCriteria = [],
   onLinkToPC,
-  onUnlinkFromPC
+  onUnlinkFromPC,
+  hasChildren = false,
+  isExpanded = false
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(label)
@@ -430,7 +463,7 @@ function ScalarColumnItem({
           marginBottom: '0.3vh',
           background: highlightBg,
           border: highlightBorder,
-          borderRadius: '0.4vh',
+          borderRadius: '10px',
           cursor: 'pointer',
           transition: 'all 0.15s ease',
           position: 'relative'
@@ -455,6 +488,23 @@ function ScalarColumnItem({
           />
         )}
 
+        {/* Expand/Collapse indicator for items with children */}
+        {hasChildren && (
+          <span
+            style={{
+              fontSize: FONT.NUMBER,
+              color: THEME.TEXT_DIM,
+              fontWeight: 400,
+              flexShrink: 0,
+              width: '1.2vh',
+              transition: 'transform 0.15s ease',
+              transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
+            }}
+          >
+            ▶
+          </span>
+        )}
+
         {/* Number */}
         {number && (
           <span
@@ -464,7 +514,7 @@ function ScalarColumnItem({
               color: THEME.AMBER,
               fontWeight: 500,
               flexShrink: 0,
-              minWidth: '3vw'
+              minWidth: hasChildren ? '2.5vw' : '3vw'
             }}
           >
             {number}

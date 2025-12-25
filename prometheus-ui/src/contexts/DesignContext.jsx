@@ -1231,18 +1231,18 @@ export function DesignProvider({ children, courseData, setCourseData }) {
       title: title || 'NEW LESSON',
       type: 'instructor-led',
       duration: 60,
-      startTime: '0900',
-      day: currentDay,
+      startTime: null,  // No time assigned yet
+      day: null,        // No day assigned yet
       week: currentWeek,
       module: currentModule,
       topics: [],
       learningObjectives: [],
-      scheduled: false,  // Starts unscheduled, available in library
+      scheduled: true,  // Show in Scalar column immediately
       saved: false
     }
     setLessons(prev => [...prev, newLesson])
     return newLesson.id
-  }, [currentDay, currentWeek, currentModule])
+  }, [currentWeek, currentModule])
 
   // Get selected scalar item
   const selectedScalarItem = useMemo(() => {

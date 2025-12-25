@@ -124,7 +124,7 @@ function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '1.1vh',
+              fontSize: '1.2vh',
               color: THEME.TEXT_DIM,
               fontFamily: THEME.FONT_PRIMARY,
               textTransform: 'uppercase',
@@ -151,7 +151,7 @@ function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
                     transform: isLastLabel ? 'translateX(-100%)' : 'none',
                     display: 'flex',
                     alignItems: 'center',
-                    fontSize: '1.1vh',
+                    fontSize: '1.2vh',
                     color: THEME.TEXT_DIM,
                     fontFamily: THEME.FONT_MONO
                   }}
@@ -200,7 +200,7 @@ function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
               justifyContent: 'center',
               height: `${DAY_HEIGHT * 3}px`,
               color: THEME.TEXT_DIM,
-              fontSize: '1.2vh'
+              fontSize: '1.3vh'
             }}
           >
             No days to display
@@ -331,7 +331,7 @@ function DayRow({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '1.4vh',
+          fontSize: '1.55vh',
           color: isHighlighted ? THEME.AMBER : THEME.TEXT_PRIMARY,
           fontFamily: THEME.FONT_MONO,
           background: 'transparent',

@@ -186,7 +186,7 @@ function PendingLessonCard({ lesson, type, onDragStart, onCancel }) {
       >
         <span
           style={{
-            fontSize: '1.3vh',
+            fontSize: '1.4vh',
             color: THEME.AMBER,
             fontFamily: THEME.FONT_PRIMARY,
             marginBottom: '0.2vh'
@@ -195,10 +195,10 @@ function PendingLessonCard({ lesson, type, onDragStart, onCancel }) {
           {lesson.title}
         </span>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: '1vh', color: THEME.TEXT_DIM, fontFamily: THEME.FONT_MONO }}>
+          <span style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM, fontFamily: THEME.FONT_MONO }}>
             Drag to schedule
           </span>
-          <span style={{ fontSize: '1vh', color: THEME.TEXT_DIM, fontFamily: THEME.FONT_MONO }}>
+          <span style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM, fontFamily: THEME.FONT_MONO }}>
             {lesson.duration}mins
           </span>
         </div>
@@ -213,7 +213,7 @@ function PendingLessonCard({ lesson, type, onDragStart, onCancel }) {
           background: 'transparent',
           border: 'none',
           color: THEME.TEXT_DIM,
-          fontSize: '1.2vh',
+          fontSize: '1.3vh',
           cursor: 'pointer',
           padding: '2px'
         }}
@@ -284,7 +284,7 @@ function ControlZone({ lessonTypes, currentType, onTypeSelect, hasPendingLesson 
             display: 'flex',
             alignItems: 'center',
             gap: '0.8vw',
-            fontSize: '1.4vh',
+            fontSize: '1.55vh',
             color: THEME.TEXT_DIM
           }}
         >
@@ -342,7 +342,7 @@ function LessonTypeButton({ type, onClick }) {
       {/* Label */}
       <span
         style={{
-          fontSize: '0.85vh',
+          fontSize: '0.95vh',
           color: THEME.TEXT_PRIMARY,
           fontFamily: THEME.FONT_PRIMARY,
           textAlign: 'left',

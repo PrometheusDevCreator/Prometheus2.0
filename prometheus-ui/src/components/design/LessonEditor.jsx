@@ -169,7 +169,7 @@ function LessonEditor() {
           borderRight: `1px solid ${THEME.BORDER}`,
           borderTop: `1px solid ${THEME.BORDER}`,
           borderBottom: `1px solid ${THEME.BORDER}`,
-          borderRadius: '0 4px 4px 0',
+          borderRadius: '0 12px 12px 0',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
@@ -190,7 +190,7 @@ function LessonEditor() {
           style={{
             writingMode: 'vertical-rl',
             transform: 'rotate(180deg)',
-            fontSize: '1.1vh',
+            fontSize: '1.25vh',
             letterSpacing: '0.25vh',
             color: THEME.TEXT_PRIMARY,
             fontFamily: THEME.FONT_PRIMARY,
@@ -217,7 +217,7 @@ function LessonEditor() {
         top: '23px',
         background: 'rgba(20, 20, 20, 0.95)',
         border: '1px solid rgba(100, 100, 100, 0.5)',
-        borderRadius: '8px',
+        borderRadius: '16px',
         display: 'flex',
         flexDirection: 'column',
         zIndex: 60,
@@ -236,7 +236,7 @@ function LessonEditor() {
       >
         <span
           style={{
-            fontSize: '1.6vh',
+            fontSize: '1.85vh',
             letterSpacing: '0.12vw',
             color: THEME.TEXT_PRIMARY,
             fontFamily: THEME.FONT_PRIMARY,
@@ -251,7 +251,7 @@ function LessonEditor() {
             background: 'transparent',
             border: 'none',
             color: THEME.TEXT_DIM,
-            fontSize: '1.9vh',
+            fontSize: '2.2vh',
             cursor: 'pointer',
             padding: '0.2vh 0.4vw',
             transition: 'color 0.2s ease'
@@ -290,7 +290,7 @@ function LessonEditor() {
                   border: `1px solid ${THEME.AMBER}`,
                   borderRadius: '0.3vh',
                   color: THEME.AMBER,
-                  fontSize: '1.6vh',
+                  fontSize: '1.85vh',
                   fontFamily: THEME.FONT_PRIMARY,
                   padding: '0.4vh 0.6vw',
                   outline: 'none'
@@ -301,7 +301,7 @@ function LessonEditor() {
                 onClick={() => setEditingTitle(true)}
                 style={{
                   color: THEME.AMBER,
-                  fontSize: '1.6vh',
+                  fontSize: '1.85vh',
                   fontFamily: THEME.FONT_PRIMARY,
                   cursor: 'pointer'
                 }}
@@ -314,13 +314,13 @@ function LessonEditor() {
           {/* Learning Objective Field */}
           <FieldSection label="Learning Objective:" style={{ position: 'relative' }}>
             {primaryLO ? (
-              <div style={{ fontSize: '1.4vh' }}>
+              <div style={{ fontSize: '1.6vh' }}>
                 <span style={{ color: THEME.TEXT_PRIMARY }}>{primaryLO.order}. </span>
                 <span style={{ color: THEME.GREEN_BRIGHT }}>{primaryLO.verb}</span>
                 <span style={{ color: THEME.TEXT_PRIMARY }}> {primaryLO.description}</span>
               </div>
             ) : (
-              <div style={{ fontSize: '1.4vh', color: THEME.TEXT_DIM, fontStyle: 'italic' }}>
+              <div style={{ fontSize: '1.6vh', color: THEME.TEXT_DIM, fontStyle: 'italic' }}>
                 Select LO
               </div>
             )}
@@ -330,7 +330,7 @@ function LessonEditor() {
                 background: 'transparent',
                 border: 'none',
                 color: THEME.TEXT_DIM,
-                fontSize: '1.3vh',
+                fontSize: '1.5vh',
                 cursor: 'pointer',
                 marginTop: '0.4vh',
                 textDecoration: 'underline',
@@ -378,7 +378,7 @@ function LessonEditor() {
                 />
               ))
             ) : (
-              <div style={{ fontSize: '1.4vh', color: THEME.TEXT_DIM, fontStyle: 'italic' }}>
+              <div style={{ fontSize: '1.6vh', color: THEME.TEXT_DIM, fontStyle: 'italic' }}>
                 Click + to add a topic
               </div>
             )}
@@ -410,7 +410,7 @@ function LessonEditor() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      fontSize: '1.2vh',
+                      fontSize: '1.4vh',
                       color: THEME.TEXT_DIM,
                       marginBottom: '0.2vh'
                     }}>
@@ -443,7 +443,7 @@ function LessonEditor() {
                         />
                       ))
                     ) : (
-                      <div style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM, fontStyle: 'italic', marginLeft: '1vw' }}>
+                      <div style={{ fontSize: '1.4vh', color: THEME.TEXT_DIM, fontStyle: 'italic', marginLeft: '1vw' }}>
                         No subtopics
                       </div>
                     )}
@@ -451,7 +451,7 @@ function LessonEditor() {
                 )
               })
             ) : (
-              <div style={{ fontSize: '1.4vh', color: THEME.TEXT_DIM, fontStyle: 'italic' }}>
+              <div style={{ fontSize: '1.6vh', color: THEME.TEXT_DIM, fontStyle: 'italic' }}>
                 Add topics first to create subtopics
               </div>
             )}
@@ -475,7 +475,7 @@ function LessonEditor() {
             <span
               style={{
                 color: THEME.AMBER,
-                fontSize: '1.6vh',
+                fontSize: '1.85vh',
                 fontFamily: THEME.FONT_PRIMARY
               }}
             >
@@ -486,10 +486,10 @@ function LessonEditor() {
           {/* Timings Field */}
           <FieldSection label="Timings:" noBorder>
             <div style={{ display: 'flex', alignItems: 'center', gap: '2vw' }}>
-              <span style={{ color: THEME.AMBER, fontSize: '1.6vh', fontFamily: THEME.FONT_MONO }}>
+              <span style={{ color: THEME.AMBER, fontSize: '1.85vh', fontFamily: THEME.FONT_MONO }}>
                 {formatTime(selectedLesson.startTime)} - {calculateEndTime()}
               </span>
-              <span style={{ color: THEME.GREEN_BRIGHT, fontSize: '1.6vh', fontFamily: THEME.FONT_MONO }}>
+              <span style={{ color: THEME.GREEN_BRIGHT, fontSize: '1.85vh', fontFamily: THEME.FONT_MONO }}>
                 {selectedLesson.duration} mins
               </span>
             </div>
@@ -503,7 +503,7 @@ function LessonEditor() {
             alignItems: 'center',
             justifyContent: 'center',
             color: THEME.TEXT_DIM,
-            fontSize: '1.4vh',
+            fontSize: '1.6vh',
             fontStyle: 'italic',
             padding: '2vh'
           }}
@@ -531,7 +531,7 @@ function FieldSection({ label, children, action, style = {}, noBorder = false })
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3vh' }}>
         <span
           style={{
-            fontSize: '1.3vh',
+            fontSize: '1.5vh',
             color: THEME.TEXT_DIM,
             fontFamily: THEME.FONT_PRIMARY
           }}
@@ -590,7 +590,7 @@ function LODropdown({ moduleLOs, selectedLOs, onToggle, onClose }) {
       onKeyDown={handleKeyDown}
     >
       {moduleLOs.length === 0 ? (
-        <div style={{ padding: '0.8vh 1vw', color: THEME.TEXT_DIM, fontSize: '1.1vh', fontStyle: 'italic' }}>
+        <div style={{ padding: '0.8vh 1vw', color: THEME.TEXT_DIM, fontSize: '1.25vh', fontStyle: 'italic' }}>
           No LOs available
         </div>
       ) : (
@@ -602,7 +602,7 @@ function LODropdown({ moduleLOs, selectedLOs, onToggle, onClose }) {
               onClick={() => onToggle(lo.id)}
               style={{
                 padding: '0.5vh 0.8vw',
-                fontSize: '1.1vh',
+                fontSize: '1.25vh',
                 color: isSelected ? THEME.AMBER : THEME.TEXT_PRIMARY,
                 background: 'transparent',
                 cursor: 'pointer',
@@ -632,7 +632,7 @@ function LODropdown({ moduleLOs, selectedLOs, onToggle, onClose }) {
         onClick={onClose}
         style={{
           padding: '0.4vh 0.8vw',
-          fontSize: '1vh',
+          fontSize: '1.15vh',
           color: THEME.TEXT_DIM,
           borderTop: `1px solid ${THEME.BORDER}`,
           textAlign: 'center',
@@ -659,7 +659,7 @@ function TopicItem({ topic, hasAssignedLO, isEditing, onEdit, onSave, onCancel, 
 
   if (isEditing) {
     return (
-      <div style={{ fontSize: '1.4vh', marginBottom: '0.3vh', display: 'flex', alignItems: 'center', gap: '0.3vw' }}>
+      <div style={{ fontSize: '1.6vh', marginBottom: '0.3vh', display: 'flex', alignItems: 'center', gap: '0.3vw' }}>
         <span style={{ color: numberColor }}>{displayNumber}</span>
         <input
           autoFocus
@@ -677,7 +677,7 @@ function TopicItem({ topic, hasAssignedLO, isEditing, onEdit, onSave, onCancel, 
             border: `1px solid ${THEME.AMBER}`,
             borderRadius: '0.3vh',
             color: THEME.TEXT_PRIMARY,
-            fontSize: '1.3vh',
+            fontSize: '1.5vh',
             fontFamily: THEME.FONT_PRIMARY,
             padding: '0.2vh 0.4vw',
             outline: 'none'
@@ -690,7 +690,7 @@ function TopicItem({ topic, hasAssignedLO, isEditing, onEdit, onSave, onCancel, 
   return (
     <div
       style={{
-        fontSize: '1.4vh',
+        fontSize: '1.6vh',
         marginBottom: '0.3vh',
         display: 'flex',
         alignItems: 'center',
@@ -720,7 +720,7 @@ function TopicItem({ topic, hasAssignedLO, isEditing, onEdit, onSave, onCancel, 
             background: 'transparent',
             border: 'none',
             color: '#ff4444',
-            fontSize: '1.2vh',
+            fontSize: '1.4vh',
             cursor: 'pointer',
             padding: '0 0.2vw',
             lineHeight: 1
@@ -795,7 +795,7 @@ function TopicEntryModal({ existingTopics, hasAssignedLO, primaryLO, onAdd, onCl
               background: 'transparent',
               border: 'none',
               color: mode === 'new' ? THEME.AMBER : THEME.TEXT_DIM,
-              fontSize: '1.2vh',
+              fontSize: '1.4vh',
               cursor: 'pointer',
               padding: 0,
               borderBottom: mode === 'new' ? `1px solid ${THEME.AMBER}` : 'none'
@@ -809,7 +809,7 @@ function TopicEntryModal({ existingTopics, hasAssignedLO, primaryLO, onAdd, onCl
               background: 'transparent',
               border: 'none',
               color: mode === 'existing' ? THEME.AMBER : THEME.TEXT_DIM,
-              fontSize: '1.2vh',
+              fontSize: '1.4vh',
               cursor: 'pointer',
               padding: 0,
               borderBottom: mode === 'existing' ? `1px solid ${THEME.AMBER}` : 'none'
@@ -822,7 +822,7 @@ function TopicEntryModal({ existingTopics, hasAssignedLO, primaryLO, onAdd, onCl
         {mode === 'new' ? (
           <>
             {/* Number Preview */}
-            <div style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM, marginBottom: '0.4vh' }}>
+            <div style={{ fontSize: '1.25vh', color: THEME.TEXT_DIM, marginBottom: '0.4vh' }}>
               Number: <span style={{ color: previewNumberColor }}>{previewNumber}</span>
               {!hasAssignedLO && (
                 <span style={{ color: '#ff4444', marginLeft: '0.5vw' }}>(Assign LO for numbering)</span>
@@ -846,7 +846,7 @@ function TopicEntryModal({ existingTopics, hasAssignedLO, primaryLO, onAdd, onCl
                   border: `1px solid ${THEME.BORDER}`,
                   borderRadius: '0.3vh',
                   color: THEME.TEXT_PRIMARY,
-                  fontSize: '1.3vh',
+                  fontSize: '1.5vh',
                   fontFamily: THEME.FONT_PRIMARY,
                   padding: '0.4vh 0.6vw',
                   outline: 'none'
@@ -860,7 +860,7 @@ function TopicEntryModal({ existingTopics, hasAssignedLO, primaryLO, onAdd, onCl
                   border: 'none',
                   borderRadius: '0.3vh',
                   color: newTitle.trim() ? THEME.BG_DARK : THEME.TEXT_DIM,
-                  fontSize: '1.2vh',
+                  fontSize: '1.4vh',
                   cursor: newTitle.trim() ? 'pointer' : 'default',
                   padding: '0.4vh 0.8vw'
                 }}
@@ -884,7 +884,7 @@ function TopicEntryModal({ existingTopics, hasAssignedLO, primaryLO, onAdd, onCl
                 border: `1px solid ${THEME.BORDER}`,
                 borderRadius: '0.3vh',
                 color: THEME.TEXT_PRIMARY,
-                fontSize: '1.2vh',
+                fontSize: '1.4vh',
                 fontFamily: THEME.FONT_PRIMARY,
                 padding: '0.4vh 0.6vw',
                 marginBottom: '0.6vh',
@@ -894,7 +894,7 @@ function TopicEntryModal({ existingTopics, hasAssignedLO, primaryLO, onAdd, onCl
             {/* Existing Topics List */}
             <div style={{ maxHeight: '15vh', overflow: 'auto' }}>
               {filteredTopics.length === 0 ? (
-                <div style={{ color: THEME.TEXT_DIM, fontSize: '1.1vh', fontStyle: 'italic', padding: '0.4vh 0' }}>
+                <div style={{ color: THEME.TEXT_DIM, fontSize: '1.25vh', fontStyle: 'italic', padding: '0.4vh 0' }}>
                   {existingTopics.length === 0 ? 'No topics in Scalar yet' : 'No matching topics'}
                 </div>
               ) : (
@@ -904,7 +904,7 @@ function TopicEntryModal({ existingTopics, hasAssignedLO, primaryLO, onAdd, onCl
                     onClick={() => onAdd(topic.title, topic)}
                     style={{
                       padding: '0.4vh 0.4vw',
-                      fontSize: '1.2vh',
+                      fontSize: '1.4vh',
                       color: THEME.TEXT_PRIMARY,
                       cursor: 'pointer',
                       borderRadius: '0.2vh',
@@ -929,7 +929,7 @@ function TopicEntryModal({ existingTopics, hasAssignedLO, primaryLO, onAdd, onCl
           style={{
             marginTop: '0.6vh',
             padding: '0.3vh 0',
-            fontSize: '1vh',
+            fontSize: '1.15vh',
             color: THEME.TEXT_DIM,
             borderTop: `1px solid ${THEME.BORDER}`,
             textAlign: 'center',
@@ -961,7 +961,7 @@ function SubtopicItem({ subtopic, hasAssignedLO, isEditing, onEdit, onSave, onCa
 
   if (isEditing) {
     return (
-      <div style={{ fontSize: '1.3vh', marginBottom: '0.2vh', marginLeft: '1vw', display: 'flex', alignItems: 'center', gap: '0.3vw' }}>
+      <div style={{ fontSize: '1.5vh', marginBottom: '0.2vh', marginLeft: '1vw', display: 'flex', alignItems: 'center', gap: '0.3vw' }}>
         <span style={{ color: numberColor }}>{displayNumber}</span>
         <input
           autoFocus
@@ -979,7 +979,7 @@ function SubtopicItem({ subtopic, hasAssignedLO, isEditing, onEdit, onSave, onCa
             border: `1px solid ${THEME.AMBER}`,
             borderRadius: '0.3vh',
             color: THEME.TEXT_PRIMARY,
-            fontSize: '1.2vh',
+            fontSize: '1.4vh',
             fontFamily: THEME.FONT_PRIMARY,
             padding: '0.2vh 0.4vw',
             outline: 'none'
@@ -992,7 +992,7 @@ function SubtopicItem({ subtopic, hasAssignedLO, isEditing, onEdit, onSave, onCa
   return (
     <div
       style={{
-        fontSize: '1.3vh',
+        fontSize: '1.5vh',
         marginBottom: '0.2vh',
         marginLeft: '1vw',
         display: 'flex',
@@ -1023,7 +1023,7 @@ function SubtopicItem({ subtopic, hasAssignedLO, isEditing, onEdit, onSave, onCa
             background: 'transparent',
             border: 'none',
             color: '#ff4444',
-            fontSize: '1.1vh',
+            fontSize: '1.25vh',
             cursor: 'pointer',
             padding: '0 0.2vw',
             lineHeight: 1
@@ -1086,12 +1086,12 @@ function SubtopicEntryModal({ parentTopic, hasAssignedLO, onAdd, onClose }) {
         }}
       >
         {/* Parent Topic Info */}
-        <div style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM, marginBottom: '0.6vh' }}>
+        <div style={{ fontSize: '1.25vh', color: THEME.TEXT_DIM, marginBottom: '0.6vh' }}>
           Adding subtopic to: <span style={{ color: THEME.TEXT_PRIMARY }}>{parentTopic?.title || 'Topic'}</span>
         </div>
 
         {/* Number Preview */}
-        <div style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM, marginBottom: '0.4vh' }}>
+        <div style={{ fontSize: '1.25vh', color: THEME.TEXT_DIM, marginBottom: '0.4vh' }}>
           Number: <span style={{ color: previewNumberColor }}>{previewNumber}</span>
           {!hasValidTopicNumber && (
             <span style={{ color: '#ff4444', marginLeft: '0.5vw' }}>(Assign LO for numbering)</span>
@@ -1116,7 +1116,7 @@ function SubtopicEntryModal({ parentTopic, hasAssignedLO, onAdd, onClose }) {
               border: `1px solid ${THEME.BORDER}`,
               borderRadius: '0.3vh',
               color: THEME.TEXT_PRIMARY,
-              fontSize: '1.3vh',
+              fontSize: '1.5vh',
               fontFamily: THEME.FONT_PRIMARY,
               padding: '0.4vh 0.6vw',
               outline: 'none'
@@ -1130,7 +1130,7 @@ function SubtopicEntryModal({ parentTopic, hasAssignedLO, onAdd, onClose }) {
               border: 'none',
               borderRadius: '0.3vh',
               color: newTitle.trim() ? THEME.BG_DARK : THEME.TEXT_DIM,
-              fontSize: '1.2vh',
+              fontSize: '1.4vh',
               cursor: newTitle.trim() ? 'pointer' : 'default',
               padding: '0.4vh 0.8vw'
             }}
@@ -1145,7 +1145,7 @@ function SubtopicEntryModal({ parentTopic, hasAssignedLO, onAdd, onClose }) {
           style={{
             marginTop: '0.6vh',
             padding: '0.3vh 0',
-            fontSize: '1vh',
+            fontSize: '1.15vh',
             color: THEME.TEXT_DIM,
             borderTop: `1px solid ${THEME.BORDER}`,
             textAlign: 'center',
@@ -1167,7 +1167,7 @@ const plusButtonStyle = {
   background: 'transparent',
   border: 'none',
   color: THEME.AMBER,
-  fontSize: '1.7vh',
+  fontSize: '2.0vh',
   fontWeight: 'bold',
   cursor: 'pointer',
   padding: '0 0.3vw'
