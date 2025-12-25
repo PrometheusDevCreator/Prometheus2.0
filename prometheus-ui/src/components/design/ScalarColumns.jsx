@@ -48,7 +48,9 @@ function ScalarColumns({ module }) {
     deleteScalarNode,
     linkItemToPC,
     unlinkItemFromPC,
-    deletePerformanceCriteria
+    deletePerformanceCriteria,
+    updateLesson,
+    deleteLesson
   } = useDesign()
 
   // Flatten LOs, Topics, Subtopics for column display
@@ -244,6 +246,8 @@ function ScalarColumns({ module }) {
             isSelected={selection.type === 'lesson' && selection.id === lesson.id}
             pcBadges={getLinkedPCs('lesson', lesson.id)}
             onClick={(e) => handleItemClick('lesson', lesson.id, e)}
+            onUpdate={(updates) => updateLesson(lesson.id, updates)}
+            onDelete={() => deleteLesson(lesson.id)}
             typeColor={getLessonTypeColor(lesson.type)}
             performanceCriteria={performanceCriteria}
             onLinkToPC={(pcId) => linkItemToPC(pcId, 'lesson', lesson.id)}
