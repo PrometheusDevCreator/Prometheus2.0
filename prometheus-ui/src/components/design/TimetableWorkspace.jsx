@@ -20,6 +20,7 @@ function TimetableWorkspace() {
     LESSON_TYPES,
     createLesson,
     scheduledLessons,
+    unscheduledLessons,
     select,
     scheduleLesson
   } = useDesign()
@@ -127,6 +128,14 @@ function TimetableWorkspace() {
             onCancel={handleCancelPending}
           />
         </div>
+      )}
+
+      {/* Unallocated Lessons Area - bottom right */}
+      {unscheduledLessons.length > 0 && (
+        <UnallocatedLessons
+          lessons={unscheduledLessons}
+          lessonTypes={LESSON_TYPES}
+        />
       )}
 
       {/* Control Zone */}
@@ -355,6 +364,141 @@ function LessonTypeButton({ type, onClick }) {
         {type.name}
       </span>
     </button>
+  )
+}
+
+// ============================================
+// UNALLOCATED LESSONS AREA
+// ============================================
+
+function UnallocatedLessons({ lessons, lessonTypes }) {
+  const [collapsed, setCollapsed] = useState(false)
+
+  // Handle drag start for unallocated lesson
+  const handleDragStart = useCallback((e, lesson) => {
+    e.dataTransfer.setData('lessonId', lesson.id)
+    e.dataTransfer.setData('dragType', 'unallocated')
+    e.dataTransfer.effectAllowed = 'move'
+  }, [])
+
+  const getLessonTypeColor = (typeId) => {
+    const type = lessonTypes.find(t => t.id === typeId)
+    return type?.color || '#FF6600'
+  }
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        bottom: '90px',
+        right: '20px',
+        background: 'rgba(20, 20, 20, 0.95)',
+        border: `1px solid ${THEME.BORDER}`,
+        borderRadius: '12px',
+        zIndex: 50,
+        minWidth: '180px',
+        maxWidth: '220px',
+        maxHeight: collapsed ? '36px' : '200px',
+        overflow: 'hidden',
+        transition: 'max-height 0.2s ease'
+      }}
+    >
+      {/* Header */}
+      <div
+        onClick={() => setCollapsed(!collapsed)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0.6vh 0.8vw',
+          borderBottom: collapsed ? 'none' : `1px solid ${THEME.BORDER}`,
+          cursor: 'pointer'
+        }}
+      >
+        <span
+          style={{
+            fontSize: '1.2vh',
+            color: THEME.TEXT_DIM,
+            fontFamily: THEME.FONT_PRIMARY,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05vw'
+          }}
+        >
+          Unallocated ({lessons.length})
+        </span>
+        <span style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM }}>
+          {collapsed ? '▶' : '▼'}
+        </span>
+      </div>
+
+      {/* Lessons List */}
+      {!collapsed && (
+        <div
+          style={{
+            padding: '0.4vh 0.4vw',
+            maxHeight: '150px',
+            overflowY: 'auto'
+          }}
+        >
+          {lessons.map(lesson => (
+            <div
+              key={lesson.id}
+              draggable
+              onDragStart={(e) => handleDragStart(e, lesson)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4vw',
+                padding: '0.5vh 0.5vw',
+                marginBottom: '0.3vh',
+                background: 'rgba(30, 30, 30, 0.8)',
+                border: '1px solid rgba(100, 100, 100, 0.3)',
+                borderRadius: '8px',
+                cursor: 'grab',
+                transition: 'border-color 0.15s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = THEME.AMBER}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(100, 100, 100, 0.3)'}
+            >
+              {/* Type color bar */}
+              <div
+                style={{
+                  width: '4px',
+                  height: '2.5vh',
+                  background: getLessonTypeColor(lesson.type),
+                  borderRadius: '2px',
+                  flexShrink: 0
+                }}
+              />
+              {/* Title */}
+              <span
+                style={{
+                  fontSize: '1.2vh',
+                  color: THEME.TEXT_PRIMARY,
+                  fontFamily: THEME.FONT_PRIMARY,
+                  flex: 1,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {lesson.title}
+              </span>
+              {/* Duration */}
+              <span
+                style={{
+                  fontSize: '1vh',
+                  color: THEME.TEXT_DIM,
+                  fontFamily: THEME.FONT_MONO
+                }}
+              >
+                {lesson.duration}m
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 

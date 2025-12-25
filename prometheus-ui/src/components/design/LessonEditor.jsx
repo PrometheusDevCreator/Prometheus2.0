@@ -216,7 +216,9 @@ function LessonEditor() {
         left: '8px',
         top: '23px',
         background: 'rgba(20, 20, 20, 0.95)',
-        border: '1px solid rgba(100, 100, 100, 0.5)',
+        border: selectedLesson
+          ? `2px solid ${THEME.AMBER}`
+          : '1px solid rgba(100, 100, 100, 0.5)',
         borderRadius: '16px',
         display: 'flex',
         flexDirection: 'column',

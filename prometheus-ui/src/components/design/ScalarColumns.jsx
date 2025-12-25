@@ -222,8 +222,10 @@ function ScalarColumns({ module }) {
           />
         )}
         onAdd={() => {
-          // Add to first topic if available
-          if (allTopics.length > 0) {
+          // Add to selected topic if one is selected, otherwise first topic
+          if (selection.type === 'topic' && allTopics.find(t => t.id === selection.id)) {
+            addSubtopic(selection.id)
+          } else if (allTopics.length > 0) {
             addSubtopic(allTopics[0].id)
           }
         }}
