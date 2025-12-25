@@ -365,6 +365,7 @@ function ScalarColumnItem({
   const [editValue, setEditValue] = useState(label)
   const [showContextMenu, setShowContextMenu] = useState(null)
   const [hovered, setHovered] = useState(false)
+  const [pcExpanded, setPcExpanded] = useState(false)
 
   // Handle double-click to edit
   const handleDoubleClick = useCallback(() => {
@@ -510,24 +511,50 @@ function ScalarColumnItem({
           </span>
         )}
 
-        {/* PC Badges */}
+        {/* PC Indicator - small green dot that expands on click */}
         {pcBadges.length > 0 && (
-          <div style={{ display: 'flex', gap: '0.2vw', flexShrink: 0 }}>
-            {pcBadges.map(pcName => (
-              <span
-                key={pcName}
-                style={{
-                  fontSize: FONT.BADGE,
-                  fontFamily: THEME.FONT_MONO,
-                  color: THEME.AMBER,
-                  background: 'rgba(212, 115, 12, 0.3)',
-                  padding: '0.1vh 0.3vw',
-                  borderRadius: '0.3vh'
-                }}
-              >
-                {pcName}
-              </span>
-            ))}
+          <div
+            onClick={(e) => {
+              e.stopPropagation()
+              setPcExpanded(!pcExpanded)
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.3vw',
+              cursor: 'pointer',
+              flexShrink: 0
+            }}
+          >
+            {/* Green dot indicator */}
+            <div
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: '#00FF00',
+                boxShadow: '0 0 4px rgba(0, 255, 0, 0.5)',
+                transition: 'transform 0.15s ease'
+              }}
+            />
+            {/* Expanded PC names */}
+            {pcExpanded && (
+              <div style={{ display: 'flex', gap: '0.2vw' }}>
+                {pcBadges.map(pcName => (
+                  <span
+                    key={pcName}
+                    style={{
+                      fontSize: FONT.BADGE,
+                      fontFamily: THEME.FONT_MONO,
+                      color: '#00FF00',
+                      padding: '0.1vh 0.3vw'
+                    }}
+                  >
+                    {pcName}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -981,13 +1008,28 @@ function PCItem({ pc, scalarData, scheduledLessons, onUpdate, onDelete, onUnlink
               flex: 1,
               fontSize: FONT.LABEL,
               fontFamily: THEME.FONT_PRIMARY,
-              color: THEME.AMBER,
               fontWeight: 500,
               cursor: 'text'
             }}
             onDoubleClick={handleDoubleClick}
           >
-            {pc.name}
+            {/* PC serial number in luminous green, user text in amber */}
+            {(() => {
+              // Extract serial number (PC1, PC2, etc.) from the name
+              const serialMatch = pc.name.match(/^(PC\d+)(.*)$/i)
+              if (serialMatch) {
+                const serial = serialMatch[1]
+                const userText = serialMatch[2]
+                return (
+                  <>
+                    <span style={{ color: '#00FF00' }}>{serial}</span>
+                    {userText && <span style={{ color: THEME.AMBER }}>{userText}</span>}
+                  </>
+                )
+              }
+              // Fallback - show entire name in amber if no serial pattern found
+              return <span style={{ color: THEME.AMBER }}>{pc.name}</span>
+            })()}
           </span>
         )}
 

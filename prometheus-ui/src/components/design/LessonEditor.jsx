@@ -12,7 +12,7 @@
  * - Fields: Title, Learning Objective, Topic, Subtopic, Lesson Type, Timings
  */
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { THEME } from '../../constants/theme'
 import { useDesign } from '../../contexts/DesignContext'
 
@@ -320,10 +320,8 @@ function LessonEditor() {
                 <span style={{ color: THEME.TEXT_PRIMARY }}> {primaryLO.description}</span>
               </div>
             ) : (
-              <div style={{ fontSize: '1.4vh' }}>
-                <span style={{ color: THEME.TEXT_PRIMARY }}>1. </span>
-                <span style={{ color: THEME.GREEN_BRIGHT }}>EXAMPLE</span>
-                <span style={{ color: THEME.TEXT_PRIMARY }}> Learning Objective Text</span>
+              <div style={{ fontSize: '1.4vh', color: THEME.TEXT_DIM, fontStyle: 'italic' }}>
+                Select LO
               </div>
             )}
             <button
@@ -548,8 +546,34 @@ function FieldSection({ label, children, action, style = {}, noBorder = false })
 }
 
 function LODropdown({ moduleLOs, selectedLOs, onToggle, onClose }) {
+  // Handle click outside to close
+  const handleClickOutside = useCallback((e) => {
+    // Check if click is outside the dropdown
+    if (!e.target.closest('.lo-dropdown')) {
+      onClose()
+    }
+  }, [onClose])
+
+  // Handle keydown for ENTER to close
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Enter' || e.key === 'Escape') {
+      onClose()
+    }
+  }, [onClose])
+
+  // Add event listeners
+  useEffect(() => {
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleClickOutside, handleKeyDown])
+
   return (
     <div
+      className="lo-dropdown"
       style={{
         position: 'absolute',
         top: '100%',
@@ -563,6 +587,7 @@ function LODropdown({ moduleLOs, selectedLOs, onToggle, onClose }) {
         maxHeight: '18vh',
         overflow: 'auto'
       }}
+      onKeyDown={handleKeyDown}
     >
       {moduleLOs.length === 0 ? (
         <div style={{ padding: '0.8vh 1vw', color: THEME.TEXT_DIM, fontSize: '1.1vh', fontStyle: 'italic' }}>
@@ -579,17 +604,21 @@ function LODropdown({ moduleLOs, selectedLOs, onToggle, onClose }) {
                 padding: '0.5vh 0.8vw',
                 fontSize: '1.1vh',
                 color: isSelected ? THEME.AMBER : THEME.TEXT_PRIMARY,
-                background: isSelected ? THEME.AMBER_DARK : 'transparent',
+                background: 'transparent',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.4vw',
-                transition: 'background 0.15s ease'
+                transition: 'color 0.15s ease'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.background = isSelected ? THEME.AMBER_DARK : THEME.BG_DARK}
-              onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? THEME.AMBER_DARK : 'transparent'}
+              onMouseEnter={(e) => {
+                if (!isSelected) e.currentTarget.style.background = THEME.BG_DARK
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+              }}
             >
-              <span style={{ fontFamily: THEME.FONT_MONO, minWidth: '1.5vw' }}>
+              <span style={{ fontFamily: THEME.FONT_MONO, minWidth: '1.5vw', color: isSelected ? THEME.AMBER : THEME.TEXT_DIM }}>
                 {isSelected ? '✓' : ''} {lo.order}.
               </span>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
