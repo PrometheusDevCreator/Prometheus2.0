@@ -327,8 +327,9 @@ function LessonBlock({
           <span
             style={{
               fontSize: '1.1vh',
-              color: THEME.TEXT_DIM,
-              fontFamily: THEME.FONT_MONO
+              color: isSelected ? '#00FF00' : 'rgba(180, 180, 180, 0.8)',
+              fontFamily: THEME.FONT_MONO,
+              transition: 'color 0.15s ease'
             }}
           >
             {formatTime(lesson.startTime)}-{calculateEndTime()}
@@ -338,8 +339,9 @@ function LessonBlock({
           <span
             style={{
               fontSize: '1.1vh',
-              color: THEME.TEXT_DIM,
-              fontFamily: THEME.FONT_MONO
+              color: isSelected ? '#00FF00' : 'rgba(180, 180, 180, 0.8)',
+              fontFamily: THEME.FONT_MONO,
+              transition: 'color 0.15s ease'
             }}
           >
             {lesson.duration}mins
