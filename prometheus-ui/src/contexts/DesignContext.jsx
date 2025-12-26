@@ -269,6 +269,16 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     return number?.startsWith('x.') || false
   }, [])
 
+  // --------------------------------------------
+  // UNIVERSAL LINKING (SHIFT+click any element to any element)
+  // --------------------------------------------
+  const [linkingSource, setLinkingSource] = useState(null) // { type, id, name }
+
+  // Clear linking source
+  const clearLinkingSource = useCallback(() => {
+    setLinkingSource(null)
+  }, [])
+
   // Sync scalarData when courseData.learningObjectives changes
   useEffect(() => {
     if (courseData?.learningObjectives?.length > 0) {
@@ -574,11 +584,11 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     }
   }, [lessons, getLOOrder])
 
-  // Remove topic from a lesson
+  // Remove topic from a lesson (checks both id and scalarTopicId)
   const removeTopicFromLesson = useCallback((lessonId, topicId) => {
     setLessons(prev => prev.map(lesson =>
       lesson.id === lessonId
-        ? { ...lesson, topics: (lesson.topics || []).filter(t => t.id !== topicId) }
+        ? { ...lesson, topics: (lesson.topics || []).filter(t => t.id !== topicId && t.scalarTopicId !== topicId) }
         : lesson
     ))
   }, [])
@@ -1222,6 +1232,127 @@ export function DesignProvider({ children, courseData, setCourseData }) {
   }, [multiSelection.items, deleteLesson, deleteScalarNode, clearMultiSelection])
 
   // --------------------------------------------
+  // UNIVERSAL ELEMENT LINKING
+  // --------------------------------------------
+
+  // Link two elements together based on their types
+  // Returns true if link was created, false if not possible
+  const linkElements = useCallback((source, target) => {
+    if (!source || !target) return false
+
+    const { type: srcType, id: srcId } = source
+    const { type: tgtType, id: tgtId } = target
+
+    // Same type - can't link to itself
+    if (srcType === tgtType && srcId === tgtId) return false
+
+    // Helper to get lesson by id
+    const getLesson = (id) => lessons.find(l => l.id === id)
+
+    // LO ↔ Lesson linking
+    if ((srcType === 'lo' && tgtType === 'lesson') || (srcType === 'lesson' && tgtType === 'lo')) {
+      const lessonId = srcType === 'lesson' ? srcId : tgtId
+      const loId = srcType === 'lo' ? srcId : tgtId
+      toggleLessonLO(lessonId, loId)
+      return true
+    }
+
+    // Topic ↔ Lesson linking (add topic to lesson's topics array)
+    if ((srcType === 'topic' && tgtType === 'lesson') || (srcType === 'lesson' && tgtType === 'topic')) {
+      const lessonId = srcType === 'lesson' ? srcId : tgtId
+      const topicId = srcType === 'topic' ? srcId : tgtId
+
+      // Find the topic in scalar data to get its title
+      let topicTitle = 'Topic'
+      for (const module of scalarData.modules) {
+        for (const lo of module.learningObjectives) {
+          const topic = lo.topics?.find(t => t.id === topicId)
+          if (topic) {
+            topicTitle = topic.title
+            break
+          }
+        }
+      }
+
+      // Check if topic is already linked to this lesson
+      const lesson = getLesson(lessonId)
+      const alreadyLinked = lesson?.topics?.some(t => t.scalarTopicId === topicId || t.id === topicId)
+
+      if (alreadyLinked) {
+        // Unlink - remove the topic from lesson
+        removeTopicFromLesson(lessonId, topicId)
+      } else {
+        // Link - add topic reference to lesson
+        setLessons(prev => prev.map(l => {
+          if (l.id !== lessonId) return l
+          const newTopicRef = {
+            id: `topic-ref-${Date.now()}`,
+            scalarTopicId: topicId,
+            title: topicTitle,
+            number: 'x.1', // Will be recalculated
+            subtopics: []
+          }
+          return { ...l, topics: [...(l.topics || []), newTopicRef] }
+        }))
+      }
+      return true
+    }
+
+    // Subtopic ↔ Lesson linking
+    if ((srcType === 'subtopic' && tgtType === 'lesson') || (srcType === 'lesson' && tgtType === 'subtopic')) {
+      // For subtopics, we would need to add the parent topic first
+      // This is a more complex operation - for now, provide feedback
+      console.log('Subtopic-Lesson linking: Add the parent topic first')
+      return false
+    }
+
+    // PC ↔ any element linking (existing functionality)
+    if (srcType === 'pc' || tgtType === 'pc') {
+      const pcId = srcType === 'pc' ? srcId : tgtId
+      const otherType = srcType === 'pc' ? tgtType : srcType
+      const otherId = srcType === 'pc' ? tgtId : srcId
+
+      // Check if already linked
+      const linkedPCs = getLinkedPCs(otherType, otherId)
+      const pc = scalarData.performanceCriteria?.find(p => p.id === pcId)
+      const isLinked = pc && linkedPCs.includes(pc.name)
+
+      if (isLinked) {
+        unlinkItemFromPC(pcId, otherType, otherId)
+      } else {
+        linkItemToPC(pcId, otherType, otherId)
+      }
+      return true
+    }
+
+    // Topic ↔ LO linking (move/assign topic to LO)
+    if ((srcType === 'topic' && tgtType === 'lo') || (srcType === 'lo' && tgtType === 'topic')) {
+      // This would involve moving a topic from one LO to another
+      // Complex operation that requires more context
+      console.log('Topic-LO reassignment not yet implemented')
+      return false
+    }
+
+    return false
+  }, [lessons, scalarData.modules, scalarData.performanceCriteria, toggleLessonLO,
+      removeTopicFromLesson, getLinkedPCs, linkItemToPC, unlinkItemFromPC, setLessons])
+
+  // Handle SHIFT+click for universal linking
+  const handleShiftClickLink = useCallback((type, id, name) => {
+    if (!linkingSource) {
+      // First click - set as source
+      setLinkingSource({ type, id, name: name || `${type} ${id}` })
+      return { action: 'source_set', source: { type, id } }
+    } else {
+      // Second click - attempt to link
+      const target = { type, id }
+      const success = linkElements(linkingSource, target)
+      setLinkingSource(null) // Clear after attempt
+      return { action: success ? 'linked' : 'failed', source: linkingSource, target }
+    }
+  }, [linkingSource, linkElements])
+
+  // --------------------------------------------
   // CROSS-COLUMN HIGHLIGHTING
   // --------------------------------------------
 
@@ -1405,9 +1536,9 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     [lessons]
   )
 
-  // Get unscheduled lessons (in library)
+  // Get unscheduled lessons (removed from timetable - show in Unallocated area)
   const unscheduledLessons = useMemo(() =>
-    lessons.filter(l => !l.scheduled && !l.saved),
+    lessons.filter(l => !l.scheduled),
     [lessons]
   )
 
@@ -1482,6 +1613,13 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     bulkUnlinkFromPC,
     bulkDelete,
 
+    // Universal linking (SHIFT+click any element to any element)
+    linkingSource,
+    setLinkingSource,
+    clearLinkingSource,
+    linkElements,
+    handleShiftClickLink,
+
     // Helper functions
     isUnallocatedNumber,
 
@@ -1530,7 +1668,9 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     addPerformanceCriteria, updatePerformanceCriteria, deletePerformanceCriteria,
     linkItemToPC, unlinkItemFromPC, getLinkedPCs, getLinkedPCsWithColor,
     multiSelection, toggleMultiSelect, clearMultiSelection, isMultiSelected,
-    bulkLinkToPC, bulkUnlinkFromPC, bulkDelete, isUnallocatedNumber,
+    bulkLinkToPC, bulkUnlinkFromPC, bulkDelete,
+    linkingSource, clearLinkingSource, linkElements, handleShiftClickLink,
+    isUnallocatedNumber,
     highlightedItems, updateHighlightedItems, clearHighlights, isItemHighlighted,
     selection, select, startEditing, clearSelection,
     editorCollapsed, courseData, setCourseData

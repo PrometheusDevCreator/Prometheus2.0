@@ -296,13 +296,11 @@ function ControlZone({ lessonTypes, currentType, onTypeSelect, hasPendingLesson,
           <span style={{ cursor: 'pointer' }}>{'>'}</span>
         </div>
 
-        {/* Unallocated Lessons - aligned right */}
-        {unscheduledLessons.length > 0 && (
-          <UnallocatedLessons
-            lessons={unscheduledLessons}
-            lessonTypes={lessonTypes}
-          />
-        )}
+        {/* Unallocated Lessons - aligned right (always visible) */}
+        <UnallocatedLessons
+          lessons={unscheduledLessons}
+          lessonTypes={lessonTypes}
+        />
       </div>
     </div>
   )

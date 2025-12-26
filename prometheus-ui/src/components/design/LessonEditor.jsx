@@ -31,7 +31,9 @@ function LessonEditor() {
     toggleLessonLO,
     scalarData,
     currentModule,
-    LESSON_TYPES
+    LESSON_TYPES,
+    getLinkedPCsWithColor,
+    unlinkItemFromPC
   } = useDesign()
 
   // LO dropdown state
@@ -483,6 +485,15 @@ function LessonEditor() {
             >
               {lessonType.name}
             </span>
+          </FieldSection>
+
+          {/* Linked Performance Criteria Field */}
+          <FieldSection label="Performance Criteria:">
+            <LinkedPCsDisplay
+              lessonId={selectedLesson.id}
+              getLinkedPCsWithColor={getLinkedPCsWithColor}
+              unlinkItemFromPC={unlinkItemFromPC}
+            />
           </FieldSection>
 
           {/* Timings Field */}
@@ -1158,6 +1169,76 @@ function SubtopicEntryModal({ parentTopic, hasAssignedLO, onAdd, onClose }) {
         </div>
       </div>
     </>
+  )
+}
+
+// ============================================
+// LINKED PCs DISPLAY COMPONENT
+// ============================================
+
+function LinkedPCsDisplay({ lessonId, getLinkedPCsWithColor, unlinkItemFromPC }) {
+  const linkedPCs = getLinkedPCsWithColor('lesson', lessonId)
+  const [hovered, setHovered] = useState(null)
+
+  if (!linkedPCs || linkedPCs.length === 0) {
+    return (
+      <div style={{ fontSize: '1.6vh', color: THEME.TEXT_DIM, fontStyle: 'italic' }}>
+        No PCs linked (SHIFT+click in Scalar to link)
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3vh' }}>
+      {linkedPCs.map((pc, idx) => (
+        <div
+          key={pc.id || idx}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4vw',
+            fontSize: '1.5vh',
+            padding: '0.2vh 0'
+          }}
+          onMouseEnter={() => setHovered(pc.id || idx)}
+          onMouseLeave={() => setHovered(null)}
+        >
+          {/* PC Color Dot */}
+          <div
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: pc.color || '#00FF00',
+              boxShadow: `0 0 4px ${pc.color || '#00FF00'}80`,
+              flexShrink: 0
+            }}
+          />
+          {/* PC Name */}
+          <span style={{ color: THEME.TEXT_PRIMARY, flex: 1 }}>
+            {pc.name}
+          </span>
+          {/* Unlink button on hover */}
+          {hovered === (pc.id || idx) && (
+            <button
+              onClick={() => unlinkItemFromPC(pc.id, 'lesson', lessonId)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#ff4444',
+                fontSize: '1.3vh',
+                cursor: 'pointer',
+                padding: '0 0.2vw',
+                lineHeight: 1
+              }}
+              title="Unlink PC"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
   )
 }
 

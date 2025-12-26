@@ -55,7 +55,11 @@ function ScalarColumns({ module }) {
     toggleMultiSelect,
     isMultiSelected,
     clearMultiSelection,
-    isUnallocatedNumber
+    isUnallocatedNumber,
+    // Universal linking
+    linkingSource,
+    handleShiftClickLink,
+    clearLinkingSource
   } = useDesign()
 
   // Flatten LOs, Topics, Subtopics for column display
@@ -98,33 +102,49 @@ function ScalarColumns({ module }) {
   // Filter subtopics to only show those with expanded parent topics
   const visibleSubtopics = allSubtopics.filter(sub => expandedTopics.has(sub.topicId))
 
-  // Handle item click for highlighting, or shift-click to link/unlink to PC
+  // Handle item click for highlighting, or shift-click for universal linking
   const handleItemClick = useCallback((type, id, event) => {
-    // If shift is held and a PC is selected, toggle link/unlink
-    if (event?.shiftKey && selectedPCId) {
-      // Check if already linked - if so, unlink; otherwise link
-      const linkedPCs = getLinkedPCs(type, id)
-      const pc = scalarData.performanceCriteria?.find(p => p.id === selectedPCId)
-      const isLinked = pc && linkedPCs.includes(pc.name)
-
-      if (isLinked) {
-        unlinkItemFromPC(selectedPCId, type, id)
-      } else {
-        linkItemToPC(selectedPCId, type, id)
-      }
-      return
-    }
-
-    // If shift is held but no PC selected, toggle multi-selection
+    // If shift is held, use universal linking system
     if (event?.shiftKey) {
-      toggleMultiSelect(type, id)
+      // Get item name for display
+      let itemName = `${type} ${id}`
+      if (type === 'lo') {
+        for (const lo of learningObjectives) {
+          if (lo.id === id) {
+            itemName = `LO ${lo.order}: ${lo.verb}`
+            break
+          }
+        }
+      } else if (type === 'topic') {
+        for (const topic of allTopics) {
+          if (topic.id === id) {
+            itemName = `Topic ${topic.loOrder || 'x'}.${topic.order}: ${topic.title}`
+            break
+          }
+        }
+      } else if (type === 'subtopic') {
+        for (const sub of allSubtopics) {
+          if (sub.id === id) {
+            itemName = `Subtopic ${sub.loOrder || 'x'}.${sub.topicOrder}.${sub.order}`
+            break
+          }
+        }
+      } else if (type === 'lesson') {
+        const lesson = scheduledLessons.find(l => l.id === id)
+        if (lesson) itemName = `Lesson: ${lesson.title}`
+      } else if (type === 'pc') {
+        const pc = performanceCriteria.find(p => p.id === id)
+        if (pc) itemName = pc.name
+      }
+
+      handleShiftClickLink(type, id, itemName)
       return
     }
 
     // Normal click - select and highlight
     select(type, id)
     updateHighlightedItems(type, id)
-  }, [select, updateHighlightedItems, selectedPCId, linkItemToPC, unlinkItemFromPC, getLinkedPCs, scalarData.performanceCriteria, toggleMultiSelect])
+  }, [select, updateHighlightedItems, handleShiftClickLink, learningObjectives, allTopics, allSubtopics, scheduledLessons, performanceCriteria])
 
   // Handle PC click - select for linking mode
   const handlePCClick = useCallback((pcId) => {
@@ -136,8 +156,14 @@ function ScalarColumns({ module }) {
     if (e.target === e.currentTarget) {
       clearHighlights()
       setSelectedPCId(null)
+      clearLinkingSource()
     }
-  }, [clearHighlights])
+  }, [clearHighlights, clearLinkingSource])
+
+  // Check if an item is the linking source
+  const isLinkingSource = useCallback((type, id) => {
+    return linkingSource && linkingSource.type === type && linkingSource.id === id
+  }, [linkingSource])
 
   // Separate allocated vs unallocated topics
   const allocatedTopics = allTopics.filter(t => t.loOrder != null)
@@ -151,13 +177,64 @@ function ScalarColumns({ module }) {
     <div
       style={{
         display: 'flex',
+        flexDirection: 'column',
         flex: 1,
-        gap: '1px',
-        background: THEME.BORDER,
         overflow: 'hidden'
       }}
       onClick={handleBackgroundClick}
     >
+      {/* Linking Mode Indicator */}
+      {linkingSource && (
+        <div
+          style={{
+            background: 'rgba(0, 255, 0, 0.15)',
+            borderBottom: '2px solid #00FF00',
+            padding: '0.5vh 1vw',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexShrink: 0
+          }}
+        >
+          <span
+            style={{
+              fontSize: FONT.LABEL,
+              color: '#00FF00',
+              fontFamily: THEME.FONT_PRIMARY
+            }}
+          >
+            LINKING MODE: <strong>{linkingSource.name}</strong> → SHIFT+Click target element
+          </span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              clearLinkingSource()
+            }}
+            style={{
+              background: 'transparent',
+              border: '1px solid #00FF00',
+              borderRadius: '4px',
+              color: '#00FF00',
+              fontSize: FONT.BADGE,
+              padding: '0.3vh 0.6vw',
+              cursor: 'pointer'
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* Columns Container */}
+      <div
+        style={{
+          display: 'flex',
+          flex: 1,
+          gap: '1px',
+          background: THEME.BORDER,
+          overflow: 'hidden'
+        }}
+      >
       {/* Column 1: Learning Objectives */}
       <ScalarColumn
         title="Learning Objectives"
@@ -172,6 +249,7 @@ function ScalarColumns({ module }) {
             isHighlighted={isItemHighlighted('lo', lo.id)}
             isSelected={selection.type === 'lo' && selection.id === lo.id}
             isMultiSelected={isMultiSelected('lo', lo.id)}
+            isLinkingSource={isLinkingSource('lo', lo.id)}
             pcBadgesWithColor={getLinkedPCsWithColor('lo', lo.id)}
             onClick={(e) => handleItemClick('lo', lo.id, e)}
             onUpdate={(updates) => updateScalarNode('lo', lo.id, updates)}
@@ -200,6 +278,7 @@ function ScalarColumns({ module }) {
             isHighlighted={isItemHighlighted('lesson', lesson.id)}
             isSelected={selection.type === 'lesson' && selection.id === lesson.id}
             isMultiSelected={isMultiSelected('lesson', lesson.id)}
+            isLinkingSource={isLinkingSource('lesson', lesson.id)}
             pcBadgesWithColor={getLinkedPCsWithColor('lesson', lesson.id)}
             onClick={(e) => handleItemClick('lesson', lesson.id, e)}
             onUpdate={(updates) => updateLesson(lesson.id, updates)}
@@ -224,6 +303,7 @@ function ScalarColumns({ module }) {
         isItemHighlighted={isItemHighlighted}
         selection={selection}
         isMultiSelected={isMultiSelected}
+        isLinkingSourceFn={isLinkingSource}
         getLinkedPCsWithColor={getLinkedPCsWithColor}
         handleItemClick={handleItemClick}
         updateScalarNode={updateScalarNode}
@@ -257,6 +337,7 @@ function ScalarColumns({ module }) {
         selectedPCId={selectedPCId}
         onPCClick={handlePCClick}
       />
+      </div>
     </div>
   )
 }
@@ -373,6 +454,7 @@ function TopicsColumn({
   isItemHighlighted,
   selection,
   isMultiSelected,
+  isLinkingSourceFn,
   getLinkedPCsWithColor,
   handleItemClick,
   updateScalarNode,
@@ -485,6 +567,7 @@ function TopicsColumn({
                 isHighlighted={isItemHighlighted('topic', topic.id)}
                 isSelected={selection.type === 'topic' && selection.id === topic.id}
                 isMultiSelected={isMultiSelected('topic', topic.id)}
+                isLinkingSource={isLinkingSourceFn?.('topic', topic.id)}
                 pcBadgesWithColor={getLinkedPCsWithColor('topic', topic.id)}
                 onClick={(e) => handleItemClick('topic', topic.id, e)}
                 onUpdate={(updates) => updateScalarNode('topic', topic.id, updates)}
@@ -495,6 +578,7 @@ function TopicsColumn({
                 isItemHighlighted={isItemHighlighted}
                 selection={selection}
                 isMultiSelectedFn={isMultiSelected}
+                isLinkingSourceFn={isLinkingSourceFn}
                 getLinkedPCsWithColor={getLinkedPCsWithColor}
                 handleItemClick={handleItemClick}
                 updateScalarNode={updateScalarNode}
@@ -531,6 +615,7 @@ function TopicsColumn({
                 isHighlighted={isItemHighlighted('topic', topic.id)}
                 isSelected={selection.type === 'topic' && selection.id === topic.id}
                 isMultiSelected={isMultiSelected('topic', topic.id)}
+                isLinkingSource={isLinkingSourceFn?.('topic', topic.id)}
                 pcBadgesWithColor={getLinkedPCsWithColor('topic', topic.id)}
                 onClick={(e) => handleItemClick('topic', topic.id, e)}
                 onUpdate={(updates) => updateScalarNode('topic', topic.id, updates)}
@@ -541,6 +626,7 @@ function TopicsColumn({
                 isItemHighlighted={isItemHighlighted}
                 selection={selection}
                 isMultiSelectedFn={isMultiSelected}
+                isLinkingSourceFn={isLinkingSourceFn}
                 getLinkedPCsWithColor={getLinkedPCsWithColor}
                 handleItemClick={handleItemClick}
                 updateScalarNode={updateScalarNode}
@@ -568,6 +654,7 @@ function TopicWithSubtopics({
   isHighlighted,
   isSelected,
   isMultiSelected,
+  isLinkingSource = false,
   pcBadgesWithColor,
   onClick,
   onUpdate,
@@ -578,6 +665,7 @@ function TopicWithSubtopics({
   isItemHighlighted,
   selection,
   isMultiSelectedFn,
+  isLinkingSourceFn,
   getLinkedPCsWithColor,
   handleItemClick,
   updateScalarNode,
@@ -626,22 +714,26 @@ function TopicWithSubtopics({
     setShowContextMenu({ x: e.clientX, y: e.clientY })
   }, [])
 
-  // Highlight styling
-  const highlightBg = isHighlighted
-    ? 'rgba(212, 115, 12, 0.15)'
-    : isSelected
-      ? 'rgba(212, 115, 12, 0.08)'
-      : isMultiSelected
-        ? 'rgba(0, 255, 0, 0.1)'
-        : hovered
-          ? 'rgba(255, 255, 255, 0.03)'
-          : 'transparent'
+  // Highlight styling - linking source takes priority with green glow
+  const highlightBg = isLinkingSource
+    ? 'rgba(0, 255, 0, 0.25)'
+    : isHighlighted
+      ? 'rgba(212, 115, 12, 0.15)'
+      : isSelected
+        ? 'rgba(212, 115, 12, 0.08)'
+        : isMultiSelected
+          ? 'rgba(0, 255, 0, 0.1)'
+          : hovered
+            ? 'rgba(255, 255, 255, 0.03)'
+            : 'transparent'
 
-  const highlightBorder = isHighlighted || isSelected
-    ? `1px solid ${THEME.AMBER}`
-    : isMultiSelected
-      ? '1px solid #00FF00'
-      : '1px solid transparent'
+  const highlightBorder = isLinkingSource
+    ? '2px solid #00FF00'
+    : isHighlighted || isSelected
+      ? `1px solid ${THEME.AMBER}`
+      : isMultiSelected
+        ? '1px solid #00FF00'
+        : '1px solid transparent'
 
   return (
     <div style={{ marginBottom: '0.3vh' }}>
@@ -786,6 +878,7 @@ function TopicWithSubtopics({
             isHighlighted={isItemHighlighted('subtopic', sub.id)}
             isSelected={selection.type === 'subtopic' && selection.id === sub.id}
             isMultiSelected={isMultiSelectedFn('subtopic', sub.id)}
+            isLinkingSource={isLinkingSourceFn?.('subtopic', sub.id)}
             pcBadgesWithColor={getLinkedPCsWithColor('subtopic', sub.id)}
             onClick={(e) => handleItemClick('subtopic', sub.id, e)}
             onUpdate={(updates) => updateScalarNode('subtopic', sub.id, updates)}
@@ -825,6 +918,7 @@ function SubtopicRow({
   isHighlighted,
   isSelected,
   isMultiSelected,
+  isLinkingSource = false,
   pcBadgesWithColor,
   onClick,
   onUpdate,
@@ -862,21 +956,26 @@ function SubtopicRow({
     setShowContextMenu({ x: e.clientX, y: e.clientY })
   }, [])
 
-  const highlightBg = isHighlighted
-    ? 'rgba(212, 115, 12, 0.15)'
-    : isSelected
-      ? 'rgba(212, 115, 12, 0.08)'
-      : isMultiSelected
-        ? 'rgba(0, 255, 0, 0.1)'
-        : hovered
-          ? 'rgba(255, 255, 255, 0.03)'
-          : 'transparent'
+  // Highlight styling - linking source takes priority with green glow
+  const highlightBg = isLinkingSource
+    ? 'rgba(0, 255, 0, 0.25)'
+    : isHighlighted
+      ? 'rgba(212, 115, 12, 0.15)'
+      : isSelected
+        ? 'rgba(212, 115, 12, 0.08)'
+        : isMultiSelected
+          ? 'rgba(0, 255, 0, 0.1)'
+          : hovered
+            ? 'rgba(255, 255, 255, 0.03)'
+            : 'transparent'
 
-  const highlightBorder = isHighlighted || isSelected
-    ? `1px solid ${THEME.AMBER}`
-    : isMultiSelected
-      ? '1px solid #00FF00'
-      : '1px solid transparent'
+  const highlightBorder = isLinkingSource
+    ? '2px solid #00FF00'
+    : isHighlighted || isSelected
+      ? `1px solid ${THEME.AMBER}`
+      : isMultiSelected
+        ? '1px solid #00FF00'
+        : '1px solid transparent'
 
   return (
     <>
@@ -1046,6 +1145,7 @@ function ScalarColumnItem({
   isHighlighted,
   isSelected,
   isMultiSelected = false,
+  isLinkingSource = false,
   pcBadgesWithColor = [],
   onClick,
   onUpdate,
@@ -1105,22 +1205,26 @@ function ScalarColumnItem({
     setShowContextMenu(null)
   }, [])
 
-  // Highlight styling
-  const highlightBg = isHighlighted
-    ? 'rgba(212, 115, 12, 0.15)'
-    : isSelected
-      ? 'rgba(212, 115, 12, 0.08)'
-      : isMultiSelected
-        ? 'rgba(0, 255, 0, 0.1)'
-        : hovered
-          ? 'rgba(255, 255, 255, 0.03)'
-          : 'transparent'
+  // Highlight styling - linking source takes priority with green glow
+  const highlightBg = isLinkingSource
+    ? 'rgba(0, 255, 0, 0.25)'
+    : isHighlighted
+      ? 'rgba(212, 115, 12, 0.15)'
+      : isSelected
+        ? 'rgba(212, 115, 12, 0.08)'
+        : isMultiSelected
+          ? 'rgba(0, 255, 0, 0.1)'
+          : hovered
+            ? 'rgba(255, 255, 255, 0.03)'
+            : 'transparent'
 
-  const highlightBorder = isHighlighted || isSelected
-    ? `1px solid ${THEME.AMBER}`
-    : isMultiSelected
-      ? '1px solid #00FF00'
-      : '1px solid transparent'
+  const highlightBorder = isLinkingSource
+    ? '2px solid #00FF00'
+    : isHighlighted || isSelected
+      ? `1px solid ${THEME.AMBER}`
+      : isMultiSelected
+        ? '1px solid #00FF00'
+        : '1px solid transparent'
 
   return (
     <>
@@ -1650,6 +1754,11 @@ function PCItem({ pc, scalarData, scheduledLessons, onUpdate, onDelete, onUnlink
           cursor: 'pointer'
         }}
         onClick={(e) => {
+          // SHIFT+click for universal linking
+          if (e.shiftKey) {
+            onItemClick?.('pc', pc.id, e)
+            return
+          }
           // Single click selects/deselects for linking
           onPCClick?.()
         }}
