@@ -273,11 +273,21 @@ export function DesignProvider({ children, courseData, setCourseData }) {
   // UNIVERSAL LINKING (SHIFT+click any element to any element)
   // --------------------------------------------
   const [linkingSource, setLinkingSource] = useState(null) // { type, id, name }
+  const [sessionLinkedElements, setSessionLinkedElements] = useState([]) // Elements linked in current session
 
-  // Clear linking source
+  // Clear linking source and session linked elements
   const clearLinkingSource = useCallback(() => {
     setLinkingSource(null)
+    setSessionLinkedElements([])
   }, [])
+
+  // Check if an element is part of the current linking session (source or linked)
+  const isSessionLinked = useCallback((type, id) => {
+    if (linkingSource && linkingSource.type === type && linkingSource.id === id) {
+      return true
+    }
+    return sessionLinkedElements.some(el => el.type === type && el.id === id)
+  }, [linkingSource, sessionLinkedElements])
 
   // Sync scalarData when courseData.learningObjectives changes
   useEffect(() => {
@@ -1337,19 +1347,39 @@ export function DesignProvider({ children, courseData, setCourseData }) {
   }, [lessons, scalarData.modules, scalarData.performanceCriteria, toggleLessonLO,
       removeTopicFromLesson, getLinkedPCs, linkItemToPC, unlinkItemFromPC, setLessons])
 
-  // Handle SHIFT+click for universal linking
+  // Handle SHIFT+click for universal linking - sets source
   const handleShiftClickLink = useCallback((type, id, name) => {
-    if (!linkingSource) {
-      // First click - set as source
-      setLinkingSource({ type, id, name: name || `${type} ${id}` })
-      return { action: 'source_set', source: { type, id } }
-    } else {
-      // Second click - attempt to link
-      const target = { type, id }
-      const success = linkElements(linkingSource, target)
-      setLinkingSource(null) // Clear after attempt
-      return { action: success ? 'linked' : 'failed', source: linkingSource, target }
+    // SHIFT+click always sets/changes the source
+    setLinkingSource({ type, id, name: name || `${type} ${id}` })
+    setSessionLinkedElements([]) // Clear previous session's linked elements
+    return { action: 'source_set', source: { type, id } }
+  }, [])
+
+  // Link target element to current source (called on regular click in linking mode)
+  const linkToSource = useCallback((type, id, name) => {
+    if (!linkingSource) return { action: 'no_source' }
+
+    // Don't link to self
+    if (linkingSource.type === type && linkingSource.id === id) {
+      return { action: 'self_click' }
     }
+
+    const target = { type, id, name: name || `${type} ${id}` }
+    const success = linkElements(linkingSource, target)
+
+    if (success) {
+      // Add to session linked elements for green highlighting
+      setSessionLinkedElements(prev => {
+        // Avoid duplicates
+        if (prev.some(el => el.type === type && el.id === id)) {
+          return prev
+        }
+        return [...prev, target]
+      })
+    }
+
+    // Keep linking mode active - don't clear source
+    return { action: success ? 'linked' : 'failed', source: linkingSource, target }
   }, [linkingSource, linkElements])
 
   // --------------------------------------------
@@ -1619,6 +1649,9 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     clearLinkingSource,
     linkElements,
     handleShiftClickLink,
+    linkToSource,
+    sessionLinkedElements,
+    isSessionLinked,
 
     // Helper functions
     isUnallocatedNumber,
@@ -1669,7 +1702,7 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     linkItemToPC, unlinkItemFromPC, getLinkedPCs, getLinkedPCsWithColor,
     multiSelection, toggleMultiSelect, clearMultiSelection, isMultiSelected,
     bulkLinkToPC, bulkUnlinkFromPC, bulkDelete,
-    linkingSource, clearLinkingSource, linkElements, handleShiftClickLink,
+    linkingSource, clearLinkingSource, linkElements, handleShiftClickLink, linkToSource, sessionLinkedElements, isSessionLinked,
     isUnallocatedNumber,
     highlightedItems, updateHighlightedItems, clearHighlights, isItemHighlighted,
     selection, select, startEditing, clearSelection,

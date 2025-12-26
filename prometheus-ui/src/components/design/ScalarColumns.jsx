@@ -15,7 +15,7 @@
  * - Unallocated topics with red serial numbers
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { THEME } from '../../constants/theme'
 import { useDesign } from '../../contexts/DesignContext'
 
@@ -59,7 +59,9 @@ function ScalarColumns({ module }) {
     // Universal linking
     linkingSource,
     handleShiftClickLink,
-    clearLinkingSource
+    clearLinkingSource,
+    linkToSource,
+    isSessionLinked
   } = useDesign()
 
   // Flatten LOs, Topics, Subtopics for column display
@@ -85,6 +87,18 @@ function ScalarColumns({ module }) {
 
   // Track expanded topics (for collapsing subtopics)
   const [expandedTopics, setExpandedTopics] = useState(new Set())
+
+  // Auto-expand topics that have the expanded flag set (e.g., after adding subtopic)
+  useEffect(() => {
+    const topicsToExpand = allTopics.filter(t => t.expanded && !expandedTopics.has(t.id))
+    if (topicsToExpand.length > 0) {
+      setExpandedTopics(prev => {
+        const next = new Set(prev)
+        topicsToExpand.forEach(t => next.add(t.id))
+        return next
+      })
+    }
+  }, [allTopics])
 
   // Toggle topic expansion
   const toggleTopicExpand = useCallback((topicId) => {
@@ -141,10 +155,35 @@ function ScalarColumns({ module }) {
       return
     }
 
+    // If in linking mode (source is set), regular click links to source
+    if (linkingSource) {
+      // Get item name for display
+      let itemName = `${type} ${id}`
+      if (type === 'lo') {
+        const lo = learningObjectives.find(l => l.id === id)
+        if (lo) itemName = `LO ${lo.order}: ${lo.verb}`
+      } else if (type === 'topic') {
+        const topic = allTopics.find(t => t.id === id)
+        if (topic) itemName = `Topic ${topic.loOrder || 'x'}.${topic.order}: ${topic.title}`
+      } else if (type === 'subtopic') {
+        const sub = allSubtopics.find(s => s.id === id)
+        if (sub) itemName = `Subtopic ${sub.loOrder || 'x'}.${sub.topicOrder}.${sub.order}`
+      } else if (type === 'lesson') {
+        const lesson = scheduledLessons.find(l => l.id === id)
+        if (lesson) itemName = `Lesson: ${lesson.title}`
+      } else if (type === 'pc') {
+        const pc = performanceCriteria.find(p => p.id === id)
+        if (pc) itemName = pc.name
+      }
+
+      linkToSource(type, id, itemName)
+      return
+    }
+
     // Normal click - select and highlight
     select(type, id)
     updateHighlightedItems(type, id)
-  }, [select, updateHighlightedItems, handleShiftClickLink, learningObjectives, allTopics, allSubtopics, scheduledLessons, performanceCriteria])
+  }, [select, updateHighlightedItems, handleShiftClickLink, linkToSource, linkingSource, learningObjectives, allTopics, allSubtopics, scheduledLessons, performanceCriteria])
 
   // Handle PC click - select for linking mode
   const handlePCClick = useCallback((pcId) => {
@@ -160,10 +199,11 @@ function ScalarColumns({ module }) {
     }
   }, [clearHighlights, clearLinkingSource])
 
-  // Check if an item is the linking source
-  const isLinkingSource = useCallback((type, id) => {
-    return linkingSource && linkingSource.type === type && linkingSource.id === id
-  }, [linkingSource])
+  // Check if an item is part of the current linking session (source or linked)
+  // Used for green highlighting of all elements in the linking session
+  const isInLinkingSession = useCallback((type, id) => {
+    return isSessionLinked(type, id)
+  }, [isSessionLinked])
 
   // Separate allocated vs unallocated topics
   const allocatedTopics = allTopics.filter(t => t.loOrder != null)
@@ -172,6 +212,17 @@ function ScalarColumns({ module }) {
   // Check if + Subtopic should show (only when a topic is selected)
   const selectedTopicId = selection.type === 'topic' ? selection.id : null
   const showAddSubtopic = selectedTopicId && allTopics.find(t => t.id === selectedTopicId)
+
+  // Handle ESC key to exit linking mode
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && linkingSource) {
+        clearLinkingSource()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [linkingSource, clearLinkingSource])
 
   return (
     <div
@@ -203,7 +254,7 @@ function ScalarColumns({ module }) {
               fontFamily: THEME.FONT_PRIMARY
             }}
           >
-            LINKING MODE: <strong>{linkingSource.name}</strong> → SHIFT+Click target element
+            LINKING MODE: <strong>{linkingSource.name}</strong> → Click elements to link (ESC to exit)
           </span>
           <button
             onClick={(e) => {
@@ -249,7 +300,7 @@ function ScalarColumns({ module }) {
             isHighlighted={isItemHighlighted('lo', lo.id)}
             isSelected={selection.type === 'lo' && selection.id === lo.id}
             isMultiSelected={isMultiSelected('lo', lo.id)}
-            isLinkingSource={isLinkingSource('lo', lo.id)}
+            isInLinkingSession={isInLinkingSession('lo', lo.id)}
             pcBadgesWithColor={getLinkedPCsWithColor('lo', lo.id)}
             onClick={(e) => handleItemClick('lo', lo.id, e)}
             onUpdate={(updates) => updateScalarNode('lo', lo.id, updates)}
@@ -278,7 +329,7 @@ function ScalarColumns({ module }) {
             isHighlighted={isItemHighlighted('lesson', lesson.id)}
             isSelected={selection.type === 'lesson' && selection.id === lesson.id}
             isMultiSelected={isMultiSelected('lesson', lesson.id)}
-            isLinkingSource={isLinkingSource('lesson', lesson.id)}
+            isInLinkingSession={isInLinkingSession('lesson', lesson.id)}
             pcBadgesWithColor={getLinkedPCsWithColor('lesson', lesson.id)}
             onClick={(e) => handleItemClick('lesson', lesson.id, e)}
             onUpdate={(updates) => updateLesson(lesson.id, updates)}
@@ -303,7 +354,7 @@ function ScalarColumns({ module }) {
         isItemHighlighted={isItemHighlighted}
         selection={selection}
         isMultiSelected={isMultiSelected}
-        isLinkingSourceFn={isLinkingSource}
+        isInLinkingSessionFn={isInLinkingSession}
         getLinkedPCsWithColor={getLinkedPCsWithColor}
         handleItemClick={handleItemClick}
         updateScalarNode={updateScalarNode}
@@ -336,6 +387,7 @@ function ScalarColumns({ module }) {
         onItemClick={handleItemClick}
         selectedPCId={selectedPCId}
         onPCClick={handlePCClick}
+        isInLinkingMode={!!linkingSource}
       />
       </div>
     </div>
@@ -454,7 +506,7 @@ function TopicsColumn({
   isItemHighlighted,
   selection,
   isMultiSelected,
-  isLinkingSourceFn,
+  isInLinkingSessionFn,
   getLinkedPCsWithColor,
   handleItemClick,
   updateScalarNode,
@@ -567,7 +619,7 @@ function TopicsColumn({
                 isHighlighted={isItemHighlighted('topic', topic.id)}
                 isSelected={selection.type === 'topic' && selection.id === topic.id}
                 isMultiSelected={isMultiSelected('topic', topic.id)}
-                isLinkingSource={isLinkingSourceFn?.('topic', topic.id)}
+                isInLinkingSession={isInLinkingSessionFn?.('topic', topic.id)}
                 pcBadgesWithColor={getLinkedPCsWithColor('topic', topic.id)}
                 onClick={(e) => handleItemClick('topic', topic.id, e)}
                 onUpdate={(updates) => updateScalarNode('topic', topic.id, updates)}
@@ -578,7 +630,7 @@ function TopicsColumn({
                 isItemHighlighted={isItemHighlighted}
                 selection={selection}
                 isMultiSelectedFn={isMultiSelected}
-                isLinkingSourceFn={isLinkingSourceFn}
+                isInLinkingSessionFn={isInLinkingSessionFn}
                 getLinkedPCsWithColor={getLinkedPCsWithColor}
                 handleItemClick={handleItemClick}
                 updateScalarNode={updateScalarNode}
@@ -615,7 +667,7 @@ function TopicsColumn({
                 isHighlighted={isItemHighlighted('topic', topic.id)}
                 isSelected={selection.type === 'topic' && selection.id === topic.id}
                 isMultiSelected={isMultiSelected('topic', topic.id)}
-                isLinkingSource={isLinkingSourceFn?.('topic', topic.id)}
+                isInLinkingSession={isInLinkingSessionFn?.('topic', topic.id)}
                 pcBadgesWithColor={getLinkedPCsWithColor('topic', topic.id)}
                 onClick={(e) => handleItemClick('topic', topic.id, e)}
                 onUpdate={(updates) => updateScalarNode('topic', topic.id, updates)}
@@ -626,7 +678,7 @@ function TopicsColumn({
                 isItemHighlighted={isItemHighlighted}
                 selection={selection}
                 isMultiSelectedFn={isMultiSelected}
-                isLinkingSourceFn={isLinkingSourceFn}
+                isInLinkingSessionFn={isInLinkingSessionFn}
                 getLinkedPCsWithColor={getLinkedPCsWithColor}
                 handleItemClick={handleItemClick}
                 updateScalarNode={updateScalarNode}
@@ -654,7 +706,7 @@ function TopicWithSubtopics({
   isHighlighted,
   isSelected,
   isMultiSelected,
-  isLinkingSource = false,
+  isInLinkingSession = false,
   pcBadgesWithColor,
   onClick,
   onUpdate,
@@ -665,7 +717,7 @@ function TopicWithSubtopics({
   isItemHighlighted,
   selection,
   isMultiSelectedFn,
-  isLinkingSourceFn,
+  isInLinkingSessionFn,
   getLinkedPCsWithColor,
   handleItemClick,
   updateScalarNode,
@@ -715,7 +767,7 @@ function TopicWithSubtopics({
   }, [])
 
   // Highlight styling - linking source takes priority with green glow
-  const highlightBg = isLinkingSource
+  const highlightBg = isInLinkingSession
     ? 'rgba(0, 255, 0, 0.25)'
     : isHighlighted
       ? 'rgba(212, 115, 12, 0.15)'
@@ -727,7 +779,7 @@ function TopicWithSubtopics({
             ? 'rgba(255, 255, 255, 0.03)'
             : 'transparent'
 
-  const highlightBorder = isLinkingSource
+  const highlightBorder = isInLinkingSession
     ? '2px solid #00FF00'
     : isHighlighted || isSelected
       ? `1px solid ${THEME.AMBER}`
@@ -878,7 +930,7 @@ function TopicWithSubtopics({
             isHighlighted={isItemHighlighted('subtopic', sub.id)}
             isSelected={selection.type === 'subtopic' && selection.id === sub.id}
             isMultiSelected={isMultiSelectedFn('subtopic', sub.id)}
-            isLinkingSource={isLinkingSourceFn?.('subtopic', sub.id)}
+            isInLinkingSession={isInLinkingSessionFn?.('subtopic', sub.id)}
             pcBadgesWithColor={getLinkedPCsWithColor('subtopic', sub.id)}
             onClick={(e) => handleItemClick('subtopic', sub.id, e)}
             onUpdate={(updates) => updateScalarNode('subtopic', sub.id, updates)}
@@ -918,7 +970,7 @@ function SubtopicRow({
   isHighlighted,
   isSelected,
   isMultiSelected,
-  isLinkingSource = false,
+  isInLinkingSession = false,
   pcBadgesWithColor,
   onClick,
   onUpdate,
@@ -957,7 +1009,7 @@ function SubtopicRow({
   }, [])
 
   // Highlight styling - linking source takes priority with green glow
-  const highlightBg = isLinkingSource
+  const highlightBg = isInLinkingSession
     ? 'rgba(0, 255, 0, 0.25)'
     : isHighlighted
       ? 'rgba(212, 115, 12, 0.15)'
@@ -969,7 +1021,7 @@ function SubtopicRow({
             ? 'rgba(255, 255, 255, 0.03)'
             : 'transparent'
 
-  const highlightBorder = isLinkingSource
+  const highlightBorder = isInLinkingSession
     ? '2px solid #00FF00'
     : isHighlighted || isSelected
       ? `1px solid ${THEME.AMBER}`
@@ -1145,7 +1197,7 @@ function ScalarColumnItem({
   isHighlighted,
   isSelected,
   isMultiSelected = false,
-  isLinkingSource = false,
+  isInLinkingSession = false,
   pcBadgesWithColor = [],
   onClick,
   onUpdate,
@@ -1206,7 +1258,7 @@ function ScalarColumnItem({
   }, [])
 
   // Highlight styling - linking source takes priority with green glow
-  const highlightBg = isLinkingSource
+  const highlightBg = isInLinkingSession
     ? 'rgba(0, 255, 0, 0.25)'
     : isHighlighted
       ? 'rgba(212, 115, 12, 0.15)'
@@ -1218,7 +1270,7 @@ function ScalarColumnItem({
             ? 'rgba(255, 255, 255, 0.03)'
             : 'transparent'
 
-  const highlightBorder = isLinkingSource
+  const highlightBorder = isInLinkingSession
     ? '2px solid #00FF00'
     : isHighlighted || isSelected
       ? `1px solid ${THEME.AMBER}`
@@ -1559,7 +1611,8 @@ function PCColumn({
   onUnlink,
   onItemClick,
   selectedPCId,
-  onPCClick
+  onPCClick,
+  isInLinkingMode
 }) {
   return (
     <div
@@ -1642,6 +1695,7 @@ function PCColumn({
               onItemClick={onItemClick}
               isSelectedForLinking={selectedPCId === pc.id}
               onPCClick={() => onPCClick(pc.id)}
+              isInLinkingMode={isInLinkingMode}
             />
           ))
         )}
@@ -1654,7 +1708,7 @@ function PCColumn({
 // PC ITEM COMPONENT
 // ============================================
 
-function PCItem({ pc, scalarData, scheduledLessons, onUpdate, onDelete, onUnlink, onItemClick, isSelectedForLinking, onPCClick }) {
+function PCItem({ pc, scalarData, scheduledLessons, onUpdate, onDelete, onUnlink, onItemClick, isSelectedForLinking, onPCClick, isInLinkingMode }) {
   const [expanded, setExpanded] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(pc.name)
@@ -1754,8 +1808,13 @@ function PCItem({ pc, scalarData, scheduledLessons, onUpdate, onDelete, onUnlink
           cursor: 'pointer'
         }}
         onClick={(e) => {
-          // SHIFT+click for universal linking
+          // SHIFT+click for universal linking (sets source)
           if (e.shiftKey) {
+            onItemClick?.('pc', pc.id, e)
+            return
+          }
+          // If in linking mode, regular click links to source
+          if (isInLinkingMode) {
             onItemClick?.('pc', pc.id, e)
             return
           }

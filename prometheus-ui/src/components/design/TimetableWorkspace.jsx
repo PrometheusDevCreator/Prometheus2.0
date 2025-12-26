@@ -22,7 +22,8 @@ function TimetableWorkspace() {
     scheduledLessons,
     unscheduledLessons,
     select,
-    scheduleLesson
+    scheduleLesson,
+    unscheduleLesson
   } = useDesign()
 
   // Time range state (shared with TimeControls and TimetableGrid)
@@ -137,6 +138,7 @@ function TimetableWorkspace() {
         onTypeSelect={handleTypeClick}
         hasPendingLesson={!!pendingLesson}
         unscheduledLessons={unscheduledLessons}
+        onUnscheduleLesson={unscheduleLesson}
       />
     </div>
   )
@@ -230,7 +232,7 @@ function PendingLessonCard({ lesson, type, onDragStart, onCancel }) {
 // CONTROL ZONE COMPONENT
 // ============================================
 
-function ControlZone({ lessonTypes, currentType, onTypeSelect, hasPendingLesson, unscheduledLessons = [] }) {
+function ControlZone({ lessonTypes, currentType, onTypeSelect, hasPendingLesson, unscheduledLessons = [], onUnscheduleLesson }) {
   // Split types into two rows (5 each)
   const row1Types = lessonTypes.slice(0, 5)
   const row2Types = lessonTypes.slice(5, 10)
@@ -300,6 +302,7 @@ function ControlZone({ lessonTypes, currentType, onTypeSelect, hasPendingLesson,
         <UnallocatedLessons
           lessons={unscheduledLessons}
           lessonTypes={lessonTypes}
+          onUnscheduleLesson={onUnscheduleLesson}
         />
       </div>
     </div>
@@ -371,8 +374,9 @@ function LessonTypeButton({ type, onClick }) {
 // UNALLOCATED LESSONS AREA
 // ============================================
 
-function UnallocatedLessons({ lessons, lessonTypes }) {
+function UnallocatedLessons({ lessons, lessonTypes, onUnscheduleLesson }) {
   const [collapsed, setCollapsed] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
 
   // Handle drag start for unallocated lesson
   const handleDragStart = useCallback((e, lesson) => {
@@ -381,6 +385,35 @@ function UnallocatedLessons({ lessons, lessonTypes }) {
     e.dataTransfer.effectAllowed = 'move'
   }, [])
 
+  // Handle drag over to allow drop
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setIsDragOver(true)
+  }, [])
+
+  // Handle drag leave
+  const handleDragLeave = useCallback((e) => {
+    // Only set false if we're leaving the container itself
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setIsDragOver(false)
+    }
+  }, [])
+
+  // Handle drop - unschedule the lesson
+  const handleDrop = useCallback((e) => {
+    e.preventDefault()
+    setIsDragOver(false)
+
+    const lessonId = e.dataTransfer.getData('lessonId')
+    const dragType = e.dataTransfer.getData('dragType')
+
+    // Only accept drops from scheduled lessons (not from unallocated or pending)
+    if (lessonId && dragType !== 'unallocated' && dragType !== 'pending') {
+      onUnscheduleLesson?.(lessonId)
+    }
+  }, [onUnscheduleLesson])
+
   const getLessonTypeColor = (typeId) => {
     const type = lessonTypes.find(t => t.id === typeId)
     return type?.color || '#FF6600'
@@ -388,15 +421,18 @@ function UnallocatedLessons({ lessons, lessonTypes }) {
 
   return (
     <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       style={{
-        background: 'rgba(20, 20, 20, 0.95)',
-        border: `2px solid ${THEME.AMBER}`,
+        background: isDragOver ? 'rgba(255, 102, 0, 0.2)' : 'rgba(20, 20, 20, 0.95)',
+        border: `2px solid ${isDragOver ? '#00FF00' : THEME.AMBER}`,
         borderRadius: '12px',
         minWidth: '180px',
         maxWidth: '280px',
         maxHeight: collapsed ? '36px' : '180px',
         overflow: 'hidden',
-        transition: 'max-height 0.2s ease',
+        transition: 'all 0.2s ease',
         flexShrink: 0
       }}
     >
