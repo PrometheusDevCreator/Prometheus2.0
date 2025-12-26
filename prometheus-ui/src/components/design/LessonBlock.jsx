@@ -61,6 +61,9 @@ function LessonBlock({
   const isSelected = selection.type === 'lesson' && selection.id === lesson.id
   const isEditing = isSelected && selection.mode === 'editing'
 
+  // Check if lesson has assigned LO (for red border warning)
+  const hasAssignedLO = lesson.learningObjectives?.length > 0 || lesson.loId
+
   // Get lesson type info
   const lessonType = useMemo(() =>
     LESSON_TYPES.find(t => t.id === lesson.type) || LESSON_TYPES[0],
@@ -240,6 +243,10 @@ function LessonBlock({
     if (isSelected) {
       return `0 0 12px rgba(212, 115, 12, 0.3)`
     }
+    // Red glow for lessons without LO assigned
+    if (!hasAssignedLO) {
+      return `0 0 8px rgba(255, 68, 68, 0.3)`
+    }
     return 'none'
   }
 
@@ -268,7 +275,9 @@ function LessonBlock({
         background: 'rgba(25, 25, 25, 0.95)',
         border: isSelected || isEditing
           ? `1px solid ${THEME.AMBER}`
-          : `1px solid rgba(100, 100, 100, 0.5)`,
+          : !hasAssignedLO
+            ? '2px solid #ff4444'
+            : `1px solid rgba(100, 100, 100, 0.5)`,
         borderRadius: '16px',
         cursor: 'grab',
         overflow: 'hidden',

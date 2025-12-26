@@ -1,18 +1,18 @@
 /**
  * ScalarColumns.jsx - Multi-Column Scalar View
  *
- * Displays 5 columns:
- * - Learning Objectives
- * - Topics
- * - Subtopics
+ * Displays 4 columns:
+ * - Learning Objectives (LO)
  * - Lesson Titles
- * - Performance Criteria
+ * - Topics (with nested Subtopics)
+ * - Performance Criteria (PC)
  *
  * Features:
  * - Cross-column highlighting on click
- * - PC badges on linked items
- * - Inline editing
- * - Add/delete functionality
+ * - Colored PC dots on linked items
+ * - Inline editing with non-editable serial numbers
+ * - SHIFT+click for linking/unlinking
+ * - Unallocated topics with red serial numbers
  */
 
 import { useState, useCallback } from 'react'
@@ -42,6 +42,7 @@ function ScalarColumns({ module }) {
     clearHighlights,
     isItemHighlighted,
     getLinkedPCs,
+    getLinkedPCsWithColor,
     select,
     selection,
     updateScalarNode,
@@ -50,7 +51,11 @@ function ScalarColumns({ module }) {
     unlinkItemFromPC,
     deletePerformanceCriteria,
     updateLesson,
-    deleteLesson
+    deleteLesson,
+    toggleMultiSelect,
+    isMultiSelected,
+    clearMultiSelection,
+    isUnallocatedNumber
   } = useDesign()
 
   // Flatten LOs, Topics, Subtopics for column display
@@ -93,16 +98,33 @@ function ScalarColumns({ module }) {
   // Filter subtopics to only show those with expanded parent topics
   const visibleSubtopics = allSubtopics.filter(sub => expandedTopics.has(sub.topicId))
 
-  // Handle item click for highlighting, or shift-click to link to PC
+  // Handle item click for highlighting, or shift-click to link/unlink to PC
   const handleItemClick = useCallback((type, id, event) => {
-    // If shift is held and a PC is selected, link this item to the PC
+    // If shift is held and a PC is selected, toggle link/unlink
     if (event?.shiftKey && selectedPCId) {
-      linkItemToPC(selectedPCId, type, id)
+      // Check if already linked - if so, unlink; otherwise link
+      const linkedPCs = getLinkedPCs(type, id)
+      const pc = scalarData.performanceCriteria?.find(p => p.id === selectedPCId)
+      const isLinked = pc && linkedPCs.includes(pc.name)
+
+      if (isLinked) {
+        unlinkItemFromPC(selectedPCId, type, id)
+      } else {
+        linkItemToPC(selectedPCId, type, id)
+      }
       return
     }
+
+    // If shift is held but no PC selected, toggle multi-selection
+    if (event?.shiftKey) {
+      toggleMultiSelect(type, id)
+      return
+    }
+
+    // Normal click - select and highlight
     select(type, id)
     updateHighlightedItems(type, id)
-  }, [select, updateHighlightedItems, selectedPCId, linkItemToPC])
+  }, [select, updateHighlightedItems, selectedPCId, linkItemToPC, unlinkItemFromPC, getLinkedPCs, scalarData.performanceCriteria, toggleMultiSelect])
 
   // Handle PC click - select for linking mode
   const handlePCClick = useCallback((pcId) => {
@@ -117,6 +139,14 @@ function ScalarColumns({ module }) {
     }
   }, [clearHighlights])
 
+  // Separate allocated vs unallocated topics
+  const allocatedTopics = allTopics.filter(t => t.loOrder != null)
+  const unallocatedTopics = allTopics.filter(t => t.loOrder == null)
+
+  // Check if + Subtopic should show (only when a topic is selected)
+  const selectedTopicId = selection.type === 'topic' ? selection.id : null
+  const showAddSubtopic = selectedTopicId && allTopics.find(t => t.id === selectedTopicId)
+
   return (
     <div
       style={{
@@ -128,7 +158,7 @@ function ScalarColumns({ module }) {
       }}
       onClick={handleBackgroundClick}
     >
-      {/* Learning Objectives Column */}
+      {/* Column 1: Learning Objectives */}
       <ScalarColumn
         title="Learning Objectives"
         items={learningObjectives}
@@ -141,7 +171,8 @@ function ScalarColumns({ module }) {
             label={`${lo.verb} ${lo.description}`}
             isHighlighted={isItemHighlighted('lo', lo.id)}
             isSelected={selection.type === 'lo' && selection.id === lo.id}
-            pcBadges={getLinkedPCs('lo', lo.id)}
+            isMultiSelected={isMultiSelected('lo', lo.id)}
+            pcBadgesWithColor={getLinkedPCsWithColor('lo', lo.id)}
             onClick={(e) => handleItemClick('lo', lo.id, e)}
             onUpdate={(updates) => updateScalarNode('lo', lo.id, updates)}
             onDelete={() => deleteScalarNode('lo', lo.id)}
@@ -155,85 +186,7 @@ function ScalarColumns({ module }) {
         accentColor={THEME.AMBER}
       />
 
-      {/* Topics Column */}
-      <ScalarColumn
-        title="Topics"
-        items={allTopics}
-        renderItem={(topic) => {
-          const hasSubtopics = (topic.subtopics || []).length > 0
-          const isExpanded = expandedTopics.has(topic.id)
-          return (
-            <ScalarColumnItem
-              key={topic.id}
-              id={topic.id}
-              type="topic"
-              number={`${topic.loOrder}.${topic.order}`}
-              label={topic.title}
-              isHighlighted={isItemHighlighted('topic', topic.id)}
-              isSelected={selection.type === 'topic' && selection.id === topic.id}
-              pcBadges={getLinkedPCs('topic', topic.id)}
-              onClick={(e) => {
-                handleItemClick('topic', topic.id, e)
-                // Also toggle expansion when clicking
-                if (hasSubtopics) {
-                  toggleTopicExpand(topic.id)
-                }
-              }}
-              onUpdate={(updates) => updateScalarNode('topic', topic.id, updates)}
-              onDelete={() => deleteScalarNode('topic', topic.id)}
-              performanceCriteria={performanceCriteria}
-              onLinkToPC={(pcId) => linkItemToPC(pcId, 'topic', topic.id)}
-              onUnlinkFromPC={(pcId) => unlinkItemFromPC(pcId, 'topic', topic.id)}
-              hasChildren={hasSubtopics}
-              isExpanded={isExpanded}
-            />
-          )
-        }}
-        onAdd={() => {
-          // Add to first LO if available
-          if (learningObjectives.length > 0) {
-            addTopic(learningObjectives[0].id)
-          }
-        }}
-        addLabel="+ Topic"
-        accentColor="#4a9eff"
-      />
-
-      {/* Subtopics Column */}
-      <ScalarColumn
-        title="Subtopics"
-        items={visibleSubtopics}
-        renderItem={(sub) => (
-          <ScalarColumnItem
-            key={sub.id}
-            id={sub.id}
-            type="subtopic"
-            number={`${sub.loOrder}.${sub.topicOrder}.${sub.order}`}
-            label={sub.title}
-            isHighlighted={isItemHighlighted('subtopic', sub.id)}
-            isSelected={selection.type === 'subtopic' && selection.id === sub.id}
-            pcBadges={getLinkedPCs('subtopic', sub.id)}
-            onClick={(e) => handleItemClick('subtopic', sub.id, e)}
-            onUpdate={(updates) => updateScalarNode('subtopic', sub.id, updates)}
-            onDelete={() => deleteScalarNode('subtopic', sub.id)}
-            performanceCriteria={performanceCriteria}
-            onLinkToPC={(pcId) => linkItemToPC(pcId, 'subtopic', sub.id)}
-            onUnlinkFromPC={(pcId) => unlinkItemFromPC(pcId, 'subtopic', sub.id)}
-          />
-        )}
-        onAdd={() => {
-          // Add to selected topic if one is selected, otherwise first topic
-          if (selection.type === 'topic' && allTopics.find(t => t.id === selection.id)) {
-            addSubtopic(selection.id)
-          } else if (allTopics.length > 0) {
-            addSubtopic(allTopics[0].id)
-          }
-        }}
-        addLabel="+ Subtopic"
-        accentColor="#9b59b6"
-      />
-
-      {/* Lesson Titles Column */}
+      {/* Column 2: Lesson Titles (moved before Topics) */}
       <ScalarColumn
         title="Lesson Titles"
         items={scheduledLessons}
@@ -246,7 +199,8 @@ function ScalarColumns({ module }) {
             label={lesson.title}
             isHighlighted={isItemHighlighted('lesson', lesson.id)}
             isSelected={selection.type === 'lesson' && selection.id === lesson.id}
-            pcBadges={getLinkedPCs('lesson', lesson.id)}
+            isMultiSelected={isMultiSelected('lesson', lesson.id)}
+            pcBadgesWithColor={getLinkedPCsWithColor('lesson', lesson.id)}
             onClick={(e) => handleItemClick('lesson', lesson.id, e)}
             onUpdate={(updates) => updateLesson(lesson.id, updates)}
             onDelete={() => deleteLesson(lesson.id)}
@@ -261,7 +215,36 @@ function ScalarColumns({ module }) {
         accentColor={THEME.AMBER}
       />
 
-      {/* Performance Criteria Column */}
+      {/* Column 3: Topics (with nested Subtopics) */}
+      <TopicsColumn
+        allocatedTopics={allocatedTopics}
+        unallocatedTopics={unallocatedTopics}
+        expandedTopics={expandedTopics}
+        toggleTopicExpand={toggleTopicExpand}
+        isItemHighlighted={isItemHighlighted}
+        selection={selection}
+        isMultiSelected={isMultiSelected}
+        getLinkedPCsWithColor={getLinkedPCsWithColor}
+        handleItemClick={handleItemClick}
+        updateScalarNode={updateScalarNode}
+        deleteScalarNode={deleteScalarNode}
+        performanceCriteria={performanceCriteria}
+        linkItemToPC={linkItemToPC}
+        unlinkItemFromPC={unlinkItemFromPC}
+        onAddTopic={() => {
+          // Add to highlighted LO if available, otherwise first LO
+          const selectedLoId = selection.type === 'lo' ? selection.id : null
+          if (selectedLoId) {
+            addTopic(selectedLoId)
+          } else if (learningObjectives.length > 0) {
+            addTopic(learningObjectives[0].id)
+          }
+        }}
+        onAddSubtopic={showAddSubtopic ? () => addSubtopic(selectedTopicId) : null}
+        showAddSubtopic={showAddSubtopic}
+      />
+
+      {/* Column 4: Performance Criteria */}
       <PCColumn
         performanceCriteria={performanceCriteria}
         scalarData={scalarData}
@@ -379,6 +362,679 @@ function ScalarColumn({ title, items, renderItem, onAdd, addLabel, accentColor }
 }
 
 // ============================================
+// TOPICS COLUMN COMPONENT (with nested subtopics)
+// ============================================
+
+function TopicsColumn({
+  allocatedTopics,
+  unallocatedTopics,
+  expandedTopics,
+  toggleTopicExpand,
+  isItemHighlighted,
+  selection,
+  isMultiSelected,
+  getLinkedPCsWithColor,
+  handleItemClick,
+  updateScalarNode,
+  deleteScalarNode,
+  performanceCriteria,
+  linkItemToPC,
+  unlinkItemFromPC,
+  onAddTopic,
+  onAddSubtopic,
+  showAddSubtopic
+}) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        background: THEME.BG_DARK,
+        minWidth: 0
+      }}
+    >
+      {/* Column Header */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '1vh 0.8vw',
+          borderBottom: `1px solid ${THEME.BORDER}`,
+          background: THEME.BG_PANEL,
+          flexShrink: 0,
+          gap: '0.5vw'
+        }}
+      >
+        <span
+          style={{
+            fontSize: FONT.HEADER,
+            color: THEME.WHITE,
+            fontFamily: THEME.FONT_PRIMARY,
+            fontWeight: 500
+          }}
+        >
+          Topics
+        </span>
+        <div style={{ display: 'flex', gap: '0.3vw' }}>
+          {/* + Subtopic button - only shows when topic is selected */}
+          {showAddSubtopic && onAddSubtopic && (
+            <button
+              onClick={onAddSubtopic}
+              style={{
+                background: 'transparent',
+                border: '1px dashed #9b59b6',
+                borderRadius: '14px',
+                color: '#9b59b6',
+                fontSize: FONT.BUTTON,
+                padding: '0.4vh 0.6vw',
+                cursor: 'pointer'
+              }}
+            >
+              + Subtopic
+            </button>
+          )}
+          <button
+            onClick={onAddTopic}
+            style={{
+              background: 'transparent',
+              border: '1px dashed #4a9eff',
+              borderRadius: '14px',
+              color: '#4a9eff',
+              fontSize: FONT.BUTTON,
+              padding: '0.4vh 0.6vw',
+              cursor: 'pointer'
+            }}
+          >
+            + Topic
+          </button>
+        </div>
+      </div>
+
+      {/* Column Body - Scrollable */}
+      <div
+        style={{
+          flex: 1,
+          overflow: 'auto',
+          padding: '0.5vh 0.5vw'
+        }}
+      >
+        {/* Allocated Topics (with LO assignment) */}
+        {allocatedTopics.length === 0 && unallocatedTopics.length === 0 ? (
+          <div
+            style={{
+              padding: '2vh 1vw',
+              textAlign: 'center',
+              color: THEME.TEXT_DIM,
+              fontSize: FONT.LABEL,
+              fontStyle: 'italic'
+            }}
+          >
+            No topics
+          </div>
+        ) : (
+          <>
+            {/* Render allocated topics with nested subtopics */}
+            {allocatedTopics.map(topic => (
+              <TopicWithSubtopics
+                key={topic.id}
+                topic={topic}
+                isExpanded={expandedTopics.has(topic.id)}
+                onToggleExpand={() => toggleTopicExpand(topic.id)}
+                isHighlighted={isItemHighlighted('topic', topic.id)}
+                isSelected={selection.type === 'topic' && selection.id === topic.id}
+                isMultiSelected={isMultiSelected('topic', topic.id)}
+                pcBadgesWithColor={getLinkedPCsWithColor('topic', topic.id)}
+                onClick={(e) => handleItemClick('topic', topic.id, e)}
+                onUpdate={(updates) => updateScalarNode('topic', topic.id, updates)}
+                onDelete={() => deleteScalarNode('topic', topic.id)}
+                performanceCriteria={performanceCriteria}
+                onLinkToPC={(pcId) => linkItemToPC(pcId, 'topic', topic.id)}
+                onUnlinkFromPC={(pcId) => unlinkItemFromPC(pcId, 'topic', topic.id)}
+                isItemHighlighted={isItemHighlighted}
+                selection={selection}
+                isMultiSelectedFn={isMultiSelected}
+                getLinkedPCsWithColor={getLinkedPCsWithColor}
+                handleItemClick={handleItemClick}
+                updateScalarNode={updateScalarNode}
+                deleteScalarNode={deleteScalarNode}
+                linkItemToPC={linkItemToPC}
+                unlinkItemFromPC={unlinkItemFromPC}
+                isUnallocated={false}
+              />
+            ))}
+
+            {/* Divider for unallocated topics */}
+            {allocatedTopics.length > 0 && unallocatedTopics.length > 0 && (
+              <div
+                style={{
+                  borderTop: `1px dashed ${THEME.BORDER}`,
+                  margin: '1vh 0',
+                  paddingTop: '0.5vh',
+                  color: '#ff4444',
+                  fontSize: FONT.BADGE,
+                  fontFamily: THEME.FONT_PRIMARY
+                }}
+              >
+                Unallocated
+              </div>
+            )}
+
+            {/* Render unallocated topics (with red serial numbers) */}
+            {unallocatedTopics.map(topic => (
+              <TopicWithSubtopics
+                key={topic.id}
+                topic={topic}
+                isExpanded={expandedTopics.has(topic.id)}
+                onToggleExpand={() => toggleTopicExpand(topic.id)}
+                isHighlighted={isItemHighlighted('topic', topic.id)}
+                isSelected={selection.type === 'topic' && selection.id === topic.id}
+                isMultiSelected={isMultiSelected('topic', topic.id)}
+                pcBadgesWithColor={getLinkedPCsWithColor('topic', topic.id)}
+                onClick={(e) => handleItemClick('topic', topic.id, e)}
+                onUpdate={(updates) => updateScalarNode('topic', topic.id, updates)}
+                onDelete={() => deleteScalarNode('topic', topic.id)}
+                performanceCriteria={performanceCriteria}
+                onLinkToPC={(pcId) => linkItemToPC(pcId, 'topic', topic.id)}
+                onUnlinkFromPC={(pcId) => unlinkItemFromPC(pcId, 'topic', topic.id)}
+                isItemHighlighted={isItemHighlighted}
+                selection={selection}
+                isMultiSelectedFn={isMultiSelected}
+                getLinkedPCsWithColor={getLinkedPCsWithColor}
+                handleItemClick={handleItemClick}
+                updateScalarNode={updateScalarNode}
+                deleteScalarNode={deleteScalarNode}
+                linkItemToPC={linkItemToPC}
+                unlinkItemFromPC={unlinkItemFromPC}
+                isUnallocated={true}
+              />
+            ))}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ============================================
+// TOPIC WITH SUBTOPICS COMPONENT
+// ============================================
+
+function TopicWithSubtopics({
+  topic,
+  isExpanded,
+  onToggleExpand,
+  isHighlighted,
+  isSelected,
+  isMultiSelected,
+  pcBadgesWithColor,
+  onClick,
+  onUpdate,
+  onDelete,
+  performanceCriteria,
+  onLinkToPC,
+  onUnlinkFromPC,
+  isItemHighlighted,
+  selection,
+  isMultiSelectedFn,
+  getLinkedPCsWithColor,
+  handleItemClick,
+  updateScalarNode,
+  deleteScalarNode,
+  linkItemToPC,
+  unlinkItemFromPC,
+  isUnallocated
+}) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(topic.title)
+  const [hovered, setHovered] = useState(false)
+  const [showContextMenu, setShowContextMenu] = useState(null)
+
+  const subtopics = topic.subtopics || []
+  const hasSubtopics = subtopics.length > 0
+
+  // Topic number format
+  const topicNumber = topic.loOrder != null
+    ? `${topic.loOrder}.${topic.order}`
+    : `x.${topic.order || 1}`
+
+  // Handle double-click to edit
+  const handleDoubleClick = useCallback((e) => {
+    e.stopPropagation()
+    setEditValue(topic.title)
+    setIsEditing(true)
+  }, [topic.title])
+
+  // Handle save
+  const handleSave = useCallback(() => {
+    if (editValue.trim() !== topic.title) {
+      onUpdate?.({ title: editValue.trim() })
+    }
+    setIsEditing(false)
+  }, [editValue, topic.title, onUpdate])
+
+  // Handle cancel
+  const handleCancel = useCallback(() => {
+    setEditValue(topic.title)
+    setIsEditing(false)
+  }, [topic.title])
+
+  // Handle context menu
+  const handleContextMenu = useCallback((e) => {
+    e.preventDefault()
+    setShowContextMenu({ x: e.clientX, y: e.clientY })
+  }, [])
+
+  // Highlight styling
+  const highlightBg = isHighlighted
+    ? 'rgba(212, 115, 12, 0.15)'
+    : isSelected
+      ? 'rgba(212, 115, 12, 0.08)'
+      : isMultiSelected
+        ? 'rgba(0, 255, 0, 0.1)'
+        : hovered
+          ? 'rgba(255, 255, 255, 0.03)'
+          : 'transparent'
+
+  const highlightBorder = isHighlighted || isSelected
+    ? `1px solid ${THEME.AMBER}`
+    : isMultiSelected
+      ? '1px solid #00FF00'
+      : '1px solid transparent'
+
+  return (
+    <div style={{ marginBottom: '0.3vh' }}>
+      {/* Topic Row */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '0.5vw',
+          padding: '0.6vh 0.6vw',
+          background: highlightBg,
+          border: highlightBorder,
+          borderRadius: '10px',
+          cursor: 'pointer',
+          transition: 'all 0.15s ease'
+        }}
+        onClick={(e) => {
+          onClick(e)
+          if (hasSubtopics && !e.shiftKey) {
+            onToggleExpand()
+          }
+        }}
+        onDoubleClick={handleDoubleClick}
+        onContextMenu={handleContextMenu}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        {/* Expand/Collapse Arrow */}
+        {hasSubtopics && (
+          <span
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleExpand()
+            }}
+            style={{
+              fontSize: FONT.NUMBER,
+              color: THEME.TEXT_DIM,
+              fontWeight: 400,
+              flexShrink: 0,
+              width: '1.2vh',
+              transition: 'transform 0.15s ease',
+              transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+              cursor: 'pointer'
+            }}
+          >
+            ▶
+          </span>
+        )}
+
+        {/* Topic Number - RED if unallocated, GREEN if editing */}
+        <span
+          style={{
+            fontSize: FONT.NUMBER,
+            fontFamily: THEME.FONT_MONO,
+            color: isEditing ? '#00FF00' : (isUnallocated ? '#ff4444' : THEME.AMBER),
+            fontWeight: 500,
+            flexShrink: 0,
+            minWidth: hasSubtopics ? '2.5vw' : '3vw'
+          }}
+        >
+          {topicNumber}
+        </span>
+
+        {/* Topic Title / Edit Input */}
+        {isEditing ? (
+          <input
+            type="text"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={handleSave}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSave()
+              if (e.key === 'Escape') handleCancel()
+            }}
+            onClick={(e) => e.stopPropagation()}
+            autoFocus
+            style={{
+              flex: 1,
+              fontSize: FONT.LABEL,
+              fontFamily: THEME.FONT_PRIMARY,
+              color: THEME.WHITE,
+              background: THEME.BG_INPUT,
+              border: `1px solid ${THEME.AMBER}`,
+              borderRadius: '0.3vh',
+              padding: '0.2vh 0.4vw',
+              outline: 'none'
+            }}
+          />
+        ) : (
+          <span
+            style={{
+              flex: 1,
+              fontSize: FONT.LABEL,
+              fontFamily: THEME.FONT_PRIMARY,
+              color: isHighlighted ? THEME.WHITE : THEME.TEXT_PRIMARY,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {topic.title}
+          </span>
+        )}
+
+        {/* PC Colored Dots */}
+        {pcBadgesWithColor && pcBadgesWithColor.length > 0 && (
+          <PCColoredDots pcs={pcBadgesWithColor} />
+        )}
+
+        {/* Delete button on hover */}
+        {hovered && onDelete && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete()
+            }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: THEME.TEXT_DIM,
+              fontSize: FONT.LABEL,
+              cursor: 'pointer',
+              padding: '0 0.2vw'
+            }}
+          >
+            ×
+          </button>
+        )}
+      </div>
+
+      {/* Nested Subtopics (indented) */}
+      {isExpanded && subtopics.map(sub => {
+        const subNumber = topic.loOrder != null
+          ? `${topic.loOrder}.${topic.order}.${sub.order}`
+          : `x.${topic.order || 1}.${sub.order}`
+
+        return (
+          <SubtopicRow
+            key={sub.id}
+            subtopic={sub}
+            number={subNumber}
+            isHighlighted={isItemHighlighted('subtopic', sub.id)}
+            isSelected={selection.type === 'subtopic' && selection.id === sub.id}
+            isMultiSelected={isMultiSelectedFn('subtopic', sub.id)}
+            pcBadgesWithColor={getLinkedPCsWithColor('subtopic', sub.id)}
+            onClick={(e) => handleItemClick('subtopic', sub.id, e)}
+            onUpdate={(updates) => updateScalarNode('subtopic', sub.id, updates)}
+            onDelete={() => deleteScalarNode('subtopic', sub.id)}
+            performanceCriteria={performanceCriteria}
+            onLinkToPC={(pcId) => linkItemToPC(pcId, 'subtopic', sub.id)}
+            onUnlinkFromPC={(pcId) => unlinkItemFromPC(pcId, 'subtopic', sub.id)}
+            isUnallocated={isUnallocated}
+          />
+        )
+      })}
+
+      {/* Context Menu */}
+      {showContextMenu && (
+        <ContextMenu
+          x={showContextMenu.x}
+          y={showContextMenu.y}
+          onClose={() => setShowContextMenu(null)}
+          onDelete={onDelete}
+          performanceCriteria={performanceCriteria}
+          linkedPCs={(pcBadgesWithColor || []).map(p => p.name)}
+          onLinkToPC={onLinkToPC}
+          onUnlinkFromPC={onUnlinkFromPC}
+        />
+      )}
+    </div>
+  )
+}
+
+// ============================================
+// SUBTOPIC ROW COMPONENT (nested under topic)
+// ============================================
+
+function SubtopicRow({
+  subtopic,
+  number,
+  isHighlighted,
+  isSelected,
+  isMultiSelected,
+  pcBadgesWithColor,
+  onClick,
+  onUpdate,
+  onDelete,
+  performanceCriteria,
+  onLinkToPC,
+  onUnlinkFromPC,
+  isUnallocated
+}) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(subtopic.title)
+  const [hovered, setHovered] = useState(false)
+  const [showContextMenu, setShowContextMenu] = useState(null)
+
+  const handleDoubleClick = useCallback((e) => {
+    e.stopPropagation()
+    setEditValue(subtopic.title)
+    setIsEditing(true)
+  }, [subtopic.title])
+
+  const handleSave = useCallback(() => {
+    if (editValue.trim() !== subtopic.title) {
+      onUpdate?.({ title: editValue.trim() })
+    }
+    setIsEditing(false)
+  }, [editValue, subtopic.title, onUpdate])
+
+  const handleCancel = useCallback(() => {
+    setEditValue(subtopic.title)
+    setIsEditing(false)
+  }, [subtopic.title])
+
+  const handleContextMenu = useCallback((e) => {
+    e.preventDefault()
+    setShowContextMenu({ x: e.clientX, y: e.clientY })
+  }, [])
+
+  const highlightBg = isHighlighted
+    ? 'rgba(212, 115, 12, 0.15)'
+    : isSelected
+      ? 'rgba(212, 115, 12, 0.08)'
+      : isMultiSelected
+        ? 'rgba(0, 255, 0, 0.1)'
+        : hovered
+          ? 'rgba(255, 255, 255, 0.03)'
+          : 'transparent'
+
+  const highlightBorder = isHighlighted || isSelected
+    ? `1px solid ${THEME.AMBER}`
+    : isMultiSelected
+      ? '1px solid #00FF00'
+      : '1px solid transparent'
+
+  return (
+    <>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '0.5vw',
+          padding: '0.4vh 0.6vw',
+          marginLeft: '1.5vw',
+          marginTop: '0.2vh',
+          background: highlightBg,
+          border: highlightBorder,
+          borderRadius: '8px',
+          borderLeft: `2px solid ${isUnallocated ? '#ff4444' : THEME.BORDER}`,
+          cursor: 'pointer',
+          transition: 'all 0.15s ease'
+        }}
+        onClick={onClick}
+        onDoubleClick={handleDoubleClick}
+        onContextMenu={handleContextMenu}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        {/* Subtopic Number - RED if unallocated, GREEN if editing */}
+        <span
+          style={{
+            fontSize: FONT.BADGE,
+            fontFamily: THEME.FONT_MONO,
+            color: isEditing ? '#00FF00' : (isUnallocated ? '#ff4444' : THEME.TEXT_DIM),
+            fontWeight: 400,
+            flexShrink: 0,
+            minWidth: '3vw'
+          }}
+        >
+          {number}
+        </span>
+
+        {/* Subtopic Title / Edit */}
+        {isEditing ? (
+          <input
+            type="text"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={handleSave}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSave()
+              if (e.key === 'Escape') handleCancel()
+            }}
+            onClick={(e) => e.stopPropagation()}
+            autoFocus
+            style={{
+              flex: 1,
+              fontSize: FONT.BADGE,
+              fontFamily: THEME.FONT_PRIMARY,
+              color: THEME.WHITE,
+              background: THEME.BG_INPUT,
+              border: `1px solid ${THEME.AMBER}`,
+              borderRadius: '0.3vh',
+              padding: '0.1vh 0.3vw',
+              outline: 'none'
+            }}
+          />
+        ) : (
+          <span
+            style={{
+              flex: 1,
+              fontSize: FONT.BADGE,
+              fontFamily: THEME.FONT_PRIMARY,
+              color: isHighlighted ? THEME.WHITE : THEME.TEXT_DIM,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {subtopic.title}
+          </span>
+        )}
+
+        {/* PC Colored Dots */}
+        {pcBadgesWithColor && pcBadgesWithColor.length > 0 && (
+          <PCColoredDots pcs={pcBadgesWithColor} small />
+        )}
+
+        {/* Delete on hover */}
+        {hovered && onDelete && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete()
+            }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: THEME.TEXT_DIM,
+              fontSize: FONT.BADGE,
+              cursor: 'pointer',
+              padding: '0 0.1vw'
+            }}
+          >
+            ×
+          </button>
+        )}
+      </div>
+
+      {/* Context Menu */}
+      {showContextMenu && (
+        <ContextMenu
+          x={showContextMenu.x}
+          y={showContextMenu.y}
+          onClose={() => setShowContextMenu(null)}
+          onDelete={onDelete}
+          performanceCriteria={performanceCriteria}
+          linkedPCs={(pcBadgesWithColor || []).map(p => p.name)}
+          onLinkToPC={onLinkToPC}
+          onUnlinkFromPC={onUnlinkFromPC}
+        />
+      )}
+    </>
+  )
+}
+
+// ============================================
+// PC COLORED DOTS COMPONENT
+// ============================================
+
+function PCColoredDots({ pcs, small = false }) {
+  if (!pcs || pcs.length === 0) return null
+
+  const dotSize = small ? '6px' : '8px'
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '2px',
+        flexShrink: 0
+      }}
+    >
+      {pcs.map((pc, idx) => (
+        <div
+          key={pc.id || idx}
+          title={pc.name}
+          style={{
+            width: dotSize,
+            height: dotSize,
+            borderRadius: '50%',
+            background: pc.color || '#00FF00',
+            boxShadow: `0 0 4px ${pc.color || '#00FF00'}80`
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+// ============================================
 // SCALAR COLUMN ITEM COMPONENT
 // ============================================
 
@@ -389,7 +1045,8 @@ function ScalarColumnItem({
   label,
   isHighlighted,
   isSelected,
-  pcBadges = [],
+  isMultiSelected = false,
+  pcBadgesWithColor = [],
   onClick,
   onUpdate,
   onDelete,
@@ -401,32 +1058,35 @@ function ScalarColumnItem({
   isExpanded = false
 }) {
   const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState(label)
+  const [editValue, setEditValue] = useState('')
   const [showContextMenu, setShowContextMenu] = useState(null)
   const [hovered, setHovered] = useState(false)
-  const [pcExpanded, setPcExpanded] = useState(false)
+
+  // For LOs, split verb and description for editing
+  const isLO = type === 'lo'
+  const [verb, description] = isLO
+    ? [label.split(' ')[0], label.split(' ').slice(1).join(' ')]
+    : ['', label]
 
   // Handle double-click to edit
   const handleDoubleClick = useCallback(() => {
     if (onUpdate) {
-      setEditValue(label)
+      // For LOs, only edit the description (verb is non-editable)
+      setEditValue(isLO ? description : label)
       setIsEditing(true)
     }
-  }, [label, onUpdate])
+  }, [label, description, isLO, onUpdate])
 
   // Handle save edit
   const handleSave = useCallback(() => {
     if (type === 'lo') {
-      // Parse verb and description for LOs
-      const words = editValue.trim().split(/\s+/)
-      const verb = words[0]?.toUpperCase() || 'IDENTIFY'
-      const description = words.slice(1).join(' ') || ''
-      onUpdate?.({ verb, description })
+      // Verb is preserved, only description changes
+      onUpdate?.({ verb, description: editValue.trim() })
     } else {
-      onUpdate?.({ title: editValue })
+      onUpdate?.({ title: editValue.trim() })
     }
     setIsEditing(false)
-  }, [editValue, type, onUpdate])
+  }, [editValue, type, verb, onUpdate])
 
   // Handle cancel edit
   const handleCancel = useCallback(() => {
@@ -450,13 +1110,17 @@ function ScalarColumnItem({
     ? 'rgba(212, 115, 12, 0.15)'
     : isSelected
       ? 'rgba(212, 115, 12, 0.08)'
-      : hovered
-        ? 'rgba(255, 255, 255, 0.03)'
-        : 'transparent'
+      : isMultiSelected
+        ? 'rgba(0, 255, 0, 0.1)'
+        : hovered
+          ? 'rgba(255, 255, 255, 0.03)'
+          : 'transparent'
 
   const highlightBorder = isHighlighted || isSelected
     ? `1px solid ${THEME.AMBER}`
-    : '1px solid transparent'
+    : isMultiSelected
+      ? '1px solid #00FF00'
+      : '1px solid transparent'
 
   return (
     <>
@@ -511,16 +1175,17 @@ function ScalarColumnItem({
           </span>
         )}
 
-        {/* Number */}
+        {/* Number - GREEN when editing, otherwise AMBER */}
         {number && (
           <span
             style={{
               fontSize: FONT.NUMBER,
               fontFamily: THEME.FONT_MONO,
-              color: THEME.AMBER,
+              color: isEditing ? '#00FF00' : THEME.AMBER,
               fontWeight: 500,
               flexShrink: 0,
-              minWidth: hasChildren ? '2.5vw' : '3vw'
+              minWidth: hasChildren ? '2.5vw' : '3vw',
+              transition: 'color 0.15s ease'
             }}
           >
             {number}
@@ -529,28 +1194,44 @@ function ScalarColumnItem({
 
         {/* Label or Edit Input */}
         {isEditing ? (
-          <input
-            type="text"
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={handleSave}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSave()
-              if (e.key === 'Escape') handleCancel()
-            }}
-            autoFocus
-            style={{
-              flex: 1,
-              fontSize: FONT.LABEL,
-              fontFamily: THEME.FONT_PRIMARY,
-              color: THEME.WHITE,
-              background: THEME.BG_INPUT,
-              border: `1px solid ${THEME.AMBER}`,
-              borderRadius: '0.3vh',
-              padding: '0.2vh 0.4vw',
-              outline: 'none'
-            }}
-          />
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.4vw' }}>
+            {/* For LOs, show verb as non-editable green text */}
+            {isLO && verb && (
+              <span
+                style={{
+                  fontSize: FONT.LABEL,
+                  fontFamily: THEME.FONT_PRIMARY,
+                  color: '#00FF00',
+                  fontWeight: 500,
+                  flexShrink: 0
+                }}
+              >
+                {verb}
+              </span>
+            )}
+            <input
+              type="text"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={handleSave}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSave()
+                if (e.key === 'Escape') handleCancel()
+              }}
+              autoFocus
+              style={{
+                flex: 1,
+                fontSize: FONT.LABEL,
+                fontFamily: THEME.FONT_PRIMARY,
+                color: THEME.WHITE,
+                background: THEME.BG_INPUT,
+                border: `1px solid ${THEME.AMBER}`,
+                borderRadius: '0.3vh',
+                padding: '0.2vh 0.4vw',
+                outline: 'none'
+              }}
+            />
+          </div>
         ) : (
           <span
             style={{
@@ -567,51 +1248,9 @@ function ScalarColumnItem({
           </span>
         )}
 
-        {/* PC Indicator - small green dot that expands on click */}
-        {pcBadges.length > 0 && (
-          <div
-            onClick={(e) => {
-              e.stopPropagation()
-              setPcExpanded(!pcExpanded)
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.3vw',
-              cursor: 'pointer',
-              flexShrink: 0
-            }}
-          >
-            {/* Green dot indicator */}
-            <div
-              style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: '#00FF00',
-                boxShadow: '0 0 4px rgba(0, 255, 0, 0.5)',
-                transition: 'transform 0.15s ease'
-              }}
-            />
-            {/* Expanded PC names */}
-            {pcExpanded && (
-              <div style={{ display: 'flex', gap: '0.2vw' }}>
-                {pcBadges.map(pcName => (
-                  <span
-                    key={pcName}
-                    style={{
-                      fontSize: FONT.BADGE,
-                      fontFamily: THEME.FONT_MONO,
-                      color: '#00FF00',
-                      padding: '0.1vh 0.3vw'
-                    }}
-                  >
-                    {pcName}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
+        {/* PC Colored Dots */}
+        {pcBadgesWithColor && pcBadgesWithColor.length > 0 && (
+          <PCColoredDots pcs={pcBadgesWithColor} />
         )}
 
         {/* Delete button on hover */}
@@ -643,7 +1282,7 @@ function ScalarColumnItem({
           onClose={closeContextMenu}
           onDelete={onDelete}
           performanceCriteria={performanceCriteria}
-          linkedPCs={pcBadges}
+          linkedPCs={(pcBadgesWithColor || []).map(p => p.name)}
           onLinkToPC={onLinkToPC}
           onUnlinkFromPC={onUnlinkFromPC}
         />

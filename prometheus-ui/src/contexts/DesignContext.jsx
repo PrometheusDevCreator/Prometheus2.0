@@ -105,6 +105,20 @@ export const LESSON_TYPES = [
 ]
 
 // ============================================
+// PC COLORS - Distinctive colors for Performance Criteria
+// ============================================
+export const PC_COLORS = [
+  '#00FF00',  // Luminous Green (first PC)
+  '#00BFFF',  // Deep Sky Blue
+  '#FF00FF',  // Magenta
+  '#FFD700',  // Gold
+  '#FF4444',  // Red
+  '#FF6600',  // Orange
+  '#00FFFF',  // Cyan
+  '#FFFFFF'   // White
+]
+
+// ============================================
 // CONTEXT DEFINITION
 // ============================================
 const DesignContext = createContext(null)
@@ -212,6 +226,48 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     subtopics: new Set(),
     lessons: new Set()
   })
+
+  // --------------------------------------------
+  // MULTI-SELECTION STATE (for SHIFT+click bulk operations)
+  // --------------------------------------------
+  const [multiSelection, setMultiSelection] = useState({
+    items: [],      // Array of { type, id }
+    active: false   // Whether multi-selection mode is active
+  })
+
+  // Toggle item in multi-selection
+  const toggleMultiSelect = useCallback((type, id) => {
+    setMultiSelection(prev => {
+      const existingIndex = prev.items.findIndex(i => i.type === type && i.id === id)
+      if (existingIndex >= 0) {
+        // Remove item if already selected
+        return {
+          items: prev.items.filter((_, i) => i !== existingIndex),
+          active: prev.items.length > 1
+        }
+      }
+      // Add item to selection
+      return {
+        items: [...prev.items, { type, id }],
+        active: true
+      }
+    })
+  }, [])
+
+  // Clear multi-selection
+  const clearMultiSelection = useCallback(() => {
+    setMultiSelection({ items: [], active: false })
+  }, [])
+
+  // Check if item is in multi-selection
+  const isMultiSelected = useCallback((type, id) => {
+    return multiSelection.items.some(i => i.type === type && i.id === id)
+  }, [multiSelection.items])
+
+  // Helper: Check if a topic number is unallocated (starts with 'x.')
+  const isUnallocatedNumber = useCallback((number) => {
+    return number?.startsWith('x.') || false
+  }, [])
 
   // Sync scalarData when courseData.learningObjectives changes
   useEffect(() => {
@@ -337,14 +393,19 @@ export function DesignProvider({ children, courseData, setCourseData }) {
       const primaryLOId = lesson.learningObjectives?.[0] || null
       const loOrder = getLOOrder(primaryLOId)
 
-      // If no LO assigned, set all topics to "x.x"
+      // If no LO assigned, use "x.1", "x.2" sequential numbering (unallocated)
       if (!loOrder) {
         return {
           ...lesson,
           topics: (lesson.topics || []).map((t, idx) => ({
             ...t,
-            number: 'x.x',
-            loId: null
+            number: `x.${idx + 1}`,  // Sequential x.1, x.2, x.3 etc
+            loId: null,
+            // Also update subtopics to use x.N.M numbering
+            subtopics: (t.subtopics || []).map((s, subIdx) => ({
+              ...s,
+              number: `x.${idx + 1}.${subIdx + 1}`  // x.1.1, x.1.2 etc
+            }))
           }))
         }
       }
@@ -370,14 +431,22 @@ export function DesignProvider({ children, courseData, setCourseData }) {
         }
       })
 
-      // Renumber topics sequentially
+      // Renumber topics sequentially (and their subtopics)
       return {
         ...lesson,
-        topics: (lesson.topics || []).map((t, idx) => ({
-          ...t,
-          number: `${loOrder}.${baseTopicNum + idx + 1}`,
-          loId: primaryLOId
-        }))
+        topics: (lesson.topics || []).map((t, idx) => {
+          const topicNumber = `${loOrder}.${baseTopicNum + idx + 1}`
+          return {
+            ...t,
+            number: topicNumber,
+            loId: primaryLOId,
+            // Update subtopics to use LO.Topic.Subtopic numbering
+            subtopics: (t.subtopics || []).map((s, subIdx) => ({
+              ...s,
+              number: `${topicNumber}.${subIdx + 1}`  // e.g., 1.3.1, 1.3.2
+            }))
+          }
+        })
       }
     })
   }, [getLOOrder])
@@ -421,14 +490,16 @@ export function DesignProvider({ children, courseData, setCourseData }) {
       const currentLesson = prev.find(l => l.id === lessonId)
       if (!currentLesson) return prev
 
-      // If no LO assigned, use "x.x" placeholder (no Scalar sync)
+      // If no LO assigned, use sequential "x.N" numbering (no Scalar sync)
       if (!loOrder) {
+        const existingTopicCount = (currentLesson.topics || []).length
         const newTopic = {
           id: lessonTopicId,
           title: topicTitle,
-          number: 'x.x',
+          number: `x.${existingTopicCount + 1}`,  // Sequential: x.1, x.2, x.3 etc
           loId: null,
-          scalarTopicId: null
+          scalarTopicId: null,
+          subtopics: []
         }
         return prev.map(l =>
           l.id === lessonId
@@ -576,25 +647,19 @@ export function DesignProvider({ children, courseData, setCourseData }) {
       if (!topic) return prev
 
       // Get the topic number prefix for subtopic numbering
-      const topicNumber = topic.number || 'x.x'
-      const hasValidNumber = topicNumber !== 'x.x'
+      const topicNumber = topic.number || 'x.1'
+      const isUnallocated = topicNumber.startsWith('x.')
       const scalarTopicId = topic.scalarTopicId
 
-      // Calculate next subtopic number
+      // Calculate next subtopic number (sequential within this topic)
       const existingSubtopics = topic.subtopics || []
-      let maxSubNum = 0
-      existingSubtopics.forEach(s => {
-        const match = s.number?.match(/\d+\.\d+\.(\d+)$/)
-        if (match) {
-          maxSubNum = Math.max(maxSubNum, parseInt(match[1]))
-        }
-      })
+      const nextSubNum = existingSubtopics.length + 1
 
       const newSubtopic = {
         id: lessonSubtopicId,
         title: subtopicTitle,
-        number: hasValidNumber ? `${topicNumber}.${maxSubNum + 1}` : 'x.x.x',
-        scalarSubtopicId: scalarTopicId ? scalarSubtopicId : null // Link to scalar if parent topic is linked
+        number: `${topicNumber}.${nextSubNum}`,  // e.g., "1.2.3" or "x.1.1"
+        scalarSubtopicId: !isUnallocated && scalarTopicId ? scalarSubtopicId : null // Link to scalar only if allocated
       }
 
       // Auto-sync: Add subtopic to scalar if parent topic has a scalar link
@@ -1030,13 +1095,15 @@ export function DesignProvider({ children, courseData, setCourseData }) {
   // PERFORMANCE CRITERIA OPERATIONS
   // --------------------------------------------
 
-  // Add new Performance Criteria
+  // Add new Performance Criteria (with color assignment)
   const addPerformanceCriteria = useCallback((name) => {
     setScalarData(prev => {
+      const colorIndex = (prev.performanceCriteria?.length || 0) % PC_COLORS.length
       const newPC = {
         id: `pc-${Date.now()}`,
         name: name || `PC${(prev.performanceCriteria?.length || 0) + 1}`,
         order: (prev.performanceCriteria?.length || 0) + 1,
+        color: PC_COLORS[colorIndex],  // Assign color from palette
         linkedItems: {
           los: [],
           topics: [],
@@ -1115,6 +1182,44 @@ export function DesignProvider({ children, courseData, setCourseData }) {
       .filter(pc => pc.linkedItems[typeKey]?.includes(itemId))
       .map(pc => pc.name)
   }, [scalarData.performanceCriteria])
+
+  // Get linked PCs with full info (including color)
+  const getLinkedPCsWithColor = useCallback((itemType, itemId) => {
+    const typeKey = itemType === 'lo' ? 'los' : `${itemType}s`
+    return (scalarData.performanceCriteria || [])
+      .filter(pc => pc.linkedItems[typeKey]?.includes(itemId))
+      .map(pc => ({ name: pc.name, color: pc.color || '#00FF00', id: pc.id }))
+  }, [scalarData.performanceCriteria])
+
+  // --------------------------------------------
+  // BULK OPERATIONS (for multi-selection)
+  // --------------------------------------------
+
+  // Bulk link all selected items to a PC
+  const bulkLinkToPC = useCallback((pcId) => {
+    multiSelection.items.forEach(({ type, id }) => {
+      linkItemToPC(pcId, type, id)
+    })
+  }, [multiSelection.items, linkItemToPC])
+
+  // Bulk unlink all selected items from a PC
+  const bulkUnlinkFromPC = useCallback((pcId) => {
+    multiSelection.items.forEach(({ type, id }) => {
+      unlinkItemFromPC(pcId, type, id)
+    })
+  }, [multiSelection.items, unlinkItemFromPC])
+
+  // Bulk delete all selected items
+  const bulkDelete = useCallback(() => {
+    multiSelection.items.forEach(({ type, id }) => {
+      if (type === 'lesson') {
+        deleteLesson(id)
+      } else {
+        deleteScalarNode(type, id)
+      }
+    })
+    clearMultiSelection()
+  }, [multiSelection.items, deleteLesson, deleteScalarNode, clearMultiSelection])
 
   // --------------------------------------------
   // CROSS-COLUMN HIGHLIGHTING
@@ -1366,6 +1471,19 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     linkItemToPC,
     unlinkItemFromPC,
     getLinkedPCs,
+    getLinkedPCsWithColor,
+
+    // Multi-selection (for SHIFT+click bulk operations)
+    multiSelection,
+    toggleMultiSelect,
+    clearMultiSelection,
+    isMultiSelected,
+    bulkLinkToPC,
+    bulkUnlinkFromPC,
+    bulkDelete,
+
+    // Helper functions
+    isUnallocatedNumber,
 
     // Cross-column highlighting
     highlightedItems,
@@ -1396,7 +1514,8 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     setCourseData,
 
     // Constants
-    LESSON_TYPES
+    LESSON_TYPES,
+    PC_COLORS
   }), [
     activeTab, viewMode, currentModule, currentWeek, currentDay,
     lessons, selectedLesson, scheduledLessons, unscheduledLessons, savedLessons,
@@ -1409,7 +1528,9 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     addLearningObjective, addTopic, addSubtopic, updateScalarNode, deleteScalarNode,
     createLessonFromScalar,
     addPerformanceCriteria, updatePerformanceCriteria, deletePerformanceCriteria,
-    linkItemToPC, unlinkItemFromPC, getLinkedPCs,
+    linkItemToPC, unlinkItemFromPC, getLinkedPCs, getLinkedPCsWithColor,
+    multiSelection, toggleMultiSelect, clearMultiSelection, isMultiSelected,
+    bulkLinkToPC, bulkUnlinkFromPC, bulkDelete, isUnallocatedNumber,
     highlightedItems, updateHighlightedItems, clearHighlights, isItemHighlighted,
     selection, select, startEditing, clearSelection,
     editorCollapsed, courseData, setCourseData

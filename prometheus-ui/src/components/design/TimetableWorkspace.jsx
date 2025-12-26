@@ -130,20 +130,13 @@ function TimetableWorkspace() {
         </div>
       )}
 
-      {/* Unallocated Lessons Area - bottom right */}
-      {unscheduledLessons.length > 0 && (
-        <UnallocatedLessons
-          lessons={unscheduledLessons}
-          lessonTypes={LESSON_TYPES}
-        />
-      )}
-
-      {/* Control Zone */}
+      {/* Control Zone (includes Unallocated Lessons) */}
       <ControlZone
         lessonTypes={LESSON_TYPES}
         currentType={currentType}
         onTypeSelect={handleTypeClick}
         hasPendingLesson={!!pendingLesson}
+        unscheduledLessons={unscheduledLessons}
       />
     </div>
   )
@@ -237,7 +230,7 @@ function PendingLessonCard({ lesson, type, onDragStart, onCancel }) {
 // CONTROL ZONE COMPONENT
 // ============================================
 
-function ControlZone({ lessonTypes, currentType, onTypeSelect, hasPendingLesson }) {
+function ControlZone({ lessonTypes, currentType, onTypeSelect, hasPendingLesson, unscheduledLessons = [] }) {
   // Split types into two rows (5 each)
   const row1Types = lessonTypes.slice(0, 5)
   const row2Types = lessonTypes.slice(5, 10)
@@ -254,13 +247,14 @@ function ControlZone({ lessonTypes, currentType, onTypeSelect, hasPendingLesson 
         zIndex: 10
       }}
     >
-      {/* Container aligned with day bars (reduced width) */}
+      {/* Container aligned with day bars (full width with padding) */}
       <div
         style={{
-          width: 'calc(75% - 150px)',
+          width: 'calc(90% - 100px)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
+          gap: '1vw'
         }}
       >
         {/* Lesson Type Palette - 2x5 Grid - aligned left */}
@@ -287,7 +281,7 @@ function ControlZone({ lessonTypes, currentType, onTypeSelect, hasPendingLesson 
           </div>
         </div>
 
-        {/* Navigation Controls - aligned right */}
+        {/* Navigation Controls - center */}
         <div
           style={{
             display: 'flex',
@@ -301,6 +295,14 @@ function ControlZone({ lessonTypes, currentType, onTypeSelect, hasPendingLesson 
           <span style={{ color: THEME.AMBER, cursor: 'pointer' }}>+</span>
           <span style={{ cursor: 'pointer' }}>{'>'}</span>
         </div>
+
+        {/* Unallocated Lessons - aligned right */}
+        {unscheduledLessons.length > 0 && (
+          <UnallocatedLessons
+            lessons={unscheduledLessons}
+            lessonTypes={lessonTypes}
+          />
+        )}
       </div>
     </div>
   )
@@ -389,18 +391,15 @@ function UnallocatedLessons({ lessons, lessonTypes }) {
   return (
     <div
       style={{
-        position: 'absolute',
-        bottom: '90px',
-        right: '20px',
         background: 'rgba(20, 20, 20, 0.95)',
-        border: `1px solid ${THEME.BORDER}`,
+        border: `2px solid ${THEME.AMBER}`,
         borderRadius: '12px',
-        zIndex: 50,
         minWidth: '180px',
-        maxWidth: '220px',
-        maxHeight: collapsed ? '36px' : '200px',
+        maxWidth: '280px',
+        maxHeight: collapsed ? '36px' : '180px',
         overflow: 'hidden',
-        transition: 'max-height 0.2s ease'
+        transition: 'max-height 0.2s ease',
+        flexShrink: 0
       }}
     >
       {/* Header */}
@@ -411,22 +410,23 @@ function UnallocatedLessons({ lessons, lessonTypes }) {
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '0.6vh 0.8vw',
-          borderBottom: collapsed ? 'none' : `1px solid ${THEME.BORDER}`,
+          borderBottom: collapsed ? 'none' : `1px solid ${THEME.AMBER}40`,
           cursor: 'pointer'
         }}
       >
         <span
           style={{
             fontSize: '1.2vh',
-            color: THEME.TEXT_DIM,
+            color: THEME.AMBER,
             fontFamily: THEME.FONT_PRIMARY,
             textTransform: 'uppercase',
-            letterSpacing: '0.05vw'
+            letterSpacing: '0.05vw',
+            fontWeight: 500
           }}
         >
           Unallocated ({lessons.length})
         </span>
-        <span style={{ fontSize: '1.2vh', color: THEME.TEXT_DIM }}>
+        <span style={{ fontSize: '1.2vh', color: THEME.AMBER }}>
           {collapsed ? '▶' : '▼'}
         </span>
       </div>
