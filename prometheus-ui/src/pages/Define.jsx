@@ -132,7 +132,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
     // Legacy duration fields (kept for backwards compat)
     duration: courseData?.duration || 1,
     durationUnit: courseData?.durationUnit || 'Hours',
-    level: courseData?.level || 'Foundational',
+    level: courseData?.level || 'Foundation',
     seniority: courseData?.seniority || 'Junior',
     description: courseData?.description || '',
     deliveryModes: courseData?.deliveryModes || [],
@@ -370,7 +370,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
       // Legacy duration fields
       duration: 1,
       durationUnit: 'Hours',
-      level: 'Foundational',
+      level: 'Foundation',
       seniority: 'Junior',
       description: '',
       deliveryModes: [],
@@ -634,6 +634,8 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                 hours: formData.hours,
                 days: formData.days,
                 weeks: formData.weeks,
+                level: formData.level,
+                seniority: formData.seniority,
                 modules: formData.module,  // Sync with formData.module for backwards compat
                 semesters: formData.semesters,
                 terms: formData.terms
@@ -657,6 +659,13 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                 } else {
                   updateField(field, value)
                 }
+                setActiveColumn('left')
+                setHasUnsavedChanges(true)
+              }}
+              onBatchChange={(updates) => {
+                Object.entries(updates).forEach(([field, value]) => {
+                  updateField(field, value)
+                })
                 setActiveColumn('left')
                 setHasUnsavedChanges(true)
               }}
