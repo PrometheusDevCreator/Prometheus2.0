@@ -147,7 +147,7 @@ function DurationWheelPanel({
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            marginTop: OPTIONAL_LABEL_HEIGHT + CONTENT_Y - SIZE_DURATION / 2
+            marginTop: OPTIONAL_LABEL_HEIGHT + CONTENT_Y - SIZE_DURATION / 2 + 30
           }}
         >
           <LogarithmicDurationWheel
@@ -199,7 +199,7 @@ function DurationWheelPanel({
           <div
             style={{
               position: 'absolute',
-              top: OPTIONAL_LABEL_HEIGHT + CONTENT_Y - SIZE_LEVEL / 2
+              top: OPTIONAL_LABEL_HEIGHT + CONTENT_Y - SIZE_LEVEL / 2 + 20
             }}
           >
             <ContentWheel
@@ -213,7 +213,7 @@ function DurationWheelPanel({
           <div
             style={{
               position: 'absolute',
-              top: OPTIONAL_LABEL_HEIGHT + SENIORITY_Y - SIZE_LEVEL / 2
+              top: OPTIONAL_LABEL_HEIGHT + SENIORITY_Y - SIZE_LEVEL / 2 + 50
             }}
           >
             <CategoricalWheel
