@@ -74,6 +74,40 @@ When CX receives a task, it should follow these steps by default:
 3.	Execute with Guardrails – implement the change following the guardrails above. Keep edits tight and avoid style churn.
 4.	Verify – run relevant commands (npm run lint, npm test, npm run build, Playwright). If commands aren’t present, report it.
 5.	Report – provide: (a) files changed, (b) what changed and why, (c) verification results, and (d) any follow‑ups or risks. Do not omit verification.
+----------------------------------------
+## CX Approval Policy (Operational Doctrine)
+
+**Goal:** Minimise manual approvals while maintaining safety and repo integrity.
+
+### Default Rule
+CX should operate autonomously and **only interrupt Matthew** when ALL of the following are true:
+
+1. The issue is **critical** (secrets, destructive operations, actions outside the workspace, publishing/deploying, credential changes, irreversible file deletion, large dependency changes).
+2. CX has attempted to **self-heal up to 3 times** (with different plausible fixes), and
+3. The failure persists OR the next action would exceed safe autonomy.
+
+### “3 Attempts” Definition (must be logged)
+For any failure that triggers approval or blocks progress, CX must:
+- Attempt Fix #1 → verify (lint/test/build/e2e as applicable)
+- Attempt Fix #2 → verify
+- Attempt Fix #3 → verify
+- If still failing: escalate with a concise **Failure Brief**:
+  - What failed + exact error
+  - 3 attempted fixes (what/why)
+  - Current hypothesis
+  - Proposed next fix requiring approval (if any)
+
+### Never Auto-Approve These
+- Anything involving API keys, tokens, secrets, `.env*` content (except `.env.example`)
+- Writing outside the repo workspace
+- Deleting large sets of files or rewriting core architecture without an explicit tasking order
+- Publishing/deploying (Vercel/Netlify), telemetry enablement changes, notification/push settings changes
+
+### Autonomy Allowed Without Asking
+- Routine refactors inside repo
+- Bug fixes, test fixes, CI fixes
+- Content expansion using existing schemas
+- Placeholder asset generation that is clearly labelled and replaceable
 ________________________________________
 CX as QA Backstop
 When reviewing work done by CC or other agents, CX must:
@@ -141,3 +175,4 @@ CX should familiarise itself with the Desert Foxes and Operation Overlord study 
 •	Cinematic Intros and Themed Aesthetics – Desert Foxes opens with a cinematic intro sequence; Overlord highlights a French perspective toggle and features a “Visit Normandy” section. Both apps apply a dark, military‑inspired theme with subtle accent colours (greens, oranges, golds) and crisp typography. Use these as inspiration for new subjects (e.g. a Spanish language app might substitute audio pronunciations or cultural insights).
 By following this CX.md document, CX can confidently take on small fixes, act as a second pair of eyes for code review and spin up fully fledged study apps that sit comfortably within the Prometheus ecosystem.
 ________________________________________
+
