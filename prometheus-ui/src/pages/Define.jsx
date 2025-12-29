@@ -16,7 +16,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { THEME, LEVEL_OPTIONS, SENIORITY_OPTIONS, DELIVERY_OPTIONS } from '../constants/theme'
 import Slider from '../components/Slider'
-import DurationSlider from '../components/DurationSlider'
+import DurationWheelPanel from '../components/duration/DurationWheelPanel'
 import GradientBorder from '../components/GradientBorder'
 import Footer from '../components/Footer'
 import pkeButton from '../assets/PKE_Button.png'
@@ -58,7 +58,7 @@ const BLOOMS_CATEGORIES = [
 // Flat list of all Bloom's verbs for validation
 const BLOOMS_VERBS = BLOOMS_CATEGORIES.flatMap(cat => cat.verbs)
 
-function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, courseState, onSaveCountIncrement }) {
+function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, courseState, onSaveCountIncrement, exitPending }) {
   const [isPKEActive, setIsPKEActive] = useState(false)
   const [focusedField, setFocusedField] = useState(null)
   const [hoveredField, setHoveredField] = useState(null)
@@ -123,6 +123,13 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
     module: courseData?.module || 1,
     moduleTitles: courseData?.moduleTitles || [], // Array of module titles
     code: courseData?.code || '',
+    // Duration wheel values (new)
+    hours: courseData?.hours || 0,
+    days: courseData?.days || 0,
+    weeks: courseData?.weeks || 0,
+    semesters: courseData?.semesters || 0,
+    terms: courseData?.terms || 0,
+    // Legacy duration fields (kept for backwards compat)
     duration: courseData?.duration || 1,
     durationUnit: courseData?.durationUnit || 'Hours',
     level: courseData?.level || 'Foundational',
@@ -354,6 +361,13 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
       module: 1,
       moduleTitles: [],  // Reset module titles
       code: '',
+      // Duration wheel values reset
+      hours: 0,
+      days: 0,
+      weeks: 0,
+      semesters: 0,
+      terms: 0,
+      // Legacy duration fields
       duration: 1,
       durationUnit: 'Hours',
       level: 'Foundational',
@@ -595,82 +609,59 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
             </GradientBorder>
           </div>
 
-          {/* Modules + Code */}
-          <div style={{ display: 'flex', gap: D.gapSm }}>
-            <div style={{ flex: 1 }}>
-              <label style={labelStyle(isFieldActive('module'))}>Modules</label>
-              {/* Module adjuster in styled window matching Code input */}
-              <GradientBorder isActive={isFieldActive('module')}>
-                <div
-                  style={{
-                    ...inputStyle,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '12px',
-                    padding: '10px 16px'
-                  }}
-                  onMouseEnter={() => setHoveredField('module')}
-                  onMouseLeave={() => setHoveredField(null)}
-                >
-                  <button
-                    onClick={handleModuleDecrease}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: THEME.TEXT_SECONDARY,
-                      fontSize: '18px',
-                      cursor: formData.module <= 1 ? 'default' : 'pointer',
-                      padding: '0 4px',
-                      opacity: formData.module <= 1 ? 0.4 : 1,
-                      transition: 'opacity 0.2s ease'
-                    }}
-                    disabled={formData.module <= 1}
-                  >
-                    −
-                  </button>
-                  <span style={{
-                    color: THEME.AMBER,
-                    fontFamily: THEME.FONT_MONO,
-                    fontSize: 'clamp(13px, 0.75vw, 16px)',
-                    minWidth: '24px',
-                    textAlign: 'center'
-                  }}>
-                    {formData.module}
-                  </span>
-                  <button
-                    onClick={handleModuleIncrease}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: THEME.TEXT_SECONDARY,
-                      fontSize: '18px',
-                      cursor: 'pointer',
-                      padding: '0 4px',
-                      transition: 'opacity 0.2s ease'
-                    }}
-                  >
-                    +
-                  </button>
-                </div>
-              </GradientBorder>
-            </div>
-            <div style={{ flex: 2 }}>
-              <label style={labelStyle(isFieldActive('code'))}>Code</label>
-              <GradientBorder isActive={isFieldActive('code')}>
-                <input
-                  type="text"
-                  value={formData.code}
-                  onChange={(e) => updateField('code', e.target.value)}
-                  onFocus={() => handleFieldFocus('code')}
-                  onBlur={() => setFocusedField(null)}
-                  onMouseEnter={() => setHoveredField('code')}
-                  onMouseLeave={() => setHoveredField(null)}
-                  style={inputStyle}
-                  placeholder="INT-001"
-                />
-              </GradientBorder>
-            </div>
+          {/* Code */}
+          <div>
+            <label style={labelStyle(isFieldActive('code'))}>Code</label>
+            <GradientBorder isActive={isFieldActive('code')}>
+              <input
+                type="text"
+                value={formData.code}
+                onChange={(e) => updateField('code', e.target.value)}
+                onFocus={() => handleFieldFocus('code')}
+                onBlur={() => setFocusedField(null)}
+                onMouseEnter={() => setHoveredField('code')}
+                onMouseLeave={() => setHoveredField(null)}
+                style={inputStyle}
+                placeholder="INT-001"
+              />
+            </GradientBorder>
+          </div>
+
+          {/* Duration & Structure Wheels Panel */}
+          <div style={{ marginTop: D.gapMd }}>
+            <DurationWheelPanel
+              values={{
+                hours: formData.hours,
+                days: formData.days,
+                weeks: formData.weeks,
+                modules: formData.module,  // Sync with formData.module for backwards compat
+                semesters: formData.semesters,
+                terms: formData.terms
+              }}
+              onChange={(field, value) => {
+                if (field === 'modules') {
+                  // Sync modules wheel with formData.module
+                  updateField('module', value)
+                  // Ensure moduleTitles array has enough slots
+                  if (value > formData.moduleTitles.length) {
+                    const newTitles = [...formData.moduleTitles]
+                    while (newTitles.length < value) {
+                      newTitles.push('')
+                    }
+                    setFormData(prev => ({ ...prev, moduleTitles: newTitles }))
+                  }
+                  // Adjust current module index if needed
+                  if (currentModuleIndex >= value && value > 0) {
+                    setCurrentModuleIndex(value - 1)
+                  }
+                } else {
+                  updateField(field, value)
+                }
+                setActiveColumn('left')
+                setHasUnsavedChanges(true)
+              }}
+              showValidation={true}
+            />
           </div>
 
           {/* Module Title Input - appears when modules > 1 */}
@@ -780,52 +771,6 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
               </div>
             </div>
           )}
-
-          {/* Duration - inline layout: Label | Slider | Readout */}
-          {/* Moved down 75px (15+75=90), +15px if module title visible = 105px max */}
-          <div
-            onClick={() => setActiveSlider('duration')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              marginTop: formData.module > 1 ? '75px' : '90px',  /* Reduced when module title shows */
-              cursor: 'pointer'
-            }}
-          >
-            <label style={{
-              ...labelStyle(isFieldActive('duration')),
-              marginBottom: 0,
-              minWidth: '75px',
-              flexShrink: 0,
-              color: activeSlider === 'duration' ? THEME.WHITE : THEME.TEXT_SECONDARY
-            }}>Duration</label>
-            <div style={{ flex: 1 }}>
-              <DurationSlider
-                value={formData.duration}
-                unit={formData.durationUnit}
-                onChange={(val, unit) => {
-                  updateField('duration', val)
-                  updateField('durationUnit', unit)
-                  setActiveColumn('left')
-                  setActiveSlider('duration')
-                }}
-                width="100%"
-                showValue={false}
-              />
-            </div>
-            <span style={{
-              color: activeSlider === 'duration' ? '#00FF00' : THEME.AMBER,
-              fontFamily: THEME.FONT_PRIMARY,
-              fontSize: '14px',
-              minWidth: '90px',
-              textAlign: 'right',
-              flexShrink: 0,
-              transition: 'color 0.2s ease'
-            }}>
-              {formData.duration} {formData.duration === 1 ? formData.durationUnit.slice(0, -1) : formData.durationUnit}
-            </span>
-          </div>
 
           {/* Level - inline layout: Label | Slider | Readout */}
           <div
@@ -1403,6 +1348,8 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
         onDeleteCancel={cancelDeleteWorkflow}
         // Navigation arrow props
         hasUnsavedChanges={hasUnsavedChanges}
+        // Exit workflow
+        exitPending={exitPending}
       />
     </div>
   )

@@ -41,7 +41,8 @@ function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
     moveLesson,
     scheduleLesson,
     selection,
-    selectedLesson
+    selectedLesson,
+    overviewBlocks
   } = useDesign()
 
   // Track which day has a hovered lesson
@@ -85,6 +86,26 @@ function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
     // Always show 5 days in week view format per mockup
     return Array.from({ length: NUM_DAYS }, (_, i) => i + 1)
   }, [])
+
+  // Get OVERVIEW blocks that relate to a specific day
+  // Matches DAY blocks with matching title (e.g., "Day 1" or just "1")
+  const getOverviewBlocksForDay = useCallback((day) => {
+    if (!overviewBlocks || overviewBlocks.length === 0) return []
+    return overviewBlocks.filter(block => {
+      // Match DAY type blocks by title containing the day number
+      if (block.type === 'DAY') {
+        const titleMatch = block.title?.match(/\d+/)
+        return titleMatch && parseInt(titleMatch[0]) === day
+      }
+      // Include LESSON blocks based on position (rough mapping by y-coordinate)
+      // This is a simplified heuristic - lessons near top = day 1, etc.
+      if (block.type === 'LESSON') {
+        const estimatedDay = Math.min(5, Math.max(1, Math.floor(block.y / 100) + 1))
+        return estimatedDay === day
+      }
+      return false
+    })
+  }, [overviewBlocks])
 
   return (
     <div
@@ -170,23 +191,30 @@ function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
             const hasSelectedLesson = selectedLesson && selectedLesson.day === day && selectedLesson.week === currentWeek
             // Check if this day has a hovered lesson
             const hasHoveredLesson = hoveredLessonDay === day
+            // Get OVERVIEW blocks for this day
+            const overviewBlocksForDay = getOverviewBlocksForDay(day)
 
             return (
-              <DayRow
-                key={day}
-                day={day}
-                hours={hours}
-                numHours={numHours}
-                lessons={getLessonsForDay(day)}
-                startHour={startHour}
-                endHour={endHour}
-                isCurrentDay={day === currentDay && viewMode === 'week'}
-                isHighlighted={hasSelectedLesson || hasHoveredLesson}
-                onDrop={(lessonId, newStartTime) => moveLesson(lessonId, day, newStartTime)}
-                onSchedule={(lessonId, newStartTime) => scheduleLesson(lessonId, day, newStartTime)}
-                onSchedulePending={(newStartTime) => onSchedulePending?.(day, newStartTime)}
-                onLessonHover={(isHovered) => setHoveredLessonDay(isHovered ? day : null)}
-              />
+              <div key={day} style={{ display: 'flex', flexDirection: 'column' }}>
+                <DayRow
+                  day={day}
+                  hours={hours}
+                  numHours={numHours}
+                  lessons={getLessonsForDay(day)}
+                  startHour={startHour}
+                  endHour={endHour}
+                  isCurrentDay={day === currentDay && viewMode === 'week'}
+                  isHighlighted={hasSelectedLesson || hasHoveredLesson}
+                  onDrop={(lessonId, newStartTime) => moveLesson(lessonId, day, newStartTime)}
+                  onSchedule={(lessonId, newStartTime) => scheduleLesson(lessonId, day, newStartTime)}
+                  onSchedulePending={(newStartTime) => onSchedulePending?.(day, newStartTime)}
+                  onLessonHover={(isHovered) => setHoveredLessonDay(isHovered ? day : null)}
+                />
+                {/* OVERVIEW Reference Line - shows sketch content below day bar */}
+                {overviewBlocksForDay.length > 0 && (
+                  <OverviewReferenceLine blocks={overviewBlocksForDay} />
+                )}
+              </div>
             )
           })}
         </div>
@@ -374,6 +402,60 @@ function DayRow({
               useFullWidth={true}
             />
           </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ============================================
+// OVERVIEW REFERENCE LINE COMPONENT
+// Shows OVERVIEW sketch content below day bars
+// ============================================
+
+function OverviewReferenceLine({ blocks }) {
+  const [isHovered, setIsHovered] = useState(false)
+
+  if (!blocks || blocks.length === 0) return null
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        height: '16px',
+        paddingLeft: `${DAY_LABEL_WIDTH}px`,
+        marginTop: '2px',
+        marginBottom: '2px',
+        borderBottom: `1px solid ${isHovered ? THEME.AMBER : '#767171'}`,
+        transition: 'border-color 0.2s ease'
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap'
+        }}
+      >
+        {blocks.map(block => (
+          <span
+            key={block.id}
+            style={{
+              fontSize: '9px',
+              fontFamily: THEME.FONT_PRIMARY,
+              color: isHovered ? THEME.AMBER : '#767171',
+              letterSpacing: '0.03em',
+              textTransform: 'uppercase',
+              transition: 'color 0.2s ease'
+            }}
+          >
+            {block.type === 'LESSON' ? '◆' : '◇'} {block.title || `${block.type}`}
+          </span>
         ))}
       </div>
     </div>

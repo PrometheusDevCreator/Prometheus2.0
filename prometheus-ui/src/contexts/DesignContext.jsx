@@ -130,11 +130,16 @@ export function DesignProvider({ children, courseData, setCourseData }) {
   // --------------------------------------------
   // NAVIGATION STATE
   // --------------------------------------------
-  const [activeTab, setActiveTab] = useState('timetable') // 'timetable' | 'scalar'
+  const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'timetable' | 'scalar'
   const [viewMode, setViewMode] = useState('week') // 'day' | 'week' | 'module'
   const [currentModule, setCurrentModule] = useState(1)
   const [currentWeek, setCurrentWeek] = useState(1)
   const [currentDay, setCurrentDay] = useState(1)
+
+  // --------------------------------------------
+  // OVERVIEW STATE (Learning Blocks for course sketching)
+  // --------------------------------------------
+  const [overviewBlocks, setOverviewBlocks] = useState([])
 
   // --------------------------------------------
   // LESSON STATE (Single Source of Truth)
@@ -1594,6 +1599,10 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     currentDay,
     setCurrentDay,
 
+    // Overview
+    overviewBlocks,
+    setOverviewBlocks,
+
     // Lessons
     lessons,
     selectedLesson,
@@ -1688,7 +1697,7 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     LESSON_TYPES,
     PC_COLORS
   }), [
-    activeTab, viewMode, currentModule, currentWeek, currentDay,
+    activeTab, viewMode, currentModule, currentWeek, currentDay, overviewBlocks,
     lessons, selectedLesson, scheduledLessons, unscheduledLessons, savedLessons,
     updateLesson, createLesson, deleteLesson, duplicateLesson,
     scheduleLesson, unscheduleLesson, saveToLibrary, toggleLessonLO,

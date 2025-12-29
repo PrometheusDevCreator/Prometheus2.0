@@ -17,6 +17,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { THEME } from '../constants/theme'
 import PKEInterface from './PKEInterface'
 import silverButtonImage from '../assets/Silver_Button.png'
+import ConfirmableButton from './shared/ConfirmableButton'
 
 // Navigation order for < > arrows (Format excluded - only via Navigation Hub)
 const NAV_ORDER = ['navigate', 'define', 'design', 'build', 'generate']
@@ -45,7 +46,9 @@ function Footer({
   // PKE visibility (hidden on Navigation Hub)
   hidePKE = false,
   // Navigation arrow props (grey until SAVE pressed, revert on changes)
-  hasUnsavedChanges = true
+  hasUnsavedChanges = true,
+  // Exit workflow - when true, SAVE button pulses green
+  exitPending = false
 }) {
   // Realtime clock state
   const [currentTime, setCurrentTime] = useState(new Date())
@@ -120,14 +123,12 @@ function Footer({
       {/* Home Button (Silver) - 100px left of ANALYTICS, same size */}
       <HomeButton onNavigate={handleNavigate} />
 
-      {/* Analytics Ring Button */}
+      {/* Analytics Ring Button - now with ECG and text below */}
       <div style={{
         position: 'absolute',
-        left: '8.99vw',              /* X:-775 → 170px @ 1890 */
-        bottom: '8.26vh',            /* Moved up 5px from 7.8vh */
-        transform: 'translate(-50%, 50%)',  /* Center on this point */
-        width: '6.02vh',             /* 65px @ 1080 */
-        height: '5.83vh',            /* Reduced 2px vertically (was 6.02vh) */
+        left: '8.99vw',
+        bottom: '7.34vh',
+        transform: 'translate(-50%, 50%)',
         zIndex: 100
       }}>
         <AnalyticsRing />
@@ -209,24 +210,19 @@ function Footer({
             gap: '0.63vw'        /* 12px @ 1920 */
           }}
         >
-          <button
-            style={actionButtonStyle}
-            onClick={onDelete}
-          >
-            DELETE
-          </button>
-          <button
-            style={actionButtonStyle}
-            onClick={onClear}
-          >
-            CLEAR
-          </button>
-          <button
-            style={{ ...actionButtonStyle, ...primaryButtonStyle }}
-            onClick={onSave}
-          >
-            SAVE
-          </button>
+          <ConfirmableButton
+            onConfirm={onDelete}
+            defaultText="DELETE"
+            confirmText="WARNING - Click to delete"
+            warningColor="#ff3333"
+          />
+          <ConfirmableButton
+            onConfirm={onClear}
+            defaultText="CLEAR"
+            confirmText="Unsaved work will be lost"
+            warningColor="#FFD700"
+          />
+          <SaveButton onSave={onSave} exitPending={exitPending} />
         </div>
       </div>
 
@@ -324,24 +320,28 @@ function Footer({
 }
 
 /**
- * HomeButton - Silver button for Navigation Hub
+ * HomeWheel - Mini NavWheel style button for Navigation Hub
  *
- * Positioned 100px left of ANALYTICS, same size (65px diameter)
- * Uses Silver_Button.png image
+ * Positioned 100px left of ANALYTICS, same size (~65px diameter)
+ * SVG-based wheel with burnt orange styling
  * Hover: burnt orange glow effect
+ * "HOME" text in burnt orange below
  */
 function HomeButton({ onNavigate }) {
   const [isHovered, setIsHovered] = useState(false)
+  const size = 56 // ~6vh at 940px viewport
 
   return (
     <div
       style={{
         position: 'absolute',
-        left: '3.70vw',              /* 100px left of ANALYTICS */
-        bottom: '7.34vh',            /* Moved down 5px from 7.8vh */
+        left: '3.70vw',
+        bottom: '7.34vh',
         transform: 'translate(-50%, 50%)',
-        width: '9vh',                /* Sized to match ANALYTICS visually (image has padding) */
-        height: '9.75vh',            /* Stretched 8px total vertically (was 9vh) */
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '0.5vh',
         zIndex: 100
       }}
     >
@@ -350,58 +350,180 @@ function HomeButton({ onNavigate }) {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         style={{
-          width: '100%',
-          height: '100%',
+          width: size,
+          height: size,
           cursor: 'pointer',
-          transition: 'all 0.2s ease',
-          filter: isHovered ? 'drop-shadow(0 0 12px rgba(212, 115, 12, 0.6))' : 'none'
+          position: 'relative'
         }}
       >
-        <img
-          src={silverButtonImage}
-          alt="Navigation Hub"
+        <svg
+          width={size}
+          height={size}
           style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'fill'
+            transition: 'all 0.2s ease',
+            filter: isHovered ? 'drop-shadow(0 0 12px rgba(212, 115, 12, 0.6))' : 'none'
           }}
-        />
+        >
+          <defs>
+            <linearGradient id="homeWheelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={THEME.AMBER_DARKEST} />
+              <stop offset="50%" stopColor={THEME.AMBER_DARK} />
+              <stop offset="100%" stopColor={THEME.AMBER_DARKEST} />
+            </linearGradient>
+          </defs>
+
+          {/* Outer ring */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={size / 2 - 2}
+            fill="none"
+            stroke={isHovered ? THEME.AMBER : 'url(#homeWheelGrad)'}
+            strokeWidth={2}
+            style={{ transition: 'stroke 0.2s ease' }}
+          />
+
+          {/* Inner circle */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={size / 2 - 10}
+            fill={THEME.BG_DARK}
+            stroke={isHovered ? THEME.AMBER : THEME.AMBER_DARK}
+            strokeWidth={2}
+            style={{ transition: 'stroke 0.2s ease' }}
+          />
+
+          {/* 4 cardinal tick marks */}
+          {[0, 90, 180, 270].map((angle) => {
+            const rad = (angle - 90) * (Math.PI / 180)
+            const innerR = size / 2 - 8
+            const outerR = size / 2 - 3
+            return (
+              <line
+                key={angle}
+                x1={size / 2 + innerR * Math.cos(rad)}
+                y1={size / 2 + innerR * Math.sin(rad)}
+                x2={size / 2 + outerR * Math.cos(rad)}
+                y2={size / 2 + outerR * Math.sin(rad)}
+                stroke={THEME.AMBER_DARK}
+                strokeWidth={2}
+              />
+            )
+          })}
+
+          {/* Center compass icon */}
+          <text
+            x={size / 2}
+            y={size / 2 + 1}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={isHovered ? THEME.AMBER : THEME.TEXT_SECONDARY}
+            fontSize="14"
+            style={{ transition: 'fill 0.2s ease' }}
+          >
+            ⌂
+          </text>
+        </svg>
       </div>
+
+      {/* HOME text below */}
+      <span
+        style={{
+          fontSize: '0.93vh',
+          letterSpacing: '0.09vh',
+          color: isHovered ? THEME.AMBER : THEME.TEXT_SECONDARY,
+          fontFamily: THEME.FONT_PRIMARY,
+          transition: 'color 0.2s ease'
+        }}
+      >
+        HOME
+      </span>
     </div>
   )
 }
 
 /**
- * AnalyticsRing - Ring-style button for Analytics
+ * AnalyticsRing - Ring-style button for Analytics with ECG waveform
  *
- * Same diameter as NavWheel (70px), 2px stroke, not filled
- * Hover: stroke and text change to orange
+ * Same diameter as HomeWheel (~56px), 2px stroke, not filled
+ * ECG waveform inside in grey
+ * Hover: stroke and ECG change to orange
+ * "ANALYTICS" text below (aligned with HOME text)
  */
 function AnalyticsRing() {
   const [isHovered, setIsHovered] = useState(false)
+  const size = 56 // Match HomeWheel size
+
+  // ECG waveform path - stylized heartbeat pattern
+  const ecgPath = `M 8,${size/2}
+    L 14,${size/2}
+    L 17,${size/2 - 8}
+    L 20,${size/2 + 12}
+    L 23,${size/2 - 4}
+    L 26,${size/2}
+    L 32,${size/2}
+    L 35,${size/2 - 3}
+    L 38,${size/2 + 3}
+    L 41,${size/2}
+    L 48,${size/2}`
 
   return (
     <div
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       style={{
-        width: '100%',
-        height: '100%',
-        borderRadius: '50%',
-        border: `0.19vh solid ${isHovered ? '#d4730c' : '#444'}`,  /* 2px @ 1080 */
-        background: 'transparent',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        cursor: 'pointer',
-        transition: 'border-color 0.2s ease'
+        gap: '0.5vh'
       }}
     >
+      <div
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        style={{
+          width: size,
+          height: size,
+          cursor: 'pointer'
+        }}
+      >
+        <svg
+          width={size}
+          height={size}
+          style={{
+            transition: 'all 0.2s ease',
+            filter: isHovered ? 'drop-shadow(0 0 8px rgba(212, 115, 12, 0.4))' : 'none'
+          }}
+        >
+          {/* Outer ring */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={size / 2 - 2}
+            fill="none"
+            stroke={isHovered ? THEME.AMBER : '#444'}
+            strokeWidth={2}
+            style={{ transition: 'stroke 0.2s ease' }}
+          />
+
+          {/* ECG waveform */}
+          <path
+            d={ecgPath}
+            fill="none"
+            stroke={isHovered ? THEME.AMBER : '#444'}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ transition: 'stroke 0.2s ease' }}
+          />
+        </svg>
+      </div>
+
+      {/* ANALYTICS text below */}
       <span
         style={{
-          fontSize: '0.93vh',           /* 10px @ 1080 */
-          letterSpacing: '0.09vh',      /* 1px @ 1080 */
-          color: isHovered ? '#d4730c' : THEME.TEXT_SECONDARY,
+          fontSize: '0.93vh',
+          letterSpacing: '0.09vh',
+          color: isHovered ? THEME.AMBER : THEME.TEXT_SECONDARY,
           fontFamily: THEME.FONT_PRIMARY,
           transition: 'color 0.2s ease'
         }}
@@ -409,6 +531,111 @@ function AnalyticsRing() {
         ANALYTICS
       </span>
     </div>
+  )
+}
+
+/**
+ * SaveButton - Save button with progress bar
+ *
+ * Features:
+ * - Green border on hover
+ * - Progress bar showing "SAVING X%" when saving
+ * - Pulsing animation when exitPending is true (prompting user to save before exit)
+ */
+function SaveButton({ onSave, exitPending = false }) {
+  const [isHovered, setIsHovered] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveProgress, setSaveProgress] = useState(0)
+
+  const handleSave = useCallback(async () => {
+    if (isSaving) return
+
+    setIsSaving(true)
+    setSaveProgress(0)
+
+    // Simulate save progress
+    const progressInterval = setInterval(() => {
+      setSaveProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(progressInterval)
+          return 100
+        }
+        return prev + 10
+      })
+    }, 100)
+
+    // Execute actual save
+    await onSave?.()
+
+    // Complete the progress
+    setTimeout(() => {
+      setSaveProgress(100)
+      setTimeout(() => {
+        setIsSaving(false)
+        setSaveProgress(0)
+      }, 300)
+    }, 500)
+  }, [onSave, isSaving])
+
+  const isActive = isHovered || isSaving || exitPending
+
+  return (
+    <>
+      {/* Pulsing animation for exit pending */}
+      {exitPending && (
+        <style>
+          {`
+            @keyframes savePulse {
+              0%, 100% {
+                box-shadow: 0 0 8px rgba(0, 255, 0, 0.4);
+              }
+              50% {
+                box-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
+              }
+            }
+          `}
+        </style>
+      )}
+      <button
+        onClick={handleSave}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        disabled={isSaving}
+        style={{
+          ...actionButtonStyle,
+          ...primaryButtonStyle,
+          position: 'relative',
+          overflow: 'hidden',
+          borderColor: isActive ? THEME.GREEN_BRIGHT : THEME.AMBER,
+          boxShadow: exitPending
+            ? `0 0 12px rgba(0, 255, 0, 0.6)`
+            : isHovered
+              ? `0 0 8px rgba(0, 255, 0, 0.4)`
+              : 'none',
+          animation: exitPending ? 'savePulse 1.5s ease-in-out infinite' : 'none',
+          transition: 'all 0.2s ease'
+        }}
+      >
+        {/* Progress bar background */}
+        {isSaving && (
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              height: '100%',
+              width: `${saveProgress}%`,
+              background: 'rgba(0, 255, 0, 0.3)',
+              transition: 'width 0.1s ease',
+              borderRadius: '1.85vh'
+            }}
+          />
+        )}
+        <span style={{ position: 'relative', zIndex: 1 }}>
+          {isSaving ? `SAVING ${saveProgress}%` : 'SAVE'}
+        </span>
+      </button>
+    </>
   )
 }
 

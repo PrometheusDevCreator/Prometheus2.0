@@ -52,12 +52,26 @@ function DesignNavBar() {
     return `${totalHours}h${remainingMins}m`
   }
 
-  // Toggle between TIMETABLE and SCALAR
+  // Tab order: OVERVIEW -> TIMETABLE -> SCALAR
+  const tabOrder = ['overview', 'timetable', 'scalar']
+  const currentTabIndex = tabOrder.indexOf(activeTab)
+
+  // Toggle between tabs (3 tabs: OVERVIEW, TIMETABLE, SCALAR)
   const handleTabToggle = (direction) => {
-    if (direction === 'left' && activeTab === 'scalar') {
-      setActiveTab('timetable')
-    } else if (direction === 'right' && activeTab === 'timetable') {
-      setActiveTab('scalar')
+    if (direction === 'left' && currentTabIndex > 0) {
+      setActiveTab(tabOrder[currentTabIndex - 1])
+    } else if (direction === 'right' && currentTabIndex < tabOrder.length - 1) {
+      setActiveTab(tabOrder[currentTabIndex + 1])
+    }
+  }
+
+  // Get display label for current tab
+  const getTabLabel = () => {
+    switch (activeTab) {
+      case 'overview': return 'OVERVIEW'
+      case 'timetable': return 'TIMETABLE'
+      case 'scalar': return 'SCALAR'
+      default: return 'OVERVIEW'
     }
   }
 
@@ -140,11 +154,11 @@ function DesignNavBar() {
 
       {/* CENTRE ZONE: View Toggle + Week Selector */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3vh' }}>
-        {/* TIMETABLE / SCALAR Toggle */}
+        {/* OVERVIEW / TIMETABLE / SCALAR Toggle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8vw' }}>
           <NavArrow
             direction="left"
-            disabled={activeTab === 'timetable'}
+            disabled={currentTabIndex === 0}
             onClick={() => handleTabToggle('left')}
           />
           <span
@@ -158,11 +172,11 @@ function DesignNavBar() {
               textAlign: 'center'
             }}
           >
-            {activeTab === 'timetable' ? 'TIMETABLE' : 'SCALAR'}
+            {getTabLabel()}
           </span>
           <NavArrow
             direction="right"
-            disabled={activeTab === 'scalar'}
+            disabled={currentTabIndex === tabOrder.length - 1}
             onClick={() => handleTabToggle('right')}
           />
         </div>

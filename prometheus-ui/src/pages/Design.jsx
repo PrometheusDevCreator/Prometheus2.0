@@ -29,6 +29,7 @@ import { THEME } from '../constants/theme'
 import { DesignProvider, useDesign } from '../contexts/DesignContext'
 import DesignNavBar from '../components/design/DesignNavBar'
 import LessonEditor from '../components/design/LessonEditor'
+import OverviewWorkspace from '../components/design/overview/OverviewWorkspace'
 import TimetableWorkspace from '../components/design/TimetableWorkspace'
 import ScalarWorkspace from '../components/design/ScalarWorkspace'
 import Footer from '../components/Footer'
@@ -62,7 +63,7 @@ function Design({
 // ============================================
 
 function DesignPageContent({ onNavigate, courseLoaded, user, courseState }) {
-  const { activeTab, editorCollapsed } = useDesign()
+  const { activeTab, editorCollapsed, courseData } = useDesign()
 
   // Handle navigation to other pages
   const handleNavigate = useCallback((section) => {
@@ -108,9 +109,13 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState }) {
           }}
         >
           {/* Workspace Content - switches based on active tab */}
-          {activeTab === 'timetable' ? (
+          {activeTab === 'overview' && (
+            <OverviewWorkspace courseData={courseData} />
+          )}
+          {activeTab === 'timetable' && (
             <TimetableWorkspace />
-          ) : (
+          )}
+          {activeTab === 'scalar' && (
             <ScalarWorkspace />
           )}
         </div>

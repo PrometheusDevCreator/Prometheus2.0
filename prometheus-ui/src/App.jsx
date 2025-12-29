@@ -94,6 +94,11 @@ function App() {
     saveCount: 0
   })
 
+  // Exit workflow state
+  // First click on logo: exitPending = true (SAVE button pulses green)
+  // Second click: returns to login page, resets all state
+  const [exitPending, setExitPending] = useState(false)
+
   // Handle save count increment (updates status in Footer)
   const handleSaveCountIncrement = useCallback(() => {
     setCourseState(prev => {
@@ -135,6 +140,21 @@ function App() {
     })
     setCourseLoaded(false)
   }, [])
+
+  // Handle exit click on Prometheus logo
+  const handleExitClick = useCallback(() => {
+    if (exitPending) {
+      // Second click - exit to login, reset everything
+      setExitPending(false)
+      setIsAuthenticated(false)
+      setCurrentUser(null)
+      setCurrentPage('navigate')
+      handleSystemClear()
+    } else {
+      // First click - enter exit pending mode
+      setExitPending(true)
+    }
+  }, [exitPending, handleSystemClear])
 
   // Handle login
   const handleLogin = useCallback((userData) => {
@@ -269,6 +289,8 @@ function App() {
             courseState={courseState}
             setCourseState={setCourseState}
             onSystemClear={handleSystemClear}
+            exitPending={exitPending}
+            onExitClick={handleExitClick}
           />
         </div>
         <DebugGridController isVisible={showDebugGrid} onEscapeWhenNoPins={handleEscapeNavigation} />
@@ -292,6 +314,7 @@ function App() {
             user={userData}
             courseState={courseState}
             onSaveCountIncrement={handleSaveCountIncrement}
+            exitPending={exitPending}
           />
         )
       case 'design':
@@ -304,6 +327,7 @@ function App() {
             courseLoaded={courseLoaded}
             user={userData}
             courseState={courseState}
+            exitPending={exitPending}
           />
         )
       case 'build':
@@ -313,6 +337,7 @@ function App() {
             courseLoaded={courseLoaded}
             user={userData}
             courseState={courseState}
+            exitPending={exitPending}
           />
         )
       case 'format':
@@ -322,6 +347,7 @@ function App() {
             courseLoaded={courseLoaded}
             user={userData}
             courseState={courseState}
+            exitPending={exitPending}
           />
         )
       case 'generate':
@@ -331,6 +357,7 @@ function App() {
             courseLoaded={courseLoaded}
             user={userData}
             courseState={courseState}
+            exitPending={exitPending}
           />
         )
       default:
@@ -396,6 +423,8 @@ function App() {
             null
           }
           courseData={courseData}
+          onExitClick={handleExitClick}
+          exitPending={exitPending}
         />
 
         {/* Page Content */}

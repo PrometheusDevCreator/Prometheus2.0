@@ -8,13 +8,26 @@
  * - Horizontal Line: Y=85, full width gradient
  * - Page Title: Centered, Y=92 (7px below line), 18px font
  *
+ * EXIT FUNCTION:
+ * - Logo is clickable to initiate exit workflow
+ * - First click: triggers exitPending (SAVE button pulses)
+ * - Second click: exits to login page
+ *
  * This component is used by ALL pages for consistent header layout.
  */
 
+import { useState } from 'react'
 import logo from '../assets/burntorangelogo.png'
 import { THEME } from '../constants/theme'
 
-function Header({ pageTitle, sectionName, courseData = {}, isNavigationHub = false }) {
+function Header({
+  pageTitle,
+  sectionName,
+  courseData = {},
+  isNavigationHub = false,
+  onExitClick,
+  exitPending = false
+}) {
   // Default values that should display as '---' until user changes them
   const defaultValues = ['Foundational', 'Junior', 0, 1, '', 'Hours']
 
@@ -33,14 +46,20 @@ function Header({ pageTitle, sectionName, courseData = {}, isNavigationHub = fal
         zIndex: 10
       }}
     >
-      {/* Logo - moved right 20px, enlarged 10% (60px → 66px) */}
+      {/* Logo - clickable for EXIT workflow */}
+      {/* First click: triggers exitPending, Second click: exits to login */}
       <div
+        onClick={onExitClick}
         style={{
           position: 'absolute',
           left: '2.6vw',       /* 50px @ 1920 */
           top: '0.93vh',      /* 10px @ 1080 */
           width: '6.11vh',    /* 66px @ 1080 */
-          height: '6.11vh'    /* 66px @ 1080 */
+          height: '6.11vh',   /* 66px @ 1080 */
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          filter: exitPending ? 'drop-shadow(0 0 12px rgba(0, 255, 0, 0.6))' : 'none',
+          animation: exitPending ? 'exitLogoPulse 1.5s ease-in-out infinite' : 'none'
         }}
       >
         <img
@@ -53,6 +72,18 @@ function Header({ pageTitle, sectionName, courseData = {}, isNavigationHub = fal
           }}
         />
       </div>
+
+      {/* Exit pending animation */}
+      {exitPending && (
+        <style>
+          {`
+            @keyframes exitLogoPulse {
+              0%, 100% { filter: drop-shadow(0 0 8px rgba(0, 255, 0, 0.4)); }
+              50% { filter: drop-shadow(0 0 16px rgba(0, 255, 0, 0.8)); }
+            }
+          `}
+        </style>
+      )}
 
       {/* Main Title - centered horizontally, nudged up 10px */}
       <h1

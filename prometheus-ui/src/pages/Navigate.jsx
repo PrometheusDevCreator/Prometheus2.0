@@ -16,7 +16,7 @@ import Header from '../components/Header'
 import Footer from '../components/Footer'
 import CourseSelector from '../components/CourseSelector'
 
-function Navigate({ onNavigate, courseData = {}, setCourseData, user, courseState, setCourseState, onSystemClear }) {
+function Navigate({ onNavigate, courseData = {}, setCourseData, user, courseState, setCourseState, onSystemClear, exitPending, onExitClick }) {
   const [isPKEActive, setIsPKEActive] = useState(false)
   const [loadedCourseData, setLoadedCourseData] = useState(null)
 
@@ -172,7 +172,13 @@ function Navigate({ onNavigate, courseData = {}, setCourseData, user, courseStat
       }}
     >
       {/* Shared Header Component */}
-      <Header pageTitle="NAVIGATION HUB" courseData={courseData} isNavigationHub={true} />
+      <Header
+        pageTitle="NAVIGATION HUB"
+        courseData={courseData}
+        isNavigationHub={true}
+        onExitClick={onExitClick}
+        exitPending={exitPending}
+      />
 
       {/* Spacer to maintain layout */}
       <div style={{ flex: 1 }} />
@@ -233,6 +239,7 @@ function Navigate({ onNavigate, courseData = {}, setCourseData, user, courseStat
         courseState={loadedCourseData ? { startDate: loadedCourseData.startDate, saveCount: loadedCourseData.status === 'COMMENCED' ? 1 : 2 } : (courseState || { startDate: null, saveCount: 0 })}
         progress={loadedCourseData?.progress || 0}
         hidePKE={true}
+        exitPending={exitPending}
       />
     </div>
   )
