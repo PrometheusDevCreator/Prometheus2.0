@@ -117,7 +117,7 @@ function DurationWheelPanel({
         )}
       </div>
 
-      {/* Row 1: Time Duration Wheels */}
+      {/* Row 1: Time Duration Wheels (-10% size = 99px) */}
       <div
         style={{
           display: 'flex',
@@ -131,6 +131,7 @@ function DurationWheelPanel({
           max={12}
           label="HOURS"
           onChange={(v) => handleChange('hours', v)}
+          size={99}
         />
         <DurationWheel
           value={values.days}
@@ -138,6 +139,7 @@ function DurationWheelPanel({
           max={30}
           label="DAYS"
           onChange={(v) => handleChange('days', v)}
+          size={99}
         />
         <DurationWheel
           value={values.weeks}
@@ -146,6 +148,7 @@ function DurationWheelPanel({
           label="WEEKS"
           onChange={(v) => handleChange('weeks', v)}
           showMonthLabel={true}
+          size={99}
         />
       </div>
 
@@ -194,7 +197,7 @@ function DurationWheelPanel({
         </span>
       </div>
 
-      {/* Row 2: Structure Wheels */}
+      {/* Row 2: Structure Wheels (-25% size = 82px, grey until hover) */}
       <div
         style={{
           display: 'flex',
@@ -208,6 +211,8 @@ function DurationWheelPanel({
           max={12}
           label="MODULES"
           onChange={(v) => handleChange('modules', v)}
+          size={82}
+          isStructure={true}
         />
         <DurationWheel
           value={values.semesters}
@@ -215,6 +220,8 @@ function DurationWheelPanel({
           max={6}
           label="SEMESTERS"
           onChange={(v) => handleChange('semesters', v)}
+          size={82}
+          isStructure={true}
         />
         <DurationWheel
           value={values.terms}
@@ -222,6 +229,8 @@ function DurationWheelPanel({
           max={6}
           label="TERMS"
           onChange={(v) => handleChange('terms', v)}
+          size={82}
+          isStructure={true}
         />
       </div>
 

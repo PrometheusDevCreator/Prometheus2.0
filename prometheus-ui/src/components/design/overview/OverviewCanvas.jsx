@@ -48,6 +48,16 @@ function OverviewCanvas({
     setDraggingBlockId(null)
   }, [])
 
+  // Handle block resize
+  const handleSizeChange = useCallback((id, width, height) => {
+    onBlockUpdate?.(id, { width, height })
+  }, [onBlockUpdate])
+
+  // Handle block title change
+  const handleTitleChange = useCallback((id, title) => {
+    onBlockUpdate?.(id, { title })
+  }, [onBlockUpdate])
+
   // Add new block
   const handleAddBlock = useCallback((type) => {
     const canvasRect = canvasRef.current?.getBoundingClientRect()
@@ -198,6 +208,8 @@ function OverviewCanvas({
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
             onPositionChange={handlePositionChange}
+            onSizeChange={handleSizeChange}
+            onTitleChange={handleTitleChange}
           />
         ))}
       </div>

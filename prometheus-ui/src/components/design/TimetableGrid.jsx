@@ -410,11 +410,38 @@ function DayRow({
 
 // ============================================
 // OVERVIEW REFERENCE LINE COMPONENT
-// Shows OVERVIEW sketch content below day bars
+// Shows colored duration bars below day bars
 // ============================================
 
+// Block type colors matching LearningBlock
+const BLOCK_COLORS = {
+  TERM: THEME.AMBER,
+  MODULE: THEME.AMBER_DARK || '#8B4513',
+  WEEK: THEME.AMBER_DARK || '#8B4513',
+  DAY: THEME.AMBER_DARK || '#8B4513',
+  LESSON: THEME.GREEN_BRIGHT
+}
+
+// Duration calculation (matching LearningBlock)
+const PIXELS_PER_HOUR = 50
+function formatDuration(widthPx) {
+  const hours = (widthPx || 100) / PIXELS_PER_HOUR
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24)
+    const remainingHours = Math.round(hours % 24)
+    if (remainingHours > 0) {
+      return `${days}d ${remainingHours}h`
+    }
+    return `${days}d`
+  }
+  if (hours >= 1) {
+    return `${hours.toFixed(1)}h`
+  }
+  return `${Math.round(hours * 60)}m`
+}
+
 function OverviewReferenceLine({ blocks }) {
-  const [isHovered, setIsHovered] = useState(false)
+  const [hoveredBlockId, setHoveredBlockId] = useState(null)
 
   if (!blocks || blocks.length === 0) return null
 
@@ -423,41 +450,74 @@ function OverviewReferenceLine({ blocks }) {
       style={{
         display: 'flex',
         alignItems: 'center',
-        height: '16px',
+        minHeight: '22px',
         paddingLeft: `${DAY_LABEL_WIDTH}px`,
-        marginTop: '2px',
-        marginBottom: '2px',
-        borderBottom: `1px solid ${isHovered ? THEME.AMBER : '#767171'}`,
-        transition: 'border-color 0.2s ease'
+        marginTop: '3px',
+        marginBottom: '3px',
+        gap: '6px'
       }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          overflow: 'hidden',
-          whiteSpace: 'nowrap'
-        }}
-      >
-        {blocks.map(block => (
-          <span
+      {blocks.map(block => {
+        const blockColor = BLOCK_COLORS[block.type] || THEME.AMBER
+        const isHovered = hoveredBlockId === block.id
+        const duration = formatDuration(block.width)
+
+        return (
+          <div
             key={block.id}
+            onMouseEnter={() => setHoveredBlockId(block.id)}
+            onMouseLeave={() => setHoveredBlockId(null)}
             style={{
-              fontSize: '9px',
-              fontFamily: THEME.FONT_PRIMARY,
-              color: isHovered ? THEME.AMBER : '#767171',
-              letterSpacing: '0.03em',
-              textTransform: 'uppercase',
-              transition: 'color 0.2s ease'
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '2px 8px',
+              background: `${blockColor}15`,
+              border: `1px solid ${isHovered ? blockColor : `${blockColor}40`}`,
+              borderRadius: '10px',
+              transition: 'all 0.2s ease',
+              cursor: 'default'
             }}
           >
-            {block.type === 'LESSON' ? '◆' : '◇'} {block.title || `${block.type}`}
-          </span>
-        ))}
-      </div>
+            {/* Colored duration bar */}
+            <div
+              style={{
+                width: Math.max(20, Math.min(60, (block.width || 100) / 3)),
+                height: '4px',
+                background: blockColor,
+                borderRadius: '2px',
+                opacity: isHovered ? 1 : 0.7,
+                transition: 'opacity 0.2s ease'
+              }}
+            />
+            {/* Block info */}
+            <span
+              style={{
+                fontSize: '9px',
+                fontFamily: THEME.FONT_PRIMARY,
+                color: isHovered ? blockColor : '#999',
+                letterSpacing: '0.03em',
+                textTransform: 'uppercase',
+                transition: 'color 0.2s ease',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {block.title || block.type}
+            </span>
+            {/* Duration */}
+            <span
+              style={{
+                fontSize: '8px',
+                fontFamily: THEME.FONT_MONO,
+                color: isHovered ? THEME.WHITE : '#666',
+                transition: 'color 0.2s ease'
+              }}
+            >
+              {duration}
+            </span>
+          </div>
+        )
+      })}
     </div>
   )
 }
