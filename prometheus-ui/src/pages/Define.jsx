@@ -66,8 +66,6 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
   const [activeColumn, setActiveColumn] = useState(null) // 'left' | 'center' | 'right' | null
   const [activeLOIndex, setActiveLOIndex] = useState(null) // Track which LO input is focused for verb insertion
   const [bloomsExpanded, setBloomsExpanded] = useState(false) // Bloom's Taxonomy section expanded state
-  const [isContentTypeDragging, setIsContentTypeDragging] = useState(false) // Content Type slider drag state
-  const contentTypeSliderRef = useRef(null) // Ref for Content Type slider track
   const [loConfirmedUpTo, setLoConfirmedUpTo] = useState(-1) // Track confirmed LOs (green) - index up to which are confirmed
   const [invalidLOPulse, setInvalidLOPulse] = useState(null) // Track which LO should show red pulse
   const loInputRefs = useRef({}) // Refs for LO inputs to handle focus
@@ -454,44 +452,6 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
     // This will integrate with the DESIGN page Scalar functionality
   }, [loConfirmedUpTo])
 
-  // Content Type slider drag handlers
-  const handleContentTypeInteraction = useCallback((clientX) => {
-    if (!contentTypeSliderRef.current) return
-    const rect = contentTypeSliderRef.current.getBoundingClientRect()
-    const x = clientX - rect.left
-    const percentage = (x / rect.width) * 100
-    updateField('contentType', Math.round(Math.max(0, Math.min(100, percentage))))
-    setActiveColumn('left')  // Content slider is in DETAILS (left) column
-    setActiveSlider('content')
-  }, [updateField])
-
-  const handleContentTypeMouseDown = useCallback((e) => {
-    setIsContentTypeDragging(true)
-    handleContentTypeInteraction(e.clientX)
-  }, [handleContentTypeInteraction])
-
-  const handleContentTypeMouseMove = useCallback((e) => {
-    if (isContentTypeDragging) {
-      handleContentTypeInteraction(e.clientX)
-    }
-  }, [isContentTypeDragging, handleContentTypeInteraction])
-
-  const handleContentTypeMouseUp = useCallback(() => {
-    setIsContentTypeDragging(false)
-  }, [])
-
-  // Add/remove global mouse listeners for Content Type slider drag
-  useEffect(() => {
-    if (isContentTypeDragging) {
-      window.addEventListener('mousemove', handleContentTypeMouseMove)
-      window.addEventListener('mouseup', handleContentTypeMouseUp)
-    }
-    return () => {
-      window.removeEventListener('mousemove', handleContentTypeMouseMove)
-      window.removeEventListener('mouseup', handleContentTypeMouseUp)
-    }
-  }, [isContentTypeDragging, handleContentTypeMouseMove, handleContentTypeMouseUp])
-
   // Thematic options
   const thematicOptions = [
     'Defence & Security',
@@ -636,6 +596,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                 weeks: formData.weeks,
                 level: formData.level,
                 seniority: formData.seniority,
+                contentType: formData.contentType,
                 modules: formData.module,  // Sync with formData.module for backwards compat
                 semesters: formData.semesters,
                 terms: formData.terms
@@ -781,201 +742,6 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
             </div>
           )}
 
-          {/* Level - inline layout: Label | Slider | Readout */}
-          <div
-            onClick={() => setActiveSlider('level')}
-            style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '1.39vh', cursor: 'pointer' }}
-          >
-            <label style={{
-              ...labelStyle(isFieldActive('level')),
-              marginBottom: 0,
-              minWidth: '75px',
-              flexShrink: 0,
-              color: activeSlider === 'level' ? THEME.WHITE : THEME.TEXT_SECONDARY
-            }}>Level</label>
-            <div style={{ flex: 1 }}>
-              <Slider
-                options={LEVEL_OPTIONS}
-                value={formData.level}
-                onChange={(val) => { updateField('level', val); setActiveColumn('left'); setActiveSlider('level') }}
-                width="100%"
-                hideStepLabels
-                showBubble={false}
-              />
-            </div>
-            <span style={{
-              color: activeSlider === 'level' ? '#00FF00' : THEME.AMBER,
-              fontFamily: THEME.FONT_PRIMARY,
-              fontSize: '14px',
-              minWidth: '90px',
-              textAlign: 'right',
-              flexShrink: 0,
-              transition: 'color 0.2s ease'
-            }}>
-              {formData.level}
-            </span>
-          </div>
-
-          {/* Seniority - inline layout: Label | Slider | Readout */}
-          <div
-            onClick={() => setActiveSlider('seniority')}
-            style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '1.39vh', cursor: 'pointer' }}
-          >
-            <label style={{
-              ...labelStyle(isFieldActive('seniority')),
-              marginBottom: 0,
-              minWidth: '75px',
-              flexShrink: 0,
-              color: activeSlider === 'seniority' ? THEME.WHITE : THEME.TEXT_SECONDARY
-            }}>Seniority</label>
-            <div style={{ flex: 1 }}>
-              <Slider
-                options={SENIORITY_OPTIONS}
-                value={formData.seniority}
-                onChange={(val) => { updateField('seniority', val); setActiveColumn('left'); setActiveSlider('seniority') }}
-                width="100%"
-                highlightLast
-                hideStepLabels
-                showBubble={false}
-              />
-            </div>
-            <span style={{
-              color: activeSlider === 'seniority' ? '#00FF00' : THEME.AMBER,
-              fontFamily: THEME.FONT_PRIMARY,
-              fontSize: '14px',
-              minWidth: '90px',
-              textAlign: 'right',
-              flexShrink: 0,
-              transition: 'color 0.2s ease'
-            }}>
-              {formData.seniority}
-            </span>
-          </div>
-
-          {/* Content Type - Theory/Practical labels above, readout on right */}
-          <div
-            onClick={() => setActiveSlider('content')}
-            style={{ marginTop: '1.39vh', cursor: 'pointer' }}
-          >
-            {/* Theory / Practical labels above slider */}
-            {/* Color logic: initially grey, when active: label for direction slider moved towards turns orange */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: '4px',
-                marginLeft: '87px',
-                marginRight: '85px'  /* Practical moved 5px left */
-              }}
-            >
-              <span style={{
-                fontSize: '12px',
-                fontFamily: THEME.FONT_PRIMARY,
-                color: activeSlider === 'content'
-                  ? (formData.contentType < 50 ? THEME.AMBER : THEME.TEXT_DIM)  /* Orange when towards Theory */
-                  : THEME.TEXT_SECONDARY,
-                transition: 'color 0.2s ease'
-              }}>
-                Theory
-              </span>
-              <span style={{
-                fontSize: '12px',
-                fontFamily: THEME.FONT_PRIMARY,
-                color: activeSlider === 'content'
-                  ? (formData.contentType > 50 ? THEME.AMBER : THEME.TEXT_DIM)  /* Orange when towards Practical */
-                  : THEME.TEXT_SECONDARY,
-                transition: 'color 0.2s ease'
-              }}>
-                Practical
-              </span>
-            </div>
-            {/* Slider row: Label | Slider | Readout */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <label style={{
-                ...labelStyle(isFieldActive('contentType')),
-                marginBottom: 0,
-                minWidth: '75px',
-                flexShrink: 0,
-                color: activeSlider === 'content' ? THEME.WHITE : THEME.TEXT_SECONDARY
-              }}>
-                Content
-              </label>
-              {/* Slider track */}
-              <div
-                ref={contentTypeSliderRef}
-                onMouseDown={handleContentTypeMouseDown}
-                style={{
-                  position: 'relative',
-                  flex: 1,
-                  height: '24px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-              >
-                {/* Track background - solid grey, no fill */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    width: '100%',
-                    height: '4px',
-                    background: THEME.BORDER_GREY,
-                    borderRadius: '2px'
-                  }}
-                />
-                {/* Thumb */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: `${formData.contentType}%`,
-                    transform: 'translateX(-50%)',
-                    width: '16px',
-                    height: '16px',
-                    borderRadius: '50%',
-                    background: THEME.AMBER,
-                    border: `2px solid ${THEME.BG_DARK}`,
-                    boxShadow: '0 0 6px rgba(212, 115, 12, 0.3)',
-                    zIndex: 2
-                  }}
-                />
-              </div>
-              {/* Readout - Two-line format: T P on top, percentages below */}
-              <div style={{
-                minWidth: '90px',
-                textAlign: 'center',
-                flexShrink: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                lineHeight: 1.2
-              }}>
-                {/* T P labels row */}
-                <div style={{
-                  display: 'flex',
-                  gap: '16px',
-                  fontFamily: THEME.FONT_PRIMARY,
-                  fontSize: '14px',
-                  color: activeSlider === 'content' ? THEME.AMBER : THEME.TEXT_DIM,
-                  transition: 'color 0.2s ease'
-                }}>
-                  <span>T</span>
-                  <span>P</span>
-                </div>
-                {/* Percentage values row */}
-                <div style={{
-                  display: 'flex',
-                  gap: '8px',
-                  fontFamily: THEME.FONT_PRIMARY,
-                  fontSize: '14px',
-                  color: activeSlider === 'content' ? '#00FF00' : THEME.AMBER,
-                  transition: 'color 0.2s ease'
-                }}>
-                  <span>{100 - formData.contentType}%</span>
-                  <span>{formData.contentType}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* CENTER COLUMN - DESCRIPTION */}

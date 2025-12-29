@@ -19,6 +19,7 @@
 import { useCallback } from 'react'
 import LogarithmicDurationWheel from './LogarithmicDurationWheel'
 import CategoricalWheel from './CategoricalWheel'
+import ContentWheel from './ContentWheel'
 import DurationWheel from './DurationWheel'
 import { THEME, LEVEL_OPTIONS, SENIORITY_OPTIONS } from '../../constants/theme'
 
@@ -28,7 +29,8 @@ const SIZE_LEVEL = 101       // 75%
 const SIZE_STRUCTURE = 68    // 50%
 
 // Layout calculations
-const STRUCTURE_GAP = 40     // Gap between structure wheels (increased for Level/Seniority alignment)
+// Structure gap decreased by 15% (was 40, now 34)
+const STRUCTURE_GAP = 34
 const OPTIONAL_LABEL_HEIGHT = 16
 const WHEEL_LABEL_HEIGHT = 18  // Height of label below each wheel
 
@@ -37,12 +39,16 @@ const MODULE_CENTER = SIZE_STRUCTURE / 2
 const SEMESTER_CENTER = SIZE_STRUCTURE + STRUCTURE_GAP + SIZE_STRUCTURE / 2
 const TERM_CENTER = SIZE_STRUCTURE + STRUCTURE_GAP + SIZE_STRUCTURE + STRUCTURE_GAP + SIZE_STRUCTURE / 2
 
-// Calculate Level/Seniority positions (centered at midpoints)
-const LEVEL_CENTER = (MODULE_CENTER + SEMESTER_CENTER) / 2
-const SENIORITY_CENTER = (SEMESTER_CENTER + TERM_CENTER) / 2
+// Center column gap increased by 15% for 3 wheels (Level, Seniority, Content)
+// We distribute 3 wheels evenly across the structure column height
+const CENTER_COLUMN_HEIGHT = 3 * SIZE_STRUCTURE + 2 * STRUCTURE_GAP
+// Position centers for 3 wheels distributed evenly
+const LEVEL_Y = SIZE_LEVEL / 2  // Top wheel
+const CONTENT_Y = CENTER_COLUMN_HEIGHT / 2  // Middle wheel (aligned with Duration and Semester)
+const SENIORITY_Y = CENTER_COLUMN_HEIGHT - SIZE_LEVEL / 2  // Bottom wheel
 
 // Total height of wheel area (structure column defines the height)
-const STRUCTURE_COLUMN_HEIGHT = 3 * SIZE_STRUCTURE + 2 * STRUCTURE_GAP
+const STRUCTURE_COLUMN_HEIGHT_TOTAL = 3 * SIZE_STRUCTURE + 2 * STRUCTURE_GAP
 
 function DurationWheelPanel({
   values = {
@@ -51,6 +57,7 @@ function DurationWheelPanel({
     weeks: 0,
     level: '',
     seniority: '',
+    contentType: 50,  // 0=100% Theory, 100=100% Practical, 50=balanced
     modules: 0,
     semesters: 0,
     terms: 0,
@@ -131,16 +138,16 @@ function DurationWheelPanel({
           justifyContent: 'space-between',
           gap: '1.5vw',
           position: 'relative',
-          minHeight: STRUCTURE_COLUMN_HEIGHT + OPTIONAL_LABEL_HEIGHT + WHEEL_LABEL_HEIGHT
+          minHeight: STRUCTURE_COLUMN_HEIGHT_TOTAL + OPTIONAL_LABEL_HEIGHT + WHEEL_LABEL_HEIGHT
         }}
       >
-        {/* Column 1 (LEFT): Duration Wheel - center aligns with Semester */}
+        {/* Column 1 (LEFT): Duration Wheel - center aligns with Content and Semester */}
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            marginTop: OPTIONAL_LABEL_HEIGHT + SEMESTER_CENTER - SIZE_DURATION / 2
+            marginTop: OPTIONAL_LABEL_HEIGHT + CONTENT_Y - SIZE_DURATION / 2
           }}
         >
           <LogarithmicDurationWheel
@@ -160,21 +167,22 @@ function DurationWheelPanel({
           )}
         </div>
 
-        {/* Column 2 (CENTER): Level & Seniority wheels */}
+        {/* Column 2 (CENTER): Level, Content & Seniority wheels */}
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             position: 'relative',
-            height: STRUCTURE_COLUMN_HEIGHT + OPTIONAL_LABEL_HEIGHT
+            height: CENTER_COLUMN_HEIGHT + OPTIONAL_LABEL_HEIGHT,
+            minWidth: SIZE_LEVEL + 10
           }}
         >
-          {/* Level wheel - center aligns with midpoint(Module, Semester) */}
+          {/* Level wheel - top position */}
           <div
             style={{
               position: 'absolute',
-              top: OPTIONAL_LABEL_HEIGHT + LEVEL_CENTER - SIZE_LEVEL / 2
+              top: OPTIONAL_LABEL_HEIGHT + LEVEL_Y - SIZE_LEVEL / 2
             }}
           >
             <CategoricalWheel
@@ -187,11 +195,25 @@ function DurationWheelPanel({
             />
           </div>
 
-          {/* Seniority wheel - center aligns with midpoint(Semester, Term) */}
+          {/* Content wheel - middle position (aligned with Duration and Semester) */}
           <div
             style={{
               position: 'absolute',
-              top: OPTIONAL_LABEL_HEIGHT + SENIORITY_CENTER - SIZE_LEVEL / 2
+              top: OPTIONAL_LABEL_HEIGHT + CONTENT_Y - SIZE_LEVEL / 2
+            }}
+          >
+            <ContentWheel
+              value={values.contentType}
+              onChange={(v) => handleChange('contentType', v)}
+              size={SIZE_LEVEL}
+            />
+          </div>
+
+          {/* Seniority wheel - bottom position */}
+          <div
+            style={{
+              position: 'absolute',
+              top: OPTIONAL_LABEL_HEIGHT + SENIORITY_Y - SIZE_LEVEL / 2
             }}
           >
             <CategoricalWheel
