@@ -306,10 +306,15 @@ function FormatWheel({ onNavigate }) {
         if (output.angle === 225) transformStyle = 'translate(0, -100%)'     // SW - left of point
         if (output.angle === 315) transformStyle = 'translate(0, 0)'         // NW - left of point
 
-        // Horizontal offset: right labels +100px, left labels -100px
+        // Horizontal offset: right labels +85px, left labels -85px
         let horizontalOffset = 0
-        if (output.angle === 45 || output.angle === 135) horizontalOffset = 100   // Right side
-        if (output.angle === 225 || output.angle === 315) horizontalOffset = -100 // Left side
+        if (output.angle === 45 || output.angle === 135) horizontalOffset = 85    // Right side (100 - 15)
+        if (output.angle === 225 || output.angle === 315) horizontalOffset = -85  // Left side (-100 + 15)
+
+        // Vertical offset: top labels -10px, bottom labels +10px
+        let verticalOffset = 0
+        if (output.angle === 45 || output.angle === 315) verticalOffset = -10     // Top (PRESENTATION, HANDBOOK)
+        if (output.angle === 135 || output.angle === 225) verticalOffset = 10     // Bottom (TIMETABLE, LESSON PLAN)
 
         return (
           <div
@@ -320,7 +325,7 @@ function FormatWheel({ onNavigate }) {
             style={{
               position: 'absolute',
               left: `calc(50% + ${pos.x + horizontalOffset}px)`,
-              top: `calc(50% + ${pos.y}px)`,
+              top: `calc(50% + ${pos.y + verticalOffset}px)`,
               transform: transformStyle,
               fontSize: '18px',
               fontFamily: THEME.FONT_PRIMARY,
@@ -386,7 +391,7 @@ function FormatWheel({ onNavigate }) {
         onMouseLeave={() => setCenterHovered(false)}
         style={{
           position: 'absolute',
-          top: 'calc(50% + 85px)',
+          top: 'calc(50% + 75px)',
           left: '50%',
           transform: 'translateX(-50%)',
           fontSize: '17px',
