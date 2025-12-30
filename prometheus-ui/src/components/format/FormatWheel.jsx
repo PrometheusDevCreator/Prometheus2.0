@@ -290,6 +290,42 @@ function FormatWheel({ onNavigate }) {
             </g>
           )
         })}
+
+        {/* Decorative cardinal arrows (N, E, S, W) - visual continuity with Navigation Hub */}
+        {[
+          { angle: 0, arrow: '↑' },    // North
+          { angle: 90, arrow: '→' },   // East
+          { angle: 180, arrow: '↓' },  // South
+          { angle: 270, arrow: '←' }   // West
+        ].map((cardinal) => {
+          const arrowRadius = size / 2 - 35
+          const radians = (cardinal.angle - 90) * (Math.PI / 180)
+          const x = size / 2 + Math.cos(radians) * arrowRadius
+          const y = size / 2 + Math.sin(radians) * arrowRadius
+
+          return (
+            <g key={`cardinal-${cardinal.angle}`} style={{ pointerEvents: 'none' }}>
+              <circle
+                cx={x}
+                cy={y}
+                r="12"
+                fill="transparent"
+                stroke={THEME.TEXT_DIM}
+                strokeWidth="1.5"
+              />
+              <text
+                x={x}
+                y={y}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={THEME.TEXT_DIM}
+                fontSize="21"
+              >
+                {cardinal.arrow}
+              </text>
+            </g>
+          )
+        })}
       </svg>
 
       {/* Output labels - positioned at diagonals */}

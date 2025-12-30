@@ -476,6 +476,72 @@ function NavigateWheel({ onNavigate }) {
             </g>
           )
         })}
+
+        {/* Decorative diagonal icons (NE, SE, SW, NW) - visual continuity with FORMAT Hub */}
+        {[
+          { angle: 45, type: 'presentation' },   // NE
+          { angle: 135, type: 'timetable' },     // SE
+          { angle: 225, type: 'lesson_plan' },   // SW
+          { angle: 315, type: 'handbook' }       // NW
+        ].map((item) => {
+          const iconRadius = size / 2 - 35
+          const radians = (item.angle - 90) * (Math.PI / 180)
+          const x = size / 2 + Math.cos(radians) * iconRadius
+          const y = size / 2 + Math.sin(radians) * iconRadius
+          const iconSize = 12
+          const iconColor = THEME.TEXT_DIM
+
+          let iconPath
+          switch (item.type) {
+            case 'presentation':
+              iconPath = (
+                <g transform={`translate(${x - iconSize}, ${y - iconSize})`}>
+                  <rect x="0" y="2" width="24" height="15" rx="1.5" fill="none" stroke={iconColor} strokeWidth="1.8"/>
+                  <line x1="7" y1="21" x2="17" y2="21" stroke={iconColor} strokeWidth="1.8"/>
+                  <line x1="12" y1="17" x2="12" y2="21" stroke={iconColor} strokeWidth="1.8"/>
+                </g>
+              )
+              break
+            case 'timetable':
+              iconPath = (
+                <g transform={`translate(${x - iconSize}, ${y - iconSize})`}>
+                  <rect x="1" y="1" width="22" height="22" rx="1.5" fill="none" stroke={iconColor} strokeWidth="1.8"/>
+                  <line x1="1" y1="8" x2="23" y2="8" stroke={iconColor} strokeWidth="1.5"/>
+                  <line x1="8" y1="1" x2="8" y2="23" stroke={iconColor} strokeWidth="1.5"/>
+                  <line x1="16" y1="1" x2="16" y2="23" stroke={iconColor} strokeWidth="1.5"/>
+                </g>
+              )
+              break
+            case 'lesson_plan':
+              iconPath = (
+                <g transform={`translate(${x - iconSize}, ${y - iconSize})`}>
+                  <path d="M15 0H4.5a3 3 0 00-3 3v18a3 3 0 003 3h15a3 3 0 003-3V7.5z" fill="none" stroke={iconColor} strokeWidth="1.8"/>
+                  <path d="M15 0v7.5h7.5" fill="none" stroke={iconColor} strokeWidth="1.8"/>
+                  <line x1="6" y1="13.5" x2="18" y2="13.5" stroke={iconColor} strokeWidth="1.5"/>
+                  <line x1="6" y1="18" x2="15" y2="18" stroke={iconColor} strokeWidth="1.5"/>
+                </g>
+              )
+              break
+            case 'handbook':
+              iconPath = (
+                <g transform={`translate(${x - iconSize}, ${y - iconSize})`}>
+                  <path d="M4 19.5A2.5 2.5 0 016.5 17H20" fill="none" stroke={iconColor} strokeWidth="1.8"/>
+                  <path d="M4 4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15z" fill="none" stroke={iconColor} strokeWidth="1.8"/>
+                  <line x1="8" y1="6" x2="16" y2="6" stroke={iconColor} strokeWidth="1.5"/>
+                  <line x1="8" y1="10" x2="14" y2="10" stroke={iconColor} strokeWidth="1.5"/>
+                </g>
+              )
+              break
+            default:
+              iconPath = null
+          }
+
+          return (
+            <g key={`decorative-${item.type}`} style={{ pointerEvents: 'none' }}>
+              {iconPath}
+            </g>
+          )
+        })}
       </svg>
 
       {/* Section labels - PASSIVE (colour change only, no glow, no bold, no click) */}
