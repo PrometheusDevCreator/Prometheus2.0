@@ -14,18 +14,13 @@ import React from 'react'
 import { THEME } from '../../constants/theme'
 import { useTemplate } from '../../contexts/TemplateContext'
 
-function FormatWheel({ onNavigate, wheelRotation = 0 }) {
+function FormatWheel({ onNavigate }) {
   const { selectedOutput, setSelectedOutput, getOutputStatus } = useTemplate()
   const [hoveredOutput, setHoveredOutput] = React.useState(null)
   const [isInOuterRing, setIsInOuterRing] = React.useState(false)
   const [isPulsing, setIsPulsing] = React.useState(false)
   const [centerHovered, setCenterHovered] = React.useState(false)
   const wheelRef = React.useRef(null)
-
-  // Check for reduced motion preference
-  const prefersReducedMotion = typeof window !== 'undefined'
-    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    : false
 
   // Output positions at diagonal angles (45° offset from NavigateWheel cardinal positions)
   const outputs = [
@@ -221,14 +216,6 @@ function FormatWheel({ onNavigate, wheelRotation = 0 }) {
           </linearGradient>
         </defs>
 
-        {/* Rotating group - ring, tick marks, icons, arrows */}
-        <g
-          transform={`rotate(${wheelRotation}, ${size / 2}, ${size / 2})`}
-          style={{
-            transition: prefersReducedMotion ? 'none' : 'transform 420ms cubic-bezier(0.22, 1, 0.36, 1)'
-          }}
-        >
-
         {/* Outer circle */}
         <circle
           cx={size / 2}
@@ -339,8 +326,6 @@ function FormatWheel({ onNavigate, wheelRotation = 0 }) {
             </g>
           )
         })}
-
-        </g>{/* End rotating group */}
       </svg>
 
       {/* Output labels - positioned at diagonals */}
