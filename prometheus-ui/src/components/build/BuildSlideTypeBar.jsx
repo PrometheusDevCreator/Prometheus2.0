@@ -47,7 +47,7 @@ function BuildSlideTypeBar() {
     >
       <span
         style={{
-          fontSize: '0.7vh',
+          fontSize: '1.09vh',  // Was 0.875vh, +25% again
           fontFamily: THEME.FONT_MONO,
           color: THEME.TEXT_DIM,
           letterSpacing: '0.1vh',
@@ -63,13 +63,13 @@ function BuildSlideTypeBar() {
           disabled={!buildSelection.lessonId}
           style={{
             padding: '4px 12px',
-            fontSize: '0.75vh',
+            fontSize: '1.175vh',  // Was 0.94vh, +25% again
             fontFamily: THEME.FONT_PRIMARY,
             letterSpacing: '0.05vh',
             color: currentType === type.id ? THEME.BG_DARK : THEME.TEXT_SECONDARY,
             background: currentType === type.id ? THEME.AMBER : 'transparent',
             border: `1px solid ${currentType === type.id ? THEME.AMBER : THEME.BORDER}`,
-            borderRadius: '4px',
+            borderRadius: '1.5vh',  // Match action button style
             cursor: buildSelection.lessonId ? 'pointer' : 'not-allowed',
             opacity: buildSelection.lessonId ? 1 : 0.5,
             transition: 'all 0.2s ease'

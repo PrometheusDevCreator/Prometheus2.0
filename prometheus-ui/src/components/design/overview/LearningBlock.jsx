@@ -15,16 +15,131 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { THEME } from '../../../constants/theme'
 
-const BLOCK_TYPES = {
-  TERM: { label: 'TERM', color: THEME.AMBER, minWidth: 200, minHeight: 80 },
-  MODULE: { label: 'MODULE', color: THEME.AMBER_DARK, minWidth: 180, minHeight: 60 },
-  WEEK: { label: 'WEEK', color: THEME.AMBER_DARK, minWidth: 150, minHeight: 50 },
-  DAY: { label: 'DAY', color: THEME.AMBER_DARK, minWidth: 120, minHeight: 40 },
-  LESSON: { label: 'LESSON', color: THEME.GREEN_BRIGHT, minWidth: 100, minHeight: 60 }
+// Duration unit conversion constants
+const HOURS_PER_UNIT = {
+  minute: 1/60,
+  hour: 1,
+  day: 24,
+  week: 168  // 24 * 7
 }
 
-// Duration calculation based on block width (roughly 1 hour per 50px)
-const PIXELS_PER_HOUR = 50
+const BLOCK_TYPES = {
+  TERM: {
+    label: 'TERM',
+    color: THEME.AMBER,
+    minWidth: 200,
+    minHeight: 80,
+    // Duration config
+    unit: 'week',
+    startDuration: 8,      // 8 weeks
+    minDuration: 8,
+    maxDuration: 12,
+    increment: 1,          // 1 week steps
+    acceptsChildren: ['WEEK'],
+    pixelsPerUnit: 100     // 100px per week for visual sizing
+  },
+  MODULE: {
+    label: 'MODULE',
+    color: THEME.AMBER_DARK,
+    minWidth: 180,
+    minHeight: 60,
+    unit: 'day',
+    startDuration: 1,      // 1 day
+    minDuration: 1,
+    maxDuration: null,
+    increment: 1,          // 1 day steps
+    acceptsChildren: ['LESSON', 'DAY'],
+    pixelsPerUnit: 50      // 50px per day
+  },
+  WEEK: {
+    label: 'WEEK',
+    color: THEME.AMBER_DARK,
+    minWidth: 150,
+    minHeight: 50,
+    unit: 'day',
+    startDuration: 7,      // 1 week = 7 days
+    minDuration: 1,
+    maxDuration: null,
+    increment: 1,          // 1 day steps
+    acceptsChildren: ['DAY', 'MODULE'],
+    pixelsPerUnit: 50      // 50px per day
+  },
+  DAY: {
+    label: 'DAY',
+    color: THEME.AMBER_DARK,
+    minWidth: 120,
+    minHeight: 40,
+    unit: 'hour',
+    startDuration: 24,     // 1 day = 24 hours
+    minDuration: 1,
+    maxDuration: null,
+    increment: 1,          // 1 hour steps
+    acceptsChildren: ['LESSON'],
+    pixelsPerUnit: 20      // 20px per hour
+  },
+  LESSON: {
+    label: 'LESSON',
+    color: THEME.GREEN_BRIGHT,
+    minWidth: 50,          // 15 min minimum
+    minHeight: 60,
+    unit: 'minute',
+    startDuration: 30,     // 30 minutes
+    minDuration: 15,
+    maxDuration: null,
+    increment: 15,         // 15 min steps
+    acceptsChildren: [],   // Lessons cannot contain other blocks
+    pixelsPerUnit: 3.33    // ~3.33px per minute (200px = 1 hour)
+  }
+}
+
+// Nesting rules for hierarchy validation
+const NESTING_RULES = {
+  TERM: { canContain: ['WEEK'], canBeContainedBy: [] },
+  WEEK: { canContain: ['DAY', 'MODULE'], canBeContainedBy: ['TERM'] },
+  MODULE: { canContain: ['LESSON', 'DAY'], canBeContainedBy: ['WEEK'] },
+  DAY: { canContain: ['LESSON'], canBeContainedBy: ['WEEK', 'MODULE'] },
+  LESSON: { canContain: [], canBeContainedBy: ['DAY', 'MODULE'] }
+}
+
+// Border colors based on nesting depth (when block is in parent chain of active block)
+const NESTING_BORDER_COLORS = [
+  THEME.AMBER,         // Depth 0: Burnt orange (default)
+  '#FFFFFF',           // Depth 1: White
+  '#C0C0C0',           // Depth 2: Light grey
+  '#808080',           // Depth 3: Mid grey
+  '#404040',           // Depth 4: Dark grey
+]
+
+// Helper: Convert duration to hours (common base for scaling)
+const convertToHours = (duration, unit) => duration * HOURS_PER_UNIT[unit]
+
+// Helper: Convert hours to target unit
+const convertFromHours = (hours, unit) => hours / HOURS_PER_UNIT[unit]
+
+// Helper: Snap width to increment and apply constraints
+const snapToIncrement = (newWidth, blockConfig) => {
+  const pixelsPerIncrement = blockConfig.pixelsPerUnit * blockConfig.increment
+  const snappedWidth = Math.round(newWidth / pixelsPerIncrement) * pixelsPerIncrement
+
+  // Calculate duration from snapped width
+  const duration = snappedWidth / blockConfig.pixelsPerUnit
+
+  // Apply min/max constraints
+  const constrainedDuration = Math.max(
+    blockConfig.minDuration,
+    blockConfig.maxDuration ? Math.min(duration, blockConfig.maxDuration) : duration
+  )
+
+  return constrainedDuration * blockConfig.pixelsPerUnit
+}
+
+// Helper: Get block border color based on state
+const getBlockBorderColor = (isSelected, isHovered, isInActiveParentChain, nestingDepth, blockColor) => {
+  if (isSelected) return THEME.GREEN_BRIGHT
+  if (isInActiveParentChain) return NESTING_BORDER_COLORS[nestingDepth] || NESTING_BORDER_COLORS[4]
+  if (isHovered) return THEME.AMBER
+  return blockColor
+}
 
 function LearningBlock({
   id,
@@ -34,10 +149,15 @@ function LearningBlock({
   y = 0,
   width,
   height,
+  duration,              // Duration in block's unit (e.g., 30 for LESSON = 30 min)
+  parentId = null,       // Reference to parent block (null if top-level)
+  nestingDepth = 0,      // 0 = top-level, 1 = child, 2 = grandchild, etc.
+  isInActiveParentChain = false,  // True if this block is a parent of the active block
   onDragStart,
   onDragEnd,
   onPositionChange,
   onSizeChange,
+  onDurationChange,      // New: callback for duration changes
   onTitleChange,
   onSelect,
   isSelected = false
@@ -53,8 +173,15 @@ function LearningBlock({
   const inputRef = useRef(null)
 
   const blockConfig = BLOCK_TYPES[type] || BLOCK_TYPES.LESSON
-  const blockWidth = width || blockConfig.minWidth
+
+  // Calculate width from duration if provided, otherwise use default
+  const blockWidth = width || (duration
+    ? duration * blockConfig.pixelsPerUnit
+    : blockConfig.startDuration * blockConfig.pixelsPerUnit)
   const blockHeight = height || blockConfig.minHeight
+
+  // Calculate current duration from width
+  const currentDuration = duration || (blockWidth / blockConfig.pixelsPerUnit)
 
   // Focus input when editing starts
   useEffect(() => {
@@ -69,21 +196,38 @@ function LearningBlock({
     setEditTitle(title)
   }, [title])
 
-  // Calculate duration from width
+  // Format duration for display based on block's unit
   const getDuration = () => {
-    const hours = blockWidth / PIXELS_PER_HOUR
-    if (hours >= 24) {
-      const days = Math.floor(hours / 24)
-      const remainingHours = Math.round(hours % 24)
-      if (remainingHours > 0) {
-        return `${days}d ${remainingHours}h`
-      }
-      return `${days}d`
+    const unit = blockConfig.unit
+    const dur = currentDuration
+
+    switch (unit) {
+      case 'week':
+        return `${Math.round(dur)}w`
+      case 'day':
+        if (dur >= 7) {
+          const weeks = Math.floor(dur / 7)
+          const days = Math.round(dur % 7)
+          return days > 0 ? `${weeks}w ${days}d` : `${weeks}w`
+        }
+        return `${Math.round(dur)}d`
+      case 'hour':
+        if (dur >= 24) {
+          const days = Math.floor(dur / 24)
+          const hours = Math.round(dur % 24)
+          return hours > 0 ? `${days}d ${hours}h` : `${days}d`
+        }
+        return `${Math.round(dur)}h`
+      case 'minute':
+        if (dur >= 60) {
+          const hours = Math.floor(dur / 60)
+          const mins = Math.round(dur % 60)
+          return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
+        }
+        return `${Math.round(dur)}m`
+      default:
+        return `${Math.round(dur)}`
     }
-    if (hours >= 1) {
-      return `${hours.toFixed(1)}h`
-    }
-    return `${Math.round(hours * 60)}m`
   }
 
   const handleMouseDown = useCallback((e) => {
@@ -110,16 +254,19 @@ function LearningBlock({
       let newX = x
       let newY = y
 
-      // Handle horizontal resize
+      // Handle horizontal resize with snapping
       if (resizeHandle.includes('e')) {
-        newWidth = Math.max(blockConfig.minWidth, resizeStart.width + deltaX)
+        const rawWidth = resizeStart.width + deltaX
+        newWidth = snapToIncrement(rawWidth, blockConfig)
       } else if (resizeHandle.includes('w')) {
-        const widthDelta = Math.min(deltaX, resizeStart.width - blockConfig.minWidth)
-        newWidth = resizeStart.width - widthDelta
-        newX = resizeStart.x + widthDelta
+        const rawWidth = resizeStart.width - deltaX
+        const snappedWidth = snapToIncrement(rawWidth, blockConfig)
+        const widthChange = snappedWidth - resizeStart.width
+        newWidth = snappedWidth
+        newX = resizeStart.x - widthChange
       }
 
-      // Handle vertical resize
+      // Handle vertical resize (no snapping for height)
       if (resizeHandle.includes('s')) {
         newHeight = Math.max(blockConfig.minHeight, resizeStart.height + deltaY)
       } else if (resizeHandle.includes('n')) {
@@ -128,12 +275,16 @@ function LearningBlock({
         newY = resizeStart.y + heightDelta
       }
 
+      // Calculate new duration from snapped width
+      const newDuration = newWidth / blockConfig.pixelsPerUnit
+
       onSizeChange?.(id, newWidth, newHeight)
+      onDurationChange?.(id, newDuration)
       if (newX !== x || newY !== y) {
         onPositionChange?.(id, newX, newY)
       }
     }
-  }, [isDragging, isResizing, resizeHandle, dragOffset, resizeStart, id, x, y, blockConfig, onPositionChange, onSizeChange])
+  }, [isDragging, isResizing, resizeHandle, dragOffset, resizeStart, id, x, y, blockConfig, onPositionChange, onSizeChange, onDurationChange])
 
   const handleMouseUp = useCallback(() => {
     if (isDragging) {
@@ -191,6 +342,19 @@ function LearningBlock({
   // Lesson type has special styling
   const isLesson = type === 'LESSON'
 
+  // Calculate border color based on state and nesting
+  const borderColor = getBlockBorderColor(isSelected, isHovered, isInActiveParentChain, nestingDepth, blockConfig.color)
+
+  // Calculate box shadow (green glow for active or top-level parent in active chain)
+  const isTopLevelActiveParent = isInActiveParentChain && nestingDepth === 0
+  const boxShadow = isSelected
+    ? `0 0 12px ${THEME.GREEN_BRIGHT}40`
+    : isTopLevelActiveParent
+      ? `0 0 8px ${THEME.GREEN_BRIGHT}30`
+      : isHovered
+        ? `0 0 8px ${THEME.AMBER}40`
+        : 'none'
+
   // Resize handle style
   const handleStyle = {
     position: 'absolute',
@@ -202,6 +366,27 @@ function LearningBlock({
     opacity: isSelected || isHovered ? 1 : 0,
     transition: 'opacity 0.2s ease'
   }
+
+  // Global mouse handlers for drag outside component
+  useEffect(() => {
+    if (isDragging) {
+      const handleGlobalMove = (e) => {
+        const newX = e.clientX - dragOffset.x
+        const newY = e.clientY - dragOffset.y
+        onPositionChange?.(id, newX, newY)
+      }
+      const handleGlobalUp = () => {
+        setIsDragging(false)
+        onDragEnd?.(id)
+      }
+      window.addEventListener('mousemove', handleGlobalMove)
+      window.addEventListener('mouseup', handleGlobalUp)
+      return () => {
+        window.removeEventListener('mousemove', handleGlobalMove)
+        window.removeEventListener('mouseup', handleGlobalUp)
+      }
+    }
+  }, [isDragging, dragOffset, id, onPositionChange, onDragEnd])
 
   // Global mouse handlers for resize outside component
   useEffect(() => {
@@ -235,16 +420,12 @@ function LearningBlock({
         top: y,
         width: blockWidth,
         height: blockHeight,
-        borderRadius: isLesson ? '8px' : '12px',
+        borderRadius: isLesson ? '1.5vh' : '1.85vh',  // Match action button style
         background: isLesson
           ? `linear-gradient(135deg, ${THEME.BG_PANEL} 0%, ${THEME.BG_DARK} 100%)`
           : THEME.BG_PANEL,
-        border: `2px solid ${isSelected ? THEME.GREEN_BRIGHT : isHovered ? THEME.AMBER : blockConfig.color}`,
-        boxShadow: isSelected
-          ? `0 0 12px ${THEME.GREEN_BRIGHT}40`
-          : isHovered
-            ? `0 0 8px ${THEME.AMBER}40`
-            : 'none',
+        border: `2px solid ${borderColor}`,
+        boxShadow: boxShadow,
         cursor: isDragging ? 'grabbing' : isResizing ? 'nwse-resize' : 'grab',
         transition: isDragging || isResizing ? 'none' : 'border-color 0.2s ease, box-shadow 0.2s ease',
         display: 'flex',
@@ -265,7 +446,7 @@ function LearningBlock({
       >
         <span
           style={{
-            fontSize: '10px',
+            fontSize: '1.3vh',  // Increased from 10px (+25%)
             fontFamily: THEME.FONT_PRIMARY,
             letterSpacing: '0.1em',
             color: blockConfig.color
@@ -276,7 +457,7 @@ function LearningBlock({
         {/* Duration readout */}
         <span
           style={{
-            fontSize: '9px',
+            fontSize: '1.17vh',  // Increased from 9px (+25%)
             fontFamily: THEME.FONT_MONO,
             color: isResizing ? THEME.GREEN_BRIGHT : THEME.TEXT_DIM,
             transition: 'color 0.2s ease'
@@ -296,12 +477,12 @@ function LearningBlock({
           onBlur={handleTitleBlur}
           onKeyDown={handleTitleKeyDown}
           style={{
-            fontSize: isLesson ? '12px' : '14px',
+            fontSize: isLesson ? '1.6vh' : '1.85vh',  // Increased from 12px/14px (+25%)
             fontFamily: THEME.FONT_PRIMARY,
             color: THEME.WHITE,
             background: 'transparent',
             border: `1px solid ${THEME.AMBER}`,
-            borderRadius: '4px',
+            borderRadius: '1vh',  // Match button style
             padding: '2px 4px',
             outline: 'none',
             width: '100%'
@@ -310,7 +491,7 @@ function LearningBlock({
       ) : (
         <span
           style={{
-            fontSize: isLesson ? '12px' : '14px',
+            fontSize: isLesson ? '1.6vh' : '1.85vh',  // Increased from 12px/14px (+25%)
             fontFamily: THEME.FONT_PRIMARY,
             color: THEME.WHITE,
             overflow: 'hidden',
@@ -415,4 +596,4 @@ function LearningBlock({
 }
 
 export default LearningBlock
-export { BLOCK_TYPES }
+export { BLOCK_TYPES, NESTING_RULES, HOURS_PER_UNIT, convertToHours, convertFromHours }

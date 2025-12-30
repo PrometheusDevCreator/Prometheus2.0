@@ -137,6 +137,9 @@ function LessonEditor() {
     ? LESSON_TYPES.find(t => t.id === selectedLesson.type) || LESSON_TYPES[0]
     : LESSON_TYPES[0]
 
+  // Check if lesson is a BREAK (no LO/topic/subtopic fields needed)
+  const isBreakLesson = selectedLesson?.type === 'break'
+
   // Format time display
   const formatTime = (timeStr) => {
     if (!timeStr) return '--:--'
@@ -315,164 +318,170 @@ function LessonEditor() {
             )}
           </FieldSection>
 
-          {/* Learning Objective Field */}
-          <FieldSection label="Learning Objective:" style={{ position: 'relative' }}>
-            {primaryLO ? (
-              <div style={{ fontSize: '1.6vh' }}>
-                <span style={{ color: THEME.TEXT_PRIMARY }}>{primaryLO.order}. </span>
-                <span style={{ color: THEME.GREEN_BRIGHT }}>{primaryLO.verb}</span>
-                <span style={{ color: THEME.TEXT_PRIMARY }}> {primaryLO.description}</span>
-              </div>
-            ) : (
-              <div style={{ fontSize: '1.6vh', color: THEME.TEXT_DIM, fontStyle: 'italic' }}>
-                Select LO
-              </div>
-            )}
-            <button
-              onClick={() => setShowLODropdown(!showLODropdown)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: THEME.TEXT_DIM,
-                fontSize: '1.5vh',
-                cursor: 'pointer',
-                marginTop: '0.4vh',
-                textDecoration: 'underline',
-                padding: 0
-              }}
-            >
-              Select LO
-            </button>
-
-            {/* LO Dropdown */}
-            {showLODropdown && (
-              <LODropdown
-                moduleLOs={moduleLOs}
-                selectedLOs={selectedLesson.learningObjectives || []}
-                onToggle={(loId) => toggleLessonLO(selectedLesson.id, loId)}
-                onClose={() => setShowLODropdown(false)}
-              />
-            )}
-          </FieldSection>
-
-          {/* Topic Field */}
-          <FieldSection
-            label="Topic:"
-            action={
+          {/* Learning Objective Field - hidden for BREAK lessons */}
+          {!isBreakLesson && (
+            <FieldSection label="Learning Objective:" style={{ position: 'relative' }}>
+              {primaryLO ? (
+                <div style={{ fontSize: '1.6vh' }}>
+                  <span style={{ color: THEME.TEXT_PRIMARY }}>{primaryLO.order}. </span>
+                  <span style={{ color: THEME.GREEN_BRIGHT }}>{primaryLO.verb}</span>
+                  <span style={{ color: THEME.TEXT_PRIMARY }}> {primaryLO.description}</span>
+                </div>
+              ) : null}
               <button
-                onClick={() => setShowTopicModal(true)}
-                style={plusButtonStyle}
-              >
-                +
-              </button>
-            }
-            style={{ position: 'relative' }}
-          >
-            {selectedLesson.topics?.length > 0 ? (
-              selectedLesson.topics.map(topic => (
-                <TopicItem
-                  key={topic.id}
-                  topic={topic}
-                  hasAssignedLO={hasAssignedLO}
-                  isEditing={editingTopicId === topic.id}
-                  onEdit={() => setEditingTopicId(topic.id)}
-                  onSave={(newTitle) => handleEditTopic(topic.id, newTitle)}
-                  onCancel={() => setEditingTopicId(null)}
-                  onRemove={() => handleRemoveTopic(topic.id)}
-                />
-              ))
-            ) : (
-              <div style={{ fontSize: '1.6vh', color: THEME.TEXT_DIM, fontStyle: 'italic' }}>
-                Click + to add a topic
-              </div>
-            )}
-
-            {/* Topic Entry Modal */}
-            {showTopicModal && (
-              <TopicEntryModal
-                existingTopics={existingScalarTopics}
-                hasAssignedLO={hasAssignedLO}
-                primaryLO={primaryLO}
-                onAdd={handleAddTopic}
-                onClose={() => setShowTopicModal(false)}
-              />
-            )}
-          </FieldSection>
-
-          {/* Subtopic Field - shows subtopics grouped by topic */}
-          <FieldSection
-            label="Subtopic:"
-            style={{ position: 'relative' }}
-          >
-            {selectedLesson.topics?.length > 0 ? (
-              selectedLesson.topics.map(topic => {
-                const subtopics = topic.subtopics || []
-                return (
-                  <div key={topic.id} style={{ marginBottom: '0.5vh' }}>
-                    {/* Topic header with + button for adding subtopics */}
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      fontSize: '1.4vh',
-                      color: THEME.TEXT_DIM,
-                      marginBottom: '0.2vh'
-                    }}>
-                      <span>{topic.number} {topic.title}</span>
-                      <button
-                        onClick={() => openSubtopicModal(topic.id)}
-                        style={plusButtonStyle}
-                      >
-                        +
-                      </button>
-                    </div>
-                    {/* Subtopics for this topic */}
-                    {subtopics.length > 0 ? (
-                      subtopics.map(subtopic => (
-                        <SubtopicItem
-                          key={subtopic.id}
-                          subtopic={subtopic}
-                          hasAssignedLO={hasAssignedLO}
-                          isEditing={editingSubtopicId === subtopic.id && editingSubtopicParentId === topic.id}
-                          onEdit={() => {
-                            setEditingSubtopicId(subtopic.id)
-                            setEditingSubtopicParentId(topic.id)
-                          }}
-                          onSave={(newTitle) => handleEditSubtopic(topic.id, subtopic.id, newTitle)}
-                          onCancel={() => {
-                            setEditingSubtopicId(null)
-                            setEditingSubtopicParentId(null)
-                          }}
-                          onRemove={() => handleRemoveSubtopic(topic.id, subtopic.id)}
-                        />
-                      ))
-                    ) : (
-                      <div style={{ fontSize: '1.4vh', color: THEME.TEXT_DIM, fontStyle: 'italic', marginLeft: '1vw' }}>
-                        No subtopics
-                      </div>
-                    )}
-                  </div>
-                )
-              })
-            ) : (
-              <div style={{ fontSize: '1.6vh', color: THEME.TEXT_DIM, fontStyle: 'italic' }}>
-                Add topics first to create subtopics
-              </div>
-            )}
-
-            {/* Subtopic Entry Modal */}
-            {showSubtopicModal && subtopicParentTopicId && (
-              <SubtopicEntryModal
-                parentTopic={selectedLesson.topics?.find(t => t.id === subtopicParentTopicId)}
-                hasAssignedLO={hasAssignedLO}
-                onAdd={(title) => handleAddSubtopic(subtopicParentTopicId, title)}
-                onClose={() => {
-                  setShowSubtopicModal(false)
-                  setSubtopicParentTopicId(null)
+                onClick={() => setShowLODropdown(!showLODropdown)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: THEME.TEXT_DIM,
+                  fontSize: '1.5vh',
+                  cursor: 'pointer',
+                  marginTop: primaryLO ? '0.4vh' : 0,
+                  textDecoration: 'underline',
+                  padding: 0
                 }}
-              />
-            )}
-          </FieldSection>
+              >
+                Select LO
+              </button>
+
+              {/* LO Dropdown */}
+              {showLODropdown && (
+                <LODropdown
+                  moduleLOs={moduleLOs}
+                  selectedLOs={selectedLesson.learningObjectives || []}
+                  onToggle={(loId) => {
+                    toggleLessonLO(selectedLesson.id, loId)
+                    // Close dropdown after selection
+                    setShowLODropdown(false)
+                  }}
+                  onClose={() => setShowLODropdown(false)}
+                />
+              )}
+            </FieldSection>
+          )}
+
+          {/* Topic Field - hidden for BREAK lessons */}
+          {!isBreakLesson && (
+            <FieldSection
+              label="Topic:"
+              action={
+                <button
+                  onClick={() => setShowTopicModal(true)}
+                  style={plusButtonStyle}
+                >
+                  +
+                </button>
+              }
+              style={{ position: 'relative' }}
+            >
+              {selectedLesson.topics?.length > 0 ? (
+                selectedLesson.topics.map(topic => (
+                  <TopicItem
+                    key={topic.id}
+                    topic={topic}
+                    hasAssignedLO={hasAssignedLO}
+                    isEditing={editingTopicId === topic.id}
+                    onEdit={() => setEditingTopicId(topic.id)}
+                    onSave={(newTitle) => handleEditTopic(topic.id, newTitle)}
+                    onCancel={() => setEditingTopicId(null)}
+                    onRemove={() => handleRemoveTopic(topic.id)}
+                  />
+                ))
+              ) : (
+                <div style={{ fontSize: '1.6vh', color: THEME.TEXT_DIM, fontStyle: 'italic' }}>
+                  Click + to add a topic
+                </div>
+              )}
+
+              {/* Topic Entry Modal */}
+              {showTopicModal && (
+                <TopicEntryModal
+                  existingTopics={existingScalarTopics}
+                  hasAssignedLO={hasAssignedLO}
+                  primaryLO={primaryLO}
+                  onAdd={handleAddTopic}
+                  onClose={() => setShowTopicModal(false)}
+                />
+              )}
+            </FieldSection>
+          )}
+
+          {/* Subtopic Field - shows subtopics grouped by topic - hidden for BREAK lessons */}
+          {!isBreakLesson && (
+            <FieldSection
+              label="Subtopic:"
+              style={{ position: 'relative' }}
+            >
+              {selectedLesson.topics?.length > 0 ? (
+                selectedLesson.topics.map(topic => {
+                  const subtopics = topic.subtopics || []
+                  return (
+                    <div key={topic.id} style={{ marginBottom: '0.5vh' }}>
+                      {/* Topic header with + button for adding subtopics */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: '1.4vh',
+                        color: THEME.TEXT_DIM,
+                        marginBottom: '0.2vh'
+                      }}>
+                        <span>{topic.number} {topic.title}</span>
+                        <button
+                          onClick={() => openSubtopicModal(topic.id)}
+                          style={plusButtonStyle}
+                        >
+                          +
+                        </button>
+                      </div>
+                      {/* Subtopics for this topic */}
+                      {subtopics.length > 0 ? (
+                        subtopics.map(subtopic => (
+                          <SubtopicItem
+                            key={subtopic.id}
+                            subtopic={subtopic}
+                            hasAssignedLO={hasAssignedLO}
+                            isEditing={editingSubtopicId === subtopic.id && editingSubtopicParentId === topic.id}
+                            onEdit={() => {
+                              setEditingSubtopicId(subtopic.id)
+                              setEditingSubtopicParentId(topic.id)
+                            }}
+                            onSave={(newTitle) => handleEditSubtopic(topic.id, subtopic.id, newTitle)}
+                            onCancel={() => {
+                              setEditingSubtopicId(null)
+                              setEditingSubtopicParentId(null)
+                            }}
+                            onRemove={() => handleRemoveSubtopic(topic.id, subtopic.id)}
+                          />
+                        ))
+                      ) : (
+                        <div style={{ fontSize: '1.4vh', color: THEME.TEXT_DIM, fontStyle: 'italic', marginLeft: '1vw' }}>
+                          No subtopics
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
+              ) : (
+                <div style={{ fontSize: '1.6vh', color: THEME.TEXT_DIM, fontStyle: 'italic' }}>
+                  Add topics first to create subtopics
+                </div>
+              )}
+
+              {/* Subtopic Entry Modal */}
+              {showSubtopicModal && subtopicParentTopicId && (
+                <SubtopicEntryModal
+                  parentTopic={selectedLesson.topics?.find(t => t.id === subtopicParentTopicId)}
+                  hasAssignedLO={hasAssignedLO}
+                  onAdd={(title) => handleAddSubtopic(subtopicParentTopicId, title)}
+                  onClose={() => {
+                    setShowSubtopicModal(false)
+                    setSubtopicParentTopicId(null)
+                  }}
+                />
+              )}
+            </FieldSection>
+          )}
 
           {/* Lesson Type Field */}
           <FieldSection label="Lesson Type:">

@@ -88,6 +88,28 @@ function App() {
   })
   const [courseLoaded, setCourseLoaded] = useState(false)
 
+  // Timetable data state (persists across page navigation)
+  // This is lifted from DesignContext to ensure data persists when navigating away from Design page
+  const [timetableData, setTimetableData] = useState({
+    lessons: [
+      {
+        id: 'lesson-1',
+        title: 'INTRODUCTION',
+        type: 'instructor-led',
+        duration: 60,
+        startTime: '0900',
+        day: 1,
+        week: 1,
+        module: 1,
+        topics: [],
+        learningObjectives: [],
+        scheduled: true,
+        saved: false
+      }
+    ],
+    overviewBlocks: []
+  })
+
   // Course state for Footer (save tracking)
   const [courseState, setCourseState] = useState({
     startDate: null,
@@ -137,6 +159,25 @@ function App() {
     setCourseState({
       startDate: null,
       saveCount: 0
+    })
+    setTimetableData({
+      lessons: [
+        {
+          id: 'lesson-1',
+          title: 'INTRODUCTION',
+          type: 'instructor-led',
+          duration: 60,
+          startTime: '0900',
+          day: 1,
+          week: 1,
+          module: 1,
+          topics: [],
+          learningObjectives: [],
+          scheduled: true,
+          saved: false
+        }
+      ],
+      overviewBlocks: []
     })
     setCourseLoaded(false)
   }, [])
@@ -324,6 +365,8 @@ function App() {
             onNavigate={handleNavigate}
             courseData={courseData}
             setCourseData={setCourseData}
+            timetableData={timetableData}
+            setTimetableData={setTimetableData}
             courseLoaded={courseLoaded}
             user={userData}
             courseState={courseState}
@@ -336,6 +379,8 @@ function App() {
             onNavigate={handleNavigate}
             courseData={courseData}
             setCourseData={setCourseData}
+            timetableData={timetableData}
+            setTimetableData={setTimetableData}
             courseLoaded={courseLoaded}
             user={userData}
             courseState={courseState}
@@ -410,7 +455,7 @@ function App() {
           pageTitle={
             currentPage === 'define' ? '' :  /* COURSE INFORMATION removed per founder request */
             currentPage === 'design' ? 'COURSE PLANNER' :
-            currentPage === 'build' ? 'BUILD' :
+            currentPage === 'build' ? '' :  /* Removed - burnt orange label only */
             currentPage === 'format' ? 'FORMAT' :
             currentPage === 'generate' ? 'GENERATE' :
             currentPage === 'navigate' ? 'NAVIGATION' :

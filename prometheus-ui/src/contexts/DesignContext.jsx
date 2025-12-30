@@ -154,7 +154,7 @@ const DesignContext = createContext(null)
 // ============================================
 // PROVIDER COMPONENT
 // ============================================
-export function DesignProvider({ children, courseData, setCourseData }) {
+export function DesignProvider({ children, courseData, setCourseData, timetableData, setTimetableData }) {
   // --------------------------------------------
   // NAVIGATION STATE
   // --------------------------------------------
@@ -165,29 +165,27 @@ export function DesignProvider({ children, courseData, setCourseData }) {
   const [currentDay, setCurrentDay] = useState(1)
 
   // --------------------------------------------
-  // OVERVIEW STATE (Learning Blocks for course sketching)
+  // LIFTED STATE FROM APP.JSX (persists across page navigation)
+  // Lessons and overviewBlocks are now managed by App.jsx for persistence
   // --------------------------------------------
-  const [overviewBlocks, setOverviewBlocks] = useState([])
+  const lessons = timetableData?.lessons || []
+  const overviewBlocks = timetableData?.overviewBlocks || []
 
-  // --------------------------------------------
-  // LESSON STATE (Single Source of Truth)
-  // --------------------------------------------
-  const [lessons, setLessons] = useState([
-    {
-      id: 'lesson-1',
-      title: 'INTRODUCTION',
-      type: 'instructor-led',
-      duration: 60,
-      startTime: '0900',
-      day: 1,
-      week: 1,
-      module: 1,
-      topics: [],
-      learningObjectives: [],
-      scheduled: true,
-      saved: false
-    }
-  ])
+  // Wrapper to update lessons in App.jsx state
+  const setLessons = useCallback((updater) => {
+    setTimetableData(prev => ({
+      ...prev,
+      lessons: typeof updater === 'function' ? updater(prev.lessons || []) : updater
+    }))
+  }, [setTimetableData])
+
+  // Wrapper to update overviewBlocks in App.jsx state
+  const setOverviewBlocks = useCallback((updater) => {
+    setTimetableData(prev => ({
+      ...prev,
+      overviewBlocks: typeof updater === 'function' ? updater(prev.overviewBlocks || []) : updater
+    }))
+  }, [setTimetableData])
 
   // --------------------------------------------
   // SCALAR HIERARCHY STATE

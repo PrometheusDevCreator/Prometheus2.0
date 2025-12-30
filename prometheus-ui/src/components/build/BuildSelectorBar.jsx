@@ -100,22 +100,22 @@ function BuildSelectorBar() {
     setEditingLO(null)
   }, [editingLO, buildSelection.lessonId, updateLearningObjectiveText])
 
-  // Dropdown style
+  // Dropdown style - font size +50% total (2x 25%), border-radius matched to action buttons
   const dropdownStyle = {
     padding: '6px 12px',
-    fontSize: '0.85vh',
+    fontSize: '1.325vh',  // Was 1.06vh, +25% again
     fontFamily: THEME.FONT_PRIMARY,
     color: THEME.TEXT_PRIMARY,
     background: THEME.BG_DARK,
     border: `1px solid ${THEME.BORDER}`,
-    borderRadius: '4px',
+    borderRadius: '1.5vh',  // Match action button style
     cursor: 'pointer',
     minWidth: '150px',
     outline: 'none'
   }
 
   const labelStyle = {
-    fontSize: '0.7vh',
+    fontSize: '1.09vh',  // Was 0.875vh, +25% again
     fontFamily: THEME.FONT_MONO,
     color: THEME.TEXT_DIM,
     letterSpacing: '0.1vh',
@@ -187,12 +187,12 @@ function BuildSelectorBar() {
         <div
           style={{
             padding: '6px 12px',
-            fontSize: '0.8vh',
+            fontSize: '1.25vh',  // Was 1vh, +25% again
             fontFamily: THEME.FONT_PRIMARY,
             color: lessonLOs.length > 0 ? THEME.TEXT_SECONDARY : THEME.TEXT_DIM,
             background: 'rgba(0, 0, 0, 0.3)',
             border: `1px solid ${THEME.BORDER}`,
-            borderRadius: '4px',
+            borderRadius: '1.5vh',  // Match action button style
             minHeight: '32px',
             maxHeight: '60px',
             overflowY: 'auto'
@@ -225,12 +225,12 @@ function BuildSelectorBar() {
                     style={{
                       width: '100%',
                       padding: '2px 4px',
-                      fontSize: '0.8vh',
+                      fontSize: '1.25vh',  // Was 1vh, +25% again
                       fontFamily: THEME.FONT_PRIMARY,
                       color: THEME.TEXT_PRIMARY,
                       background: THEME.BG_DARK,
                       border: `1px solid ${THEME.GREEN_BRIGHT}`,
-                      borderRadius: '2px',
+                      borderRadius: '0.5vh',  // Proportional inner border-radius
                       outline: 'none'
                     }}
                   />

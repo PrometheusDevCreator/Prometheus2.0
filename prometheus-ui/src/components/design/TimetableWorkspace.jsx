@@ -322,19 +322,19 @@ function LessonTypeButton({ type, onClick }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        width: '4.7vw',
-        minWidth: '64px',
-        height: '3vh',
-        minHeight: '28px',
+        width: '6vw',  // Increased from 4.7vw for text visibility
+        minWidth: '85px',  // Increased from 64px
+        height: '3.5vh',  // Increased from 3vh
+        minHeight: '34px',  // Increased from 28px
         background: THEME.BG_PANEL,
         border: `1px solid ${hovered ? type.color : 'rgba(255, 255, 255, 0.3)'}`,
-        borderRadius: '14px',
+        borderRadius: '1.5vh',  // Match action button style
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-start',
-        padding: '0 0.5vw',
+        padding: '0 0.6vw',
         gap: '0.4vw',
         position: 'relative',
         overflow: 'hidden',
@@ -354,7 +354,7 @@ function LessonTypeButton({ type, onClick }) {
       {/* Label */}
       <span
         style={{
-          fontSize: '0.95vh',
+          fontSize: '1.19vh',  // Increased from 0.95vh (+25%)
           color: THEME.TEXT_PRIMARY,
           fontFamily: THEME.FONT_PRIMARY,
           textAlign: 'left',

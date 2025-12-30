@@ -99,7 +99,7 @@ function BuildContentColumn({
         padding: '8px',
         background: 'rgba(0, 0, 0, 0.2)',
         border: `1px solid ${THEME.BORDER}`,
-        borderRadius: '6px',
+        borderRadius: '1.85vh',  // Match action button style
         opacity: isPrimary ? 1 : 0.6,
         flex: isPrimary ? 1 : 0.8,
         minWidth: isPrimary ? '180px' : '140px'
@@ -108,7 +108,7 @@ function BuildContentColumn({
       {/* Column Header */}
       <div
         style={{
-          fontSize: '0.7vh',
+          fontSize: '1.09vh',  // Was 0.875vh, +25% again
           fontFamily: THEME.FONT_MONO,
           color: THEME.TEXT_DIM,
           letterSpacing: '0.1vh',
@@ -127,12 +127,12 @@ function BuildContentColumn({
         disabled={isDisabled}
         style={{
           padding: '4px 8px',
-          fontSize: '0.75vh',
+          fontSize: '1.175vh',  // Was 0.94vh, +25% again
           fontFamily: THEME.FONT_PRIMARY,
           color: THEME.TEXT_PRIMARY,
           background: THEME.BG_DARK,
           border: `1px solid ${THEME.BORDER}`,
-          borderRadius: '4px',
+          borderRadius: '1vh',  // Proportional inner border-radius
           cursor: isDisabled ? 'not-allowed' : 'pointer',
           opacity: isDisabled ? 0.5 : 1
         }}
@@ -155,12 +155,12 @@ function BuildContentColumn({
           flex: 1,
           minHeight: '120px',
           padding: '8px',
-          fontSize: '0.8vh',
+          fontSize: '1.25vh',  // Was 1vh, +25% again
           fontFamily: THEME.FONT_PRIMARY,
           color: THEME.TEXT_PRIMARY,
           background: THEME.BG_DARK,
           border: `1px solid ${THEME.BORDER}`,
-          borderRadius: '4px',
+          borderRadius: '1.5vh',  // Match action button style
           resize: 'vertical',
           outline: 'none',
           cursor: isDisabled ? 'not-allowed' : 'text',
@@ -189,7 +189,7 @@ function BuildContentColumn({
           >
             <span
               style={{
-                fontSize: '0.65vh',
+                fontSize: '1.01vh',  // Was 0.81vh, +25% again
                 fontFamily: THEME.FONT_MONO,
                 color: THEME.TEXT_DIM,
                 letterSpacing: '0.05vh'
@@ -199,7 +199,7 @@ function BuildContentColumn({
             </span>
             <span
               style={{
-                fontSize: '0.7vh',
+                fontSize: '1.09vh',  // Was 0.875vh, +25% again
                 color: THEME.TEXT_MUTED,
                 cursor: 'help',
                 position: 'relative'
@@ -216,12 +216,12 @@ function BuildContentColumn({
                     left: '50%',
                     transform: 'translateX(-50%)',
                     padding: '4px 8px',
-                    fontSize: '0.65vh',
+                    fontSize: '1.01vh',  // Was 0.81vh, +25% again
                     fontFamily: THEME.FONT_PRIMARY,
                     color: THEME.TEXT_PRIMARY,
                     background: THEME.BG_DARK,
                     border: `1px solid ${THEME.BORDER}`,
-                    borderRadius: '4px',
+                    borderRadius: '1vh',  // Proportional inner border-radius
                     whiteSpace: 'nowrap',
                     zIndex: 100
                   }}
@@ -239,12 +239,12 @@ function BuildContentColumn({
             style={{
               minHeight: '60px',
               padding: '6px',
-              fontSize: '0.75vh',
+              fontSize: '1.175vh',  // Was 0.94vh, +25% again
               fontFamily: THEME.FONT_PRIMARY,
               color: THEME.AMBER,
               background: 'rgba(212, 115, 12, 0.1)',
               border: `1px solid ${THEME.AMBER_DARK}`,
-              borderRadius: '4px',
+              borderRadius: '1.5vh',  // Match action button style
               resize: 'vertical',
               outline: 'none',
               cursor: isDisabled ? 'not-allowed' : 'text',
@@ -276,12 +276,12 @@ function BuildContentColumn({
           disabled={isDisabled}
           style={{
             padding: '2px 8px',
-            fontSize: '0.65vh',
+            fontSize: '1.01vh',  // Was 0.81vh, +25% again
             fontFamily: THEME.FONT_MONO,
             color: THEME.TEXT_DIM,
             background: 'transparent',
             border: `1px solid ${THEME.BORDER}`,
-            borderRadius: '3px',
+            borderRadius: '1vh',  // Proportional inner border-radius
             cursor: isDisabled ? 'not-allowed' : 'pointer',
             opacity: isDisabled ? 0.3 : 0.7,
             transition: 'all 0.2s ease'
@@ -295,12 +295,12 @@ function BuildContentColumn({
           disabled={isDisabled}
           style={{
             padding: '2px 8px',
-            fontSize: '0.65vh',
+            fontSize: '1.01vh',  // Was 0.81vh, +25% again
             fontFamily: THEME.FONT_MONO,
             color: '#ff6666',
             background: 'transparent',
             border: `1px solid #ff666666`,
-            borderRadius: '3px',
+            borderRadius: '1vh',  // Proportional inner border-radius
             cursor: isDisabled ? 'not-allowed' : 'pointer',
             opacity: isDisabled ? 0.3 : 0.7,
             transition: 'all 0.2s ease'

@@ -62,7 +62,9 @@ function LessonBlock({
   const isEditing = isSelected && selection.mode === 'editing'
 
   // Check if lesson has assigned LO (for red border warning)
-  const hasAssignedLO = lesson.learningObjectives?.length > 0 || lesson.loId
+  // BREAK lessons don't require LOs, so they're always considered "valid"
+  const isBreakLesson = lesson.type === 'break'
+  const hasAssignedLO = isBreakLesson || lesson.learningObjectives?.length > 0 || lesson.loId
 
   // Get lesson type info
   const lessonType = useMemo(() =>

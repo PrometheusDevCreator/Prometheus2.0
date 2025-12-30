@@ -42,12 +42,19 @@ function Design({
   onNavigate,
   courseData,
   setCourseData,
+  timetableData,
+  setTimetableData,
   courseLoaded,
   user,
   courseState
 }) {
   return (
-    <DesignProvider courseData={courseData} setCourseData={setCourseData}>
+    <DesignProvider
+      courseData={courseData}
+      setCourseData={setCourseData}
+      timetableData={timetableData}
+      setTimetableData={setTimetableData}
+    >
       <DesignPageContent
         onNavigate={onNavigate}
         courseLoaded={courseLoaded}

@@ -27,11 +27,12 @@
 | **Login page** | COMPLETE | 2025-12-15 | Click-to-login implemented |
 | **Navigate page** | COMPLETE | 2025-12-15 | NavWheel navigation working |
 | **Define page** | UPDATED | 2025-12-30 | Wheel layout refined, Module Name removed |
-| **Design - Overview** | ENHANCED | 2025-12-30 | Rotational wheels, resizable blocks, timetable bars |
+| **Design - Overview** | ENHANCED | 2025-12-30 | Hierarchical blocks with nesting, duration snapping, smooth drag |
+| **Design - Timetable** | ENHANCED | 2025-12-30 | BREAK lessons exempt from LO requirements, data persistence |
 | **Design - Scalar** | FUNCTIONAL | 2025-12-15 | Manager/Viewer tabs, 3-column hierarchy |
-| **Build page** | IMPLEMENTED | 2025-12-30 | Slide authoring, 5 columns, progress tracking |
+| **Build page** | ENHANCED | 2025-12-30 | Slide authoring, bidirectional sync, shared timetable data |
 | **Format page** | PLACEHOLDER | - | Footer integrated only |
-| **Generate page** | PLACEHOLDER | - | Footer integrated only |
+| **Generate page** | PLACEHOLDER | - | Not implemented |
 | **core/api** | SCAFFOLDED | - | FastAPI structure, not connected |
 | **core/pke** | PLACEHOLDER | - | Not implemented |
 | **orchestrator** | SCAFFOLDED | - | Agent adapters defined |
@@ -55,11 +56,11 @@
 
 | Date | Session | Key Changes |
 |------|---------|-------------|
+| 2025-12-30 | CC | OVERVIEW hierarchical blocks: duration snapping, nesting, smooth drag; Timetable persistence; BREAK lesson fixes; LO dropdown improvements |
 | 2025-12-30 | CC | BUILD page implementation with slide authoring, bidirectional sync |
 | 2025-12-30 | CC | Define page wheel refinements, Design page Overview enhancements |
 | 2025-12-29 | CC | Rotational wheels, resizable OVERVIEW blocks, TIMETABLE reference bars |
 | 2025-12-21 | CC | Documentation overhaul: TODO.md, IDEAS.md, STATUS.md restructured |
-| 2025-12-18 | CC | Grid system implementation and verification |
 
 ---
 
@@ -84,14 +85,33 @@ None currently.
 
 *Important context for the next session:*
 
-- BUILD page now implemented with full slide authoring functionality
-- DesignContext extended with slide operations, shared helpers, progress calculation
-- 7 Founder/Controller corrections applied to BUILD implementation
+### OVERVIEW Block Behavior (Implemented)
+- Block-type-specific duration increments: TERM=weeks, WEEK=days, DAY=hours, LESSON=15min, MODULE=days
+- Hierarchical nesting with NESTING_RULES validation
+- Auto-scaling when blocks nested into parents
+- Progressive border colors based on nesting depth
+- Smooth drag with global window event listeners (fixes "stuck" dragging)
+- Child blocks move with parent during drag operations
+
+### Timetable Data Persistence (Implemented)
+- `timetableData` state lifted to App.jsx (contains lessons + overviewBlocks)
+- DesignContext uses wrapper functions to sync changes back to App.jsx
+- Data persists when navigating between DESIGN, BUILD, and other pages
+
+### BREAK Lesson Handling (Implemented)
+- BREAK lessons exempt from LO/Topic/Subtopic requirements
+- No red border warning for missing LO on BREAK cards
+- LO/Topic/Subtopic fields hidden in LessonEditor for BREAK type
+
+### LO Dropdown Improvements (Implemented)
+- Removed italicised "Select LO" placeholder text
+- Dropdown closes after selection (allows multiple selections via reopening)
+
+### BUILD Page State
 - Slides belong to lessons; bidirectional sync between BUILD and DESIGN pages
 - Explicit "+ New Slide" button required (no auto-creation on navigation)
 - Progress counts only 3 primary columns + instructor notes per slide
 - Format and Generate pages remain placeholders
-- All baseline references aligned to 1890×940 viewport
 
 ---
 

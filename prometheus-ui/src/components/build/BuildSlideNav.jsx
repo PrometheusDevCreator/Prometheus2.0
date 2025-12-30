@@ -80,14 +80,15 @@ function BuildSlideNav() {
     }
   }, [buildSelection.lessonId, currentIndex, duplicateSlide, setBuildSelection])
 
+  // Button styles - font size +50% total (2x 25%), border-radius matched to action buttons
   const buttonStyle = {
     padding: '6px 12px',
-    fontSize: '0.8vh',
+    fontSize: '1.25vh',  // Was 1vh, +25% again
     fontFamily: THEME.FONT_MONO,
     color: THEME.TEXT_SECONDARY,
     background: 'transparent',
     border: `1px solid ${THEME.BORDER}`,
-    borderRadius: '4px',
+    borderRadius: '1.5vh',  // Match action button style
     cursor: 'pointer',
     transition: 'all 0.2s ease'
   }
@@ -95,7 +96,7 @@ function BuildSlideNav() {
   const arrowStyle = {
     ...buttonStyle,
     padding: '6px 10px',
-    fontSize: '1.2vh'
+    fontSize: '1.875vh'  // Was 1.5vh, +25% again
   }
 
   const disabledStyle = {
@@ -176,7 +177,7 @@ function BuildSlideNav() {
         {/* Numeric Counter */}
         <span
           style={{
-            fontSize: '0.9vh',
+            fontSize: '1.4vh',  // Was 1.12vh, +25% again
             fontFamily: THEME.FONT_MONO,
             color: THEME.TEXT_SECONDARY,
             minWidth: '40px',

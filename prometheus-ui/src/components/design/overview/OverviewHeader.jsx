@@ -33,17 +33,17 @@ function OverviewHeader({
         background: THEME.BG_PANEL
       }}
     >
-      {/* Course Title - Luminous Green */}
+      {/* Course Title - Luminous Green (glow removed per request) */}
       <h2
         style={{
           fontFamily: THEME.FONT_PRIMARY,
-          fontSize: '2.2vh',
+          fontSize: '2.75vh',  // Increased from 2.2vh (+25%)
           fontWeight: 600,
           color: THEME.GREEN_BRIGHT,
           letterSpacing: '0.1em',
           margin: 0,
-          marginBottom: '1vh',
-          textShadow: `0 0 10px ${THEME.GREEN_BRIGHT}40`
+          marginBottom: '1vh'
+          // textShadow removed per request
         }}
       >
         {courseData.title || 'UNTITLED COURSE'}
@@ -54,7 +54,7 @@ function OverviewHeader({
         <div style={{ flex: 1 }}>
           <label
             style={{
-              fontSize: '1.1vh',
+              fontSize: '1.375vh',  // Increased from 1.1vh (+25%)
               fontFamily: THEME.FONT_PRIMARY,
               letterSpacing: '0.15em',
               color: THEME.AMBER,
@@ -75,11 +75,11 @@ function OverviewHeader({
                 minHeight: '6vh',
                 padding: '0.8vh 1vw',
                 fontFamily: THEME.FONT_PRIMARY,
-                fontSize: '1.2vh',
+                fontSize: '1.5vh',  // Increased from 1.2vh (+25%)
                 color: THEME.WHITE,
                 background: THEME.BG_INPUT,
                 border: `1px solid ${THEME.AMBER}`,
-                borderRadius: '8px',
+                borderRadius: '1.5vh',  // Match action button style
                 resize: 'vertical'
               }}
             />
@@ -91,12 +91,12 @@ function OverviewHeader({
               }}
               style={{
                 fontFamily: THEME.FONT_PRIMARY,
-                fontSize: '1.2vh',
+                fontSize: '1.5vh',  // Increased from 1.2vh (+25%)
                 color: THEME.TEXT_SECONDARY,
                 margin: 0,
                 padding: '0.8vh 1vw',
                 background: THEME.BG_INPUT,
-                borderRadius: '8px',
+                borderRadius: '1.5vh',  // Match action button style
                 minHeight: '6vh',
                 cursor: 'text',
                 border: `1px solid transparent`,
@@ -112,7 +112,7 @@ function OverviewHeader({
         <div style={{ width: '30%' }}>
           <label
             style={{
-              fontSize: '1.1vh',
+              fontSize: '1.375vh',  // Increased from 1.1vh (+25%)
               fontFamily: THEME.FONT_PRIMARY,
               letterSpacing: '0.15em',
               color: THEME.AMBER,
@@ -126,7 +126,7 @@ function OverviewHeader({
             style={{
               padding: '0.8vh 1vw',
               background: THEME.BG_INPUT,
-              borderRadius: '8px',
+              borderRadius: '1.5vh',  // Match action button style
               minHeight: '6vh',
               maxHeight: '10vh',
               overflowY: 'auto'
@@ -136,7 +136,7 @@ function OverviewHeader({
               <div
                 key={idx}
                 style={{
-                  fontSize: '1vh',
+                  fontSize: '1.25vh',  // Increased from 1vh (+25%)
                   fontFamily: THEME.FONT_PRIMARY,
                   color: THEME.TEXT_SECONDARY,
                   marginBottom: '0.3vh',
@@ -157,7 +157,7 @@ function OverviewHeader({
               </div>
             ))}
             {(!courseData.learningObjectives || courseData.learningObjectives.filter(lo => lo.trim()).length === 0) && (
-              <span style={{ fontSize: '1vh', color: THEME.TEXT_DIM }}>
+              <span style={{ fontSize: '1.25vh', color: THEME.TEXT_DIM }}>
                 No learning objectives defined
               </span>
             )}

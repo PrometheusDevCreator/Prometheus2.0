@@ -46,7 +46,7 @@ function BuildProgressBar() {
       {/* Label */}
       <span
         style={{
-          fontSize: '0.7vh',
+          fontSize: '1.09vh',  // Was 0.875vh, +25% again
           fontFamily: THEME.FONT_MONO,
           color: THEME.TEXT_DIM,
           letterSpacing: '0.1vh'
@@ -62,7 +62,7 @@ function BuildProgressBar() {
           maxWidth: '300px',
           height: '8px',
           background: 'rgba(0, 0, 0, 0.4)',
-          borderRadius: '4px',
+          borderRadius: '1vh',  // Proportional inner border-radius
           overflow: 'hidden',
           border: `1px solid ${THEME.BORDER}`
         }}
@@ -81,7 +81,7 @@ function BuildProgressBar() {
       {/* Percentage */}
       <span
         style={{
-          fontSize: '0.85vh',
+          fontSize: '1.325vh',  // Was 1.06vh, +25% again
           fontFamily: THEME.FONT_MONO,
           color: progressColor,
           minWidth: '40px',
@@ -95,7 +95,7 @@ function BuildProgressBar() {
       {currentLesson && (
         <span
           style={{
-            fontSize: '0.7vh',
+            fontSize: '1.09vh',  // Was 0.875vh, +25% again
             fontFamily: THEME.FONT_MONO,
             color: THEME.TEXT_DIM,
             marginLeft: '12px'

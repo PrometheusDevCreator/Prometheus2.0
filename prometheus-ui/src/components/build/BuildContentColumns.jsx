@@ -57,12 +57,12 @@ function BuildContentColumns() {
               padding: '20px 40px',
               background: THEME.BG_DARK,
               border: `1px solid ${THEME.BORDER}`,
-              borderRadius: '8px'
+              borderRadius: '1.85vh'  // Match action button style
             }}
           >
             <div
               style={{
-                fontSize: '1.2vh',
+                fontSize: '1.875vh',  // Was 1.5vh, +25% again
                 fontFamily: THEME.FONT_PRIMARY,
                 color: THEME.AMBER,
                 marginBottom: '8px'
@@ -72,7 +72,7 @@ function BuildContentColumns() {
             </div>
             <div
               style={{
-                fontSize: '0.8vh',
+                fontSize: '1.25vh',  // Was 1vh, +25% again
                 fontFamily: THEME.FONT_MONO,
                 color: THEME.TEXT_DIM
               }}

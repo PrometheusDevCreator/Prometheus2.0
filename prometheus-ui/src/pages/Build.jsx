@@ -103,9 +103,14 @@ function BuildContent({ onNavigate, user, courseState, exitPending }) {
 /**
  * Build Page - Wrapped with DesignProvider for shared state
  */
-function Build({ onNavigate, courseData, setCourseData, courseLoaded, user, courseState, exitPending }) {
+function Build({ onNavigate, courseData, setCourseData, timetableData, setTimetableData, courseLoaded, user, courseState, exitPending }) {
   return (
-    <DesignProvider courseData={courseData} setCourseData={setCourseData}>
+    <DesignProvider
+      courseData={courseData}
+      setCourseData={setCourseData}
+      timetableData={timetableData}
+      setTimetableData={setTimetableData}
+    >
       <BuildContent
         onNavigate={onNavigate}
         user={user}
