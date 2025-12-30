@@ -504,6 +504,26 @@ CC must NOT:
 
 ---
 
+## TESTING COMPLIANCE RULE
+
+**Testing is binding, not advisory.**
+
+CC must execute testing per the Prometheus Testing Doctrine (`docs/Prometheus_Testing_Doctrine.txt`):
+
+| Test Level | When | Scope |
+|------------|------|-------|
+| **Minor Tests (MTs)** | Continuously during implementation | Component-level sanity checks |
+| **Implementation Tests (ITs)** | At completion of each Task Order or Phase | Feature/subsystem validation |
+| **System Operator Checks (SOCs)** | ONLY when Founder explicitly orders | Full system verification |
+
+**Key Rules:**
+- MTs are implicit in all development work
+- ITs are mandatory before marking a Task Order as complete
+- SOCs are Founder-controlled only — CC does not initiate SOCs without explicit instruction
+- Failure to adhere to testing doctrine is a defect
+
+---
+
 ## INVOCATION METHODS
 
 ### Method 1: Explicit Invocation

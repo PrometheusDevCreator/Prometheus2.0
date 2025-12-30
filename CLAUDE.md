@@ -38,6 +38,15 @@
 >
 > Update these files as work progresses. Offer to add ideas when Founder mentions them.
 
+> **🧪 TESTING RESPONSIBILITIES (MANDATORY)**
+>
+> CC must execute testing per the **Prometheus Testing Doctrine**:
+> - **Minor Tests (MTs):** Run continuously during implementation
+> - **Implementation Tests (ITs):** Run at end of each Task Order or Phase
+> - **System Operator Checks (SOCs):** Run ONLY when Founder explicitly orders
+>
+> Testing is binding, not advisory. See `docs/Prometheus_Testing_Doctrine.txt`
+
 ---
 
 ## Project Overview

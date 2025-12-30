@@ -1,0 +1,169 @@
+PROMETHEUS 2.0 – TESTING DOCTRINE
+================================
+
+Author: Matthew (Founder)
+Controller: Sarah
+Applies To: All Prometheus Repositories
+Date: 30 December 2025
+
+--------------------------------
+1. PURPOSE
+--------------------------------
+
+This document defines the mandatory testing doctrine for the Prometheus 2.0 system.
+
+Testing exists to:
+- Preserve system integrity
+- Prevent architectural drift
+- Detect regressions early
+- Validate operational readiness
+- Enforce disciplined engineering standards
+
+Testing is not optional.
+Testing scales with system maturity.
+
+--------------------------------
+2. TEST CATEGORIES
+--------------------------------
+
+Prometheus testing operates at three graduated levels:
+
+A. Minor Tests (MTs)
+B. Implementation Tests (ITs)
+C. System Operator Checks (SOCs)
+
+--------------------------------
+3. MINOR TESTS (MTs)
+--------------------------------
+
+Purpose:
+Immediate sanity checks during development.
+
+Who:
+Claude Code (CC)
+
+When:
+Continuously during implementation.
+
+Scope:
+Component-level or local logic.
+
+Examples:
+- Component renders without runtime errors
+- Buttons trigger expected handlers
+- State updates propagate correctly
+- No console warnings or errors
+- Basic interaction sanity checks
+
+Pass Criteria:
+Works as expected in isolation.
+
+--------------------------------
+4. IMPLEMENTATION TESTS (ITs)
+--------------------------------
+
+Purpose:
+Verify that a complete feature or subsystem works as designed.
+
+Who:
+Claude Code (CC)
+
+When:
+At the completion of each Task Order or Phase.
+
+Scope:
+Page-level or subsystem-level.
+
+Examples:
+- Create, rename, duplicate, delete Template Profiles
+- Switch profiles without state leakage
+- Upload templates and verify status transitions
+- Mapping persistence across navigation
+- Cross-context stability (FORMAT <-> DESIGN <-> BUILD)
+- IndexedDB persistence across reloads
+
+Pass Criteria:
+Feature behaves correctly under normal operator use.
+
+--------------------------------
+5. SYSTEM OPERATOR CHECKS (SOCs)
+--------------------------------
+
+Purpose:
+Deliberate, exhaustive verification of system readiness.
+
+Who:
+Claude Code (CC), when directed by the Founder.
+
+When:
+- Prior to major merges
+- Prior to demos
+- Prior to releases
+- Whenever explicitly ordered by the Founder
+
+Scope:
+Entire system. No exemptions.
+
+--------------------------------
+6. FULL SOC CONTENT
+--------------------------------
+
+A Full SOC includes, but is not limited to:
+
+UI & INTERACTION
+- Every button, toggle, and dropdown exercised
+- Invalid sequences attempted deliberately
+- Rapid interaction stress tests
+
+STATE & LOGIC
+- Cross-page navigation stress testing
+- Profile switching during partial configurations
+- Clear / delete / reset sequences
+- Persistence validation (IndexedDB)
+
+DATA INTEGRITY
+- No silent data loss
+- No phantom or orphaned state
+- No cross-profile contamination
+
+BEHAVIOUR UNDER MISUSE
+- Rapid clicking
+- Incomplete configurations
+- Repeated load/unload cycles
+- Context switching mid-operation
+
+--------------------------------
+7. SOC REPORTING
+--------------------------------
+
+Each SOC produces a short SOC Report containing:
+- Scope of checks performed
+- Failures detected
+- Fixes applied
+- Known remaining issues
+
+--------------------------------
+8. AUTHORITY
+--------------------------------
+
+SOCs are a Founder-controlled mechanism.
+
+They are:
+- Not routine
+- Not polite
+- Not optional when invoked
+
+--------------------------------
+9. COMPLIANCE
+--------------------------------
+
+All contributors must:
+- Understand this doctrine
+- Reference it when implementing features
+- Acknowledge it in repository documentation
+
+Failure to adhere to this doctrine is a defect.
+
+--------------------------------
+END OF DOCUMENT
+--------------------------------

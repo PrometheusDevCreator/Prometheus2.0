@@ -19,3 +19,19 @@ This repo is a monorepo containing:
 - **orchestrator/** — Multi-agent orchestration logic.
 - **docs/** — Architecture, governance, memory, and workflows.
 
+---
+
+## Testing Doctrine
+
+Prometheus enforces a three-tier testing model:
+
+| Level | Name | Scope | When |
+|-------|------|-------|------|
+| MT | Minor Tests | Component-level sanity | Continuously during development |
+| IT | Implementation Tests | Feature/subsystem validation | At completion of Task Orders |
+| SOC | System Operator Checks | Full system verification | Prior to releases, demos, merges (Founder-directed) |
+
+**Testing is not optional. Testing scales with system maturity.**
+
+Full doctrine: [`docs/Prometheus_Testing_Doctrine.txt`](docs/Prometheus_Testing_Doctrine.txt)
+
