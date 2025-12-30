@@ -1,0 +1,277 @@
+
+PROMETHEUS COURSE GENERATION SYSTEM 2.0
+FORMAT PAGE – TEMPLATE MAPPING ENGINE
+DEFINITIVE TASKING ORDER (V2)
+
+Author: Matthew (Founder)
+Controller: Sarah
+Recipient: Claude Code (CC)
+Date: 30 December 2025
+
+==================================================
+1. PURPOSE AND DOCTRINAL ROLE
+==================================================
+
+The FORMAT page is the Template Mapping and Output Configuration environment.
+
+Its sole purpose is to allow users to:
+- Import proprietary templates (PPTX, XLSX, DOCX)
+- Analyse those templates
+- Map Prometheus content structures to template structures
+- Save, recall, and manage Template Profiles
+- Prepare outputs for the GENERATE stage
+
+FORMAT does NOT:
+- Edit course content or structure (DEFINE / DESIGN / BUILD)
+- Generate final outputs (GENERATE)
+- Invoke PKE or AI logic
+- Perform validation or QA scoring
+
+FORMAT must remain visually calm, sparse, and low-cognitive-load.
+
+==================================================
+2. CORE CONCEPTS
+==================================================
+
+2.1 Template Profile
+A Template Profile represents an organisation’s output doctrine.
+Each profile bundles:
+- Branding
+- Layouts
+- Output mappings
+- Running-order rules
+- Associated template files
+
+2.2 Template Spec
+Each Template Profile is backed by a TemplateSpec (JSON-serialisable object)
+which is the authoritative definition used later by GENERATE.
+
+==================================================
+3. ARCHITECTURE DECISIONS (MANDATORY)
+==================================================
+
+- Introduce a new TemplateContext (do NOT extend DesignContext)
+- TemplateContext manages:
+  - Template Profiles
+  - Active Template Profile selection
+  - Imported template assets
+  - TemplateSpec persistence
+- Course content remains in DesignContext / App state
+- FORMAT page reads from both contexts but mutates TemplateContext only
+
+==================================================
+4. DATA MODEL (TEMPLATESPEC – MVP)
+==================================================
+
+TemplateSpec:
+- id
+- name
+- createdAt / updatedAt
+
+assets:
+- pptx (optional)
+- xlsx (optional)
+- docx (optional)
+
+analysis:
+- pptx: layouts, placeholders, fixedSlides
+- xlsx: sheets, namedRanges, tables (stub ok)
+- docx: styles, placeholder tokens
+
+mapping:
+- pptx:
+  - slideTypeToLayout
+  - placeholderMap
+  - runningOrder rules
+- xlsx:
+  - timetable anchors
+  - lesson plan (stub)
+  - QA form (stub)
+- docx:
+  - handbook style/placeholder mapping (stub)
+
+==================================================
+5. FORMAT PAGE UI STRUCTURE
+==================================================
+
+5.1 Central Templates Hub (Radial)
+- Central node: “TEMPLATES”
+- Primary ring nodes:
+  - Presentation
+  - Timetable
+  - Lesson Plan
+  - QA Form
+- Secondary expandable node:
+  - More Outputs
+
+5.2 Secondary Outputs (Placeholders)
+Displayed only when “More Outputs” is selected:
+- Learner Handbook (DOCX)
+- Assessments
+- Course Info Sheet
+- User Defined (x2–x3)
+
+These are placeholders only:
+- Display status: PLANNED / NOT CONFIGURED
+- Non-interactive beyond selection acknowledgement
+
+5.3 Right-Hand Control Panel
+Always visible:
+- Template Profile selector (dropdown)
+- Buttons:
+  - New
+  - Rename
+  - Duplicate
+  - Delete
+  - Apply (set active)
+
+5.4 Output Configuration Panel
+Selecting any output node opens:
+- Template status (None / Loaded / Mapped)
+- Primary actions:
+  - Upload Template
+  - Map Template
+  - Validate Mapping
+- Secondary actions:
+  - Replace Template
+  - Clear Mapping
+
+Mapping interfaces open ONLY when “Map Template” is selected.
+
+==================================================
+6. TEMPLATE IMPORT & ANALYSIS
+==================================================
+
+6.1 Supported Imports
+- PPTX (Presentation templates)
+- XLSX (Timetable, Lesson Plan, QA)
+- DOCX (Handbook, Info Sheets)
+
+6.2 Analysis Requirements (MVP)
+PPTX:
+- Extract slide layouts
+- Extract placeholder identifiers/types
+- Detect or allow tagging of fixed admin slides
+
+XLSX:
+- Extract sheet names
+- Extract named ranges
+- Identify table regions (basic)
+
+DOCX:
+- Extract styles (Heading 1/2/etc)
+- Detect placeholder tokens if present
+
+Analysis quality must be “sufficient for mapping”, not perfect.
+
+==================================================
+7. MAPPING INTERFACES
+==================================================
+
+7.1 PPTX Mapping
+- Map Prometheus slide types to PPTX layouts:
+  - lesson_title
+  - agenda
+  - summary
+  - content
+  - user_defined_1/2/3
+- Placeholder mapping:
+  - COURSE_TITLE
+  - LESSON_TITLE
+  - TOPIC_TITLE
+  - DATE, OWNER, etc
+- Running order toggles:
+  - Include fixed admin slides
+  - Insert Lesson Title
+  - Insert Agenda
+  - Insert Summary
+
+7.2 XLSX Mapping (MVP)
+Start with Timetable only:
+- Select target sheet
+- Map anchors:
+  - COURSE_TITLE
+  - START_DATE
+  - OWNER
+  - DAY_TABLE_START
+
+Lesson Plan and QA mapping UIs may exist as stubs only.
+
+7.3 DOCX Mapping (Stub)
+- Style mapping (Prometheus H1/H2/body → DOC styles)
+- Placeholder mapping
+
+==================================================
+8. REFORMAT TOOL INTEGRATION
+==================================================
+
+FORMAT must include a Reformat Tool section:
+- Accessible from right-hand panel or dedicated tab
+- Upload file
+- Run reformat
+- Display result + download
+
+The reformat engine itself is external.
+FORMAT provides only the UI wrapper and invocation hook.
+
+Expected interface:
+reformatPresentation(inputFile, options) → result
+
+==================================================
+9. PERSISTENCE (MVP)
+==================================================
+
+- Template Profiles must persist locally
+- Use IndexedDB or equivalent browser-safe storage
+- TemplateSpec stored as JSON
+- Binary assets stored as blobs
+
+No backend or API integration in this task.
+
+==================================================
+10. IMPLEMENTATION PHASES
+==================================================
+
+Phase 1:
+- TemplateContext
+- TemplateSpec schema
+- Profile manager UI
+
+Phase 2:
+- FORMAT page layout
+- Central radial hub + placeholders
+
+Phase 3:
+- Template import + analysis utilities
+
+Phase 4:
+- PPTX mapping UI + running order rules
+
+Phase 5:
+- XLSX timetable mapping
+
+Phase 6:
+- Reformat Tool UI wrapper
+
+==================================================
+11. CONSTRAINTS
+==================================================
+
+- No backend work
+- No PKE integration
+- No generation logic
+- No validation gating
+- Follow UI_DOCTRINE.md
+- Maintain 1890×940 usable viewport
+
+==================================================
+12. DEFINITION OF DONE
+==================================================
+
+FORMAT is MVP-complete when:
+- Template Profiles can be created, saved, recalled
+- PPTX/XLSX/DOCX templates can be imported and analysed
+- Slide types can be mapped to PPTX layouts
+- Timetable anchors can be mapped in XLSX
+- Reformat Tool can be launched
+- FORMAT remains visually calm and distinct from DESIGN/BUILD

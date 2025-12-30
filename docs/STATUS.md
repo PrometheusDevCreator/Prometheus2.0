@@ -31,7 +31,7 @@
 | **Design - Timetable** | ENHANCED | 2025-12-30 | BREAK lessons exempt from LO requirements, data persistence |
 | **Design - Scalar** | FUNCTIONAL | 2025-12-15 | Manager/Viewer tabs, 3-column hierarchy |
 | **Build page** | ENHANCED | 2025-12-30 | Slide authoring, bidirectional sync, shared timetable data |
-| **Format page** | PLACEHOLDER | - | Footer integrated only |
+| **Format page** | COMPLETE | 2025-12-30 | All 6 phases complete: TemplateContext, hub UI, mapping editors |
 | **Generate page** | PLACEHOLDER | - | Not implemented |
 | **core/api** | SCAFFOLDED | - | FastAPI structure, not connected |
 | **core/pke** | PLACEHOLDER | - | Not implemented |
@@ -56,11 +56,11 @@
 
 | Date | Session | Key Changes |
 |------|---------|-------------|
+| 2025-12-30 | CC | FORMAT page: TemplateContext, IndexedDB, TemplateHub, ProfileSelector, OutputConfigPanel, ReformatToolPanel (Phases 1-3,6 complete) |
 | 2025-12-30 | CC | OVERVIEW hierarchical blocks: duration snapping, nesting, smooth drag; Timetable persistence; BREAK lesson fixes; LO dropdown improvements |
 | 2025-12-30 | CC | BUILD page implementation with slide authoring, bidirectional sync |
 | 2025-12-30 | CC | Define page wheel refinements, Design page Overview enhancements |
 | 2025-12-29 | CC | Rotational wheels, resizable OVERVIEW blocks, TIMETABLE reference bars |
-| 2025-12-21 | CC | Documentation overhaul: TODO.md, IDEAS.md, STATUS.md restructured |
 
 ---
 
@@ -111,7 +111,17 @@ None currently.
 - Slides belong to lessons; bidirectional sync between BUILD and DESIGN pages
 - Explicit "+ New Slide" button required (no auto-creation on navigation)
 - Progress counts only 3 primary columns + instructor notes per slide
-- Format and Generate pages remain placeholders
+
+### FORMAT Page State (COMPLETE)
+- **All 6 Phases Complete:** TemplateContext, IndexedDB, TemplateHub, ProfileSelector, MappingPanel, PPTXMappingEditor, XLSXMappingEditor, ReformatToolPanel
+- **7 Controller Corrections Applied:** See `docs/briefs/SARAH_BRIEF_format-page-implementation_2025-12-30.md`
+- Profile management: NEW/RENAME/DUPLICATE/DELETE with IndexedDB persistence
+- Output selection: 4 primary outputs with status indicators (none/loaded/mapped)
+- PPTXMappingEditor: Slide type mapping, placeholder mapping, running order rules
+- XLSXMappingEditor: Sheet selection, anchor configuration (positional only per Correction #5)
+- Reformat Tool: Always launchable (Correction #4)
+- "More Outputs": Display-only placeholders (Correction #7)
+- Navigation: FORMAT accessible via Navigation Hub only (excluded from footer arrows)
 
 ---
 
