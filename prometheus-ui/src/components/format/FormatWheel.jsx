@@ -159,7 +159,7 @@ function FormatWheel({ onNavigate }) {
       onMouseLeave={() => setIsInOuterRing(false)}
       style={{
         position: 'fixed',
-        top: 'calc(50% - 70px)',
+        top: 'calc(50% - 75px)',
         left: '50%',
         transform: 'translate(-50%, -50%)',
         width: `${size}px`,
