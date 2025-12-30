@@ -1,14 +1,12 @@
 /**
  * TemplateHub.jsx - Central Radial Hub for FORMAT Page
  *
- * CCO-FORMAT-HUB-001: Must be IDENTICAL to NavWheel (expanded state)
+ * MUST BE IDENTICAL TO NavWheel (expanded state) except:
+ * - Diagonal positions (45°, 135°, 225°, 315°) instead of cardinal (0°, 90°, 180°, 270°)
+ * - Icons instead of arrows
+ * - Output type labels instead of section labels
  *
- * Requirements:
- * - Identical size (var(--navwheel-expanded) = 280px @ 1080)
- * - Identical colour, font sizes, glow function
- * - Identical placement (fixed, centered on screen)
- * - Output nodes at diagonal positions (45°, 135°, 225°, 315°) with icons
- * - Centre is GENERATE (navigates to GENERATE page)
+ * All sizing, positioning, colors, fonts, glow copied EXACTLY from NavWheel.jsx
  */
 
 import { useState, useCallback } from 'react'
@@ -16,13 +14,12 @@ import { THEME, ANIMATION } from '../../constants/theme'
 import { useTemplate } from '../../contexts/TemplateContext'
 import logo from '../../assets/burntorangelogo.png'
 
-// SVG size must match NavWheel for pixel calculations
+// EXACT same constants as NavWheel
 const SIZE = ANIMATION.WHEEL_EXPANDED_SIZE || 280
-const CENTER_SIZE = 70  // Same as NavWheel expanded
-const LABEL_RADIUS = 100  // Same as NavWheel expanded
-const NODE_SIZE = 50  // Size of output node circles
+const LABEL_RADIUS = 100  // Same as NavWheel labelRadius
+const ARROW_RADIUS = SIZE / 2 - 25  // 115px - where NavWheel places arrows
 
-// Output positions at diagonal positions (replacing cardinal arrows)
+// Output positions at diagonal positions (45° offset from NavWheel cardinal positions)
 const OUTPUT_POSITIONS = [
   { type: 'presentation', angle: 45, label: 'PRESENTATION' },   // NE
   { type: 'timetable', angle: 135, label: 'TIMETABLE' },        // SE
@@ -30,50 +27,16 @@ const OUTPUT_POSITIONS = [
   { type: 'qa_form', angle: 315, label: 'QA FORM' }             // NW
 ]
 
-// Icons for each output type (simple SVG paths)
-const OUTPUT_ICONS = {
-  presentation: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <rect x="2" y="3" width="20" height="14" rx="2" />
-      <line x1="8" y1="21" x2="16" y2="21" />
-      <line x1="12" y1="17" x2="12" y2="21" />
-    </svg>
-  ),
-  timetable: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <rect x="3" y="4" width="18" height="18" rx="2" />
-      <line x1="3" y1="10" x2="21" y2="10" />
-      <line x1="9" y1="4" x2="9" y2="22" />
-      <line x1="15" y1="4" x2="15" y2="22" />
-      <line x1="3" y1="16" x2="21" y2="16" />
-    </svg>
-  ),
-  lesson_plan: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-      <path d="M14 2v6h6" />
-      <line x1="8" y1="13" x2="16" y2="13" />
-      <line x1="8" y1="17" x2="14" y2="17" />
-    </svg>
-  ),
-  qa_form: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <path d="M9 11l3 3L22 4" />
-      <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
-    </svg>
-  )
-}
-
 function TemplateHub({ onNavigate }) {
   const { selectedOutput, setSelectedOutput, getOutputStatus } = useTemplate()
   const [hoveredOutput, setHoveredOutput] = useState(null)
   const [centerHovered, setCenterHovered] = useState(false)
 
-  // Calculate node position from angle (same as NavWheel)
-  const getNodePosition = useCallback((angle) => {
+  // Calculate position from angle - EXACT same as NavWheel getSectionPosition
+  const getPosition = useCallback((angle, radius) => {
     const radians = (angle - 90) * (Math.PI / 180) // -90 to start from top
-    const x = Math.cos(radians) * LABEL_RADIUS
-    const y = Math.sin(radians) * LABEL_RADIUS
+    const x = Math.cos(radians) * radius
+    const y = Math.sin(radians) * radius
     return { x, y }
   }, [])
 
@@ -89,12 +52,16 @@ function TemplateHub({ onNavigate }) {
     }
   }, [onNavigate])
 
-  // Get status color (CORRECTION #6: from TemplateSpec only)
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'mapped': return THEME.GREEN_BRIGHT
-      case 'loaded': return THEME.AMBER
-      default: return '#666666'
+  // Get section styling - EXACT same pattern as NavWheel getSectionStyle
+  const getOutputStyle = (type) => {
+    const isSelected = selectedOutput === type
+    const isHovered = hoveredOutput === type
+
+    return {
+      color: isSelected || isHovered ? THEME.AMBER : THEME.TEXT_DIM,
+      textShadow: isSelected ? `0 0 0.93vh ${THEME.AMBER}` : 'none',
+      cursor: 'pointer',
+      transition: 'all 0.3s ease'
     }
   }
 
@@ -103,7 +70,7 @@ function TemplateHub({ onNavigate }) {
 
   return (
     <>
-      {/* Main wheel container - IDENTICAL to NavWheel expanded positioning */}
+      {/* Main wheel container - EXACT same as NavWheel expanded */}
       <div
         style={{
           position: 'fixed',
@@ -115,7 +82,7 @@ function TemplateHub({ onNavigate }) {
           zIndex: 100
         }}
       >
-        {/* Outer ring SVG - IDENTICAL to NavWheel */}
+        {/* Outer ring SVG - EXACT same as NavWheel */}
         <svg
           width={SIZE}
           height={SIZE}
@@ -137,7 +104,7 @@ function TemplateHub({ onNavigate }) {
             </linearGradient>
           </defs>
 
-          {/* Outer decorative ring - matches NavWheel */}
+          {/* Outer decorative ring - EXACT same as NavWheel */}
           <circle
             cx={centerX}
             cy={centerY}
@@ -148,7 +115,7 @@ function TemplateHub({ onNavigate }) {
             opacity="0.6"
           />
 
-          {/* Inner track circle - matches NavWheel */}
+          {/* Inner track circle - EXACT same as NavWheel */}
           <circle
             cx={centerX}
             cy={centerY}
@@ -159,7 +126,7 @@ function TemplateHub({ onNavigate }) {
             strokeDasharray="4 4"
           />
 
-          {/* Tick marks at output positions - matches NavWheel cardinal ticks */}
+          {/* Tick marks at diagonal positions - same style as NavWheel cardinal ticks */}
           {OUTPUT_POSITIONS.map(({ type, angle }) => {
             const radians = angle * (Math.PI / 180)
             const innerR = SIZE / 2 - 12
@@ -177,122 +144,136 @@ function TemplateHub({ onNavigate }) {
             )
           })}
 
-          {/* Connecting lines from center to outputs */}
+          {/* Icons at diagonal positions - replacing NavWheel arrow polygons */}
+          {/* Positioned at ARROW_RADIUS (115px) same as NavWheel arrows */}
           {OUTPUT_POSITIONS.map(({ type, angle }) => {
-            const pos = getNodePosition(angle)
-            const status = getOutputStatus(type)
+            const radians = (angle - 90) * (Math.PI / 180)
+            const x = centerX + Math.cos(radians) * ARROW_RADIUS
+            const y = centerY + Math.sin(radians) * ARROW_RADIUS
             const isSelected = selectedOutput === type
-            const lineColor = status === 'mapped' ? THEME.GREEN_BRIGHT :
+            const isHovered = hoveredOutput === type
+            const status = getOutputStatus(type)
+
+            // Icon color based on state
+            const iconColor = isSelected || isHovered ? THEME.AMBER :
+                             status === 'mapped' ? THEME.GREEN_BRIGHT :
                              status === 'loaded' ? THEME.AMBER :
-                             isSelected ? THEME.AMBER :
-                             THEME.AMBER_DARKEST
+                             THEME.AMBER_DARK
+
+            // Icon paths for each type (sized to match arrow visual weight ~16px)
+            const iconSize = 8
+            let iconPath
+            switch (type) {
+              case 'presentation':
+                iconPath = (
+                  <g transform={`translate(${x - iconSize}, ${y - iconSize})`}>
+                    <rect x="0" y="1" width="16" height="10" rx="1" fill="none" stroke={iconColor} strokeWidth="1.2"/>
+                    <line x1="5" y1="14" x2="11" y2="14" stroke={iconColor} strokeWidth="1.2"/>
+                    <line x1="8" y1="11" x2="8" y2="14" stroke={iconColor} strokeWidth="1.2"/>
+                  </g>
+                )
+                break
+              case 'timetable':
+                iconPath = (
+                  <g transform={`translate(${x - iconSize}, ${y - iconSize})`}>
+                    <rect x="1" y="1" width="14" height="14" rx="1" fill="none" stroke={iconColor} strokeWidth="1.2"/>
+                    <line x1="1" y1="5" x2="15" y2="5" stroke={iconColor} strokeWidth="1"/>
+                    <line x1="5" y1="1" x2="5" y2="15" stroke={iconColor} strokeWidth="1"/>
+                    <line x1="11" y1="1" x2="11" y2="15" stroke={iconColor} strokeWidth="1"/>
+                  </g>
+                )
+                break
+              case 'lesson_plan':
+                iconPath = (
+                  <g transform={`translate(${x - iconSize}, ${y - iconSize})`}>
+                    <path d="M10 0H3a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V5z" fill="none" stroke={iconColor} strokeWidth="1.2"/>
+                    <path d="M10 0v5h5" fill="none" stroke={iconColor} strokeWidth="1.2"/>
+                    <line x1="4" y1="9" x2="12" y2="9" stroke={iconColor} strokeWidth="1"/>
+                    <line x1="4" y1="12" x2="10" y2="12" stroke={iconColor} strokeWidth="1"/>
+                  </g>
+                )
+                break
+              case 'qa_form':
+                iconPath = (
+                  <g transform={`translate(${x - iconSize}, ${y - iconSize})`}>
+                    <path d="M5 8l3 3L15 2" fill="none" stroke={iconColor} strokeWidth="1.5"/>
+                    <path d="M14 8v6a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1h8" fill="none" stroke={iconColor} strokeWidth="1.2"/>
+                  </g>
+                )
+                break
+            }
 
             return (
-              <line
-                key={`line-${type}`}
-                x1={centerX}
-                y1={centerY}
-                x2={centerX + pos.x}
-                y2={centerY + pos.y}
-                stroke={lineColor}
-                strokeWidth="1"
-                opacity={isSelected ? "0.6" : "0.3"}
-              />
+              <g
+                key={`icon-${type}`}
+                style={{ cursor: 'pointer' }}
+                onClick={() => handleOutputClick(type)}
+                onMouseEnter={() => setHoveredOutput(type)}
+                onMouseLeave={() => setHoveredOutput(null)}
+                opacity={isSelected || isHovered ? 1 : 0.8}
+              >
+                {iconPath}
+              </g>
             )
           })}
         </svg>
 
-        {/* Output nodes at diagonal positions - replace NavWheel arrows */}
+        {/* Output labels - EXACT same pattern as NavWheel section labels */}
         {OUTPUT_POSITIONS.map(({ type, angle, label }) => {
-          const pos = getNodePosition(angle)
-          const status = getOutputStatus(type)
+          const pos = getPosition(angle, LABEL_RADIUS)
           const isSelected = selectedOutput === type
           const isHovered = hoveredOutput === type
-          const statusColor = getStatusColor(status)
 
-          // Label position offset based on angle (like NavWheel section labels)
-          let labelOffsetX = '0'
-          let labelOffsetY = '0'
-          if (angle === 45) { labelOffsetX = '2.6vw'; labelOffsetY = '-3.2vh' }  // NE: right and up
-          if (angle === 135) { labelOffsetX = '2.6vw'; labelOffsetY = '3.2vh' }  // SE: right and down
-          if (angle === 225) { labelOffsetX = '-2.6vw'; labelOffsetY = '3.2vh' } // SW: left and down
-          if (angle === 315) { labelOffsetX = '-2.6vw'; labelOffsetY = '-3.2vh' } // NW: left and up
+          // Position adjustments - same pattern as NavWheel but for diagonal positions
+          // NavWheel: DEFINE(up), DESIGN(right), BUILD(down), FORMAT(left)
+          // FormatHub: NE(right+up), SE(right+down), SW(left+down), NW(left+up)
+          let offsetX = '0'
+          let offsetY = '0'
+          if (angle === 45) {   // NE - PRESENTATION
+            offsetX = '3.65vw'   // RIGHT (same as DESIGN)
+            offsetY = '-4.63vh'  // UP (same as DEFINE)
+          }
+          if (angle === 135) {  // SE - TIMETABLE
+            offsetX = '3.65vw'   // RIGHT (same as DESIGN)
+            offsetY = '4.63vh'   // DOWN (same as BUILD)
+          }
+          if (angle === 225) {  // SW - LESSON PLAN
+            offsetX = '-3.65vw'  // LEFT (same as FORMAT)
+            offsetY = '4.63vh'   // DOWN (same as BUILD)
+          }
+          if (angle === 315) {  // NW - QA FORM
+            offsetX = '-3.65vw'  // LEFT (same as FORMAT)
+            offsetY = '-4.63vh'  // UP (same as DEFINE)
+          }
 
           return (
-            <div key={type}>
-              {/* Output Node Circle with Icon */}
-              <div
-                onClick={() => handleOutputClick(type)}
-                onMouseEnter={() => setHoveredOutput(type)}
-                onMouseLeave={() => setHoveredOutput(null)}
-                style={{
-                  position: 'absolute',
-                  left: `calc(50% + ${pos.x}px - ${NODE_SIZE / 2}px)`,
-                  top: `calc(50% + ${pos.y}px - ${NODE_SIZE / 2}px)`,
-                  width: NODE_SIZE,
-                  height: NODE_SIZE,
-                  borderRadius: '50%',
-                  background: THEME.BG_DARK,
-                  border: `0.19vh solid ${isSelected || isHovered ? THEME.AMBER : THEME.AMBER_DARK}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  boxShadow: isSelected || isHovered
-                    ? `0 0 1.85vh rgba(212, 115, 12, 0.4)`
-                    : 'none',
-                  color: isSelected || isHovered ? THEME.AMBER : THEME.TEXT_DIM
-                }}
-              >
-                {OUTPUT_ICONS[type]}
-
-                {/* Status dot */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: 4,
-                    right: 4,
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    background: statusColor,
-                    boxShadow: status !== 'none' ? `0 0 6px ${statusColor}` : 'none'
-                  }}
-                />
-              </div>
-
-              {/* Label - positioned outside node */}
-              <div
-                onClick={() => handleOutputClick(type)}
-                onMouseEnter={() => setHoveredOutput(type)}
-                onMouseLeave={() => setHoveredOutput(null)}
-                style={{
-                  position: 'absolute',
-                  left: `calc(50% + ${pos.x}px + ${labelOffsetX})`,
-                  top: `calc(50% + ${pos.y}px + ${labelOffsetY})`,
-                  transform: 'translate(-50%, -50%)',
-                  fontSize: '1.11vh',           /* 12px @ 1080 - matches NavWheel */
-                  fontFamily: THEME.FONT_PRIMARY,
-                  letterSpacing: '0.28vh',      /* 3px @ 1080 - matches NavWheel */
-                  fontWeight: isSelected ? '600' : '400',
-                  whiteSpace: 'nowrap',
-                  padding: '0.74vh 1.11vh',     /* 8px 12px @ 1080 - matches NavWheel */
-                  borderRadius: '0.37vh',       /* 4px @ 1080 */
-                  background: isHovered ? 'rgba(212, 115, 12, 0.1)' : 'transparent',
-                  color: isSelected || isHovered ? THEME.AMBER : THEME.TEXT_DIM,
-                  textShadow: isSelected ? `0 0 0.93vh ${THEME.AMBER}` : 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                {label}
-              </div>
+            <div
+              key={type}
+              onClick={() => handleOutputClick(type)}
+              onMouseEnter={() => setHoveredOutput(type)}
+              onMouseLeave={() => setHoveredOutput(null)}
+              style={{
+                position: 'absolute',
+                left: `calc(50% + ${pos.x}px + ${offsetX})`,
+                top: `calc(50% + ${pos.y}px + ${offsetY})`,
+                transform: 'translate(-50%, -50%)',
+                ...getOutputStyle(type),
+                fontSize: '1.11vh',           /* 12px @ 1080 - EXACT same as NavWheel */
+                fontFamily: THEME.FONT_PRIMARY,
+                letterSpacing: '0.28vh',      /* 3px @ 1080 - EXACT same as NavWheel */
+                fontWeight: isSelected ? '600' : '400',
+                whiteSpace: 'nowrap',
+                padding: '0.74vh 1.11vh',     /* 8px 12px @ 1080 - EXACT same as NavWheel */
+                borderRadius: '0.37vh',       /* 4px @ 1080 */
+                background: isHovered ? 'rgba(212, 115, 12, 0.1)' : 'transparent'
+              }}
+            >
+              {label}
             </div>
           )
         })}
 
-        {/* Center Hub with Logo - IDENTICAL to NavWheel */}
+        {/* Center hub with logo - EXACT same as NavWheel */}
         <div
           onClick={handleCenterClick}
           onMouseEnter={() => setCenterHovered(true)}
@@ -313,16 +294,14 @@ function TemplateHub({ onNavigate }) {
             cursor: 'pointer',
             transition: 'all 0.4s ease',
             zIndex: 10,
-            boxShadow: centerHovered
-              ? `0 0 1.85vh rgba(212, 115, 12, 0.4)`
-              : `0 0 1.85vh rgba(212, 115, 12, 0.3)`
+            boxShadow: `0 0 1.85vh rgba(212, 115, 12, 0.3)`
           }}
         >
           <img
             src={logo}
             alt="Prometheus"
             style={{
-              width: '4.63vh',   /* 50px @ 1080 - matches NavWheel */
+              width: '4.63vh',
               height: '4.63vh',
               objectFit: 'contain',
               filter: 'drop-shadow(0 0 0.93vh rgba(212, 115, 12, 0.5))',
@@ -331,7 +310,7 @@ function TemplateHub({ onNavigate }) {
           />
         </div>
 
-        {/* Center label (GENERATE) - below center - IDENTICAL to NavWheel */}
+        {/* Center label (GENERATE) - EXACT same as NavWheel */}
         <div
           onClick={handleCenterClick}
           onMouseEnter={() => setCenterHovered(true)}
@@ -341,24 +320,24 @@ function TemplateHub({ onNavigate }) {
             top: `calc(50% + var(--navwheel-center-lg) / 2 + 1.39vh)`,
             left: '50%',
             transform: 'translateX(-50%)',
-            fontSize: '0.93vh',           /* 10px @ 1080 - matches NavWheel */
+            fontSize: '0.93vh',
             fontFamily: THEME.FONT_PRIMARY,
-            letterSpacing: '0.19vh',      /* 2px @ 1080 - matches NavWheel */
+            letterSpacing: '0.19vh',
             whiteSpace: 'nowrap',
             color: centerHovered ? THEME.AMBER : THEME.TEXT_DIM,
-            opacity: centerHovered ? 1 : 0.7,
             cursor: 'pointer',
-            transition: 'all 0.3s ease'
+            transition: 'all 0.3s ease',
+            opacity: centerHovered ? 1 : 0.7
           }}
         >
           GENERATE
         </div>
 
-        {/* Current output indicator (below wheel) - matches NavWheel section indicator */}
+        {/* Current output indicator - EXACT same as NavWheel section indicator */}
         <div
           style={{
             position: 'absolute',
-            bottom: '-13.43vh',           /* -145px @ 1080 - matches NavWheel */
+            bottom: '-13.43vh',
             left: '50%',
             transform: 'translateX(-50%)',
             textAlign: 'center'
@@ -366,11 +345,11 @@ function TemplateHub({ onNavigate }) {
         >
           <div
             style={{
-              fontSize: '1.11vh',         /* 12px @ 1080 */
-              letterSpacing: '0.28vh',    /* 3px @ 1080 */
+              fontSize: '1.11vh',
+              letterSpacing: '0.28vh',
               color: THEME.AMBER,
               fontFamily: THEME.FONT_MONO,
-              marginBottom: '0.37vh'      /* 4px @ 1080 */
+              marginBottom: '0.37vh'
             }}
           >
             {hoveredOutput
@@ -382,8 +361,8 @@ function TemplateHub({ onNavigate }) {
           </div>
           <div
             style={{
-              fontSize: '0.83vh',         /* 9px @ 1080 */
-              letterSpacing: '0.19vh',    /* 2px @ 1080 */
+              fontSize: '0.83vh',
+              letterSpacing: '0.19vh',
               color: THEME.TEXT_DIM,
               fontFamily: THEME.FONT_MONO
             }}
