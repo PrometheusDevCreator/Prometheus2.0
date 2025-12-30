@@ -136,7 +136,7 @@ function LeftSidePlaceholders() {
 /**
  * FormatContent - Inner content component (inside TemplateProvider)
  */
-function FormatContent({ onNavigate, user, courseState, exitPending }) {
+function FormatContent({ onNavigate, user, courseState, exitPending, wheelRotation = 0 }) {
   const { isLoading, error, clearError } = useTemplate()
 
   const handleNavigate = useCallback((section) => {
@@ -236,7 +236,7 @@ function FormatContent({ onNavigate, user, courseState, exitPending }) {
         <LeftSidePlaceholders />
 
         {/* Format Wheel - 525px, same as NavigateWheel per Controller directive */}
-        <FormatWheel onNavigate={handleNavigate} />
+        <FormatWheel onNavigate={handleNavigate} wheelRotation={wheelRotation} />
 
         {/* Right Panel - Configuration */}
         <OutputConfigPanel />
@@ -266,7 +266,7 @@ function FormatContent({ onNavigate, user, courseState, exitPending }) {
  * CORRECTION #1: TemplateProvider is AUTHORITATIVE.
  * App.jsx only provides this wrapper - it does NOT manipulate templateData.
  */
-function Format({ onNavigate, courseLoaded, user, courseState, exitPending }) {
+function Format({ onNavigate, courseLoaded, user, courseState, exitPending, wheelRotation = 0 }) {
   return (
     <TemplateProvider>
       <FormatContent
@@ -274,6 +274,7 @@ function Format({ onNavigate, courseLoaded, user, courseState, exitPending }) {
         user={user}
         courseState={courseState}
         exitPending={exitPending}
+        wheelRotation={wheelRotation}
       />
     </TemplateProvider>
   )

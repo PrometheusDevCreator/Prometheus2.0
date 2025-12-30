@@ -121,6 +121,14 @@ function App() {
   // Second click: returns to login page, resets all state
   const [exitPending, setExitPending] = useState(false)
 
+  // Wheel rotation state for visual continuity between hub pages
+  // Model 1: Nav Hub = 0°, Format Hub = 12°
+  const [wheelRotation, setWheelRotation] = useState(0)
+  const HUB_ROTATIONS = {
+    navigate: 0,
+    format: 12
+  }
+
   // Handle save count increment (updates status in Footer)
   const handleSaveCountIncrement = useCallback(() => {
     setCourseState(prev => {
@@ -206,6 +214,11 @@ function App() {
 
   // Handle navigation from NavWheel or other sources
   const handleNavigate = useCallback((section) => {
+    // Update wheel rotation for hub pages (visual continuity cue)
+    if (section === 'navigate' || section === 'format') {
+      setWheelRotation(HUB_ROTATIONS[section] || 0)
+    }
+
     // Map section IDs to pages
     switch (section) {
       case 'define':
@@ -229,7 +242,7 @@ function App() {
       default:
         setCurrentPage('navigate')
     }
-  }, [])
+  }, [HUB_ROTATIONS])
 
   // Note: handleDesignSubnav removed - now handled internally by Design.jsx
 
@@ -332,6 +345,7 @@ function App() {
             onSystemClear={handleSystemClear}
             exitPending={exitPending}
             onExitClick={handleExitClick}
+            wheelRotation={wheelRotation}
           />
         </div>
         <DebugGridController isVisible={showDebugGrid} onEscapeWhenNoPins={handleEscapeNavigation} />
@@ -395,6 +409,7 @@ function App() {
             user={userData}
             courseState={courseState}
             exitPending={exitPending}
+            wheelRotation={wheelRotation}
           />
         )
       case 'generate':

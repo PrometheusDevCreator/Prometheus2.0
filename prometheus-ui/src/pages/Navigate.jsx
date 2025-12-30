@@ -16,7 +16,7 @@ import Header from '../components/Header'
 import Footer from '../components/Footer'
 import CourseSelector from '../components/CourseSelector'
 
-function Navigate({ onNavigate, courseData = {}, setCourseData, user, courseState, setCourseState, onSystemClear, exitPending, onExitClick }) {
+function Navigate({ onNavigate, courseData = {}, setCourseData, user, courseState, setCourseState, onSystemClear, exitPending, onExitClick, wheelRotation = 0 }) {
   const [isPKEActive, setIsPKEActive] = useState(false)
   const [loadedCourseData, setLoadedCourseData] = useState(null)
 
@@ -198,7 +198,7 @@ function Navigate({ onNavigate, courseData = {}, setCourseData, user, courseStat
           zIndex: 10
         }}
       >
-        <NavigateWheel onNavigate={handleWheelNavigate} />
+        <NavigateWheel onNavigate={handleWheelNavigate} wheelRotation={wheelRotation} />
       </div>
 
       {/* Course Selector - Below NavWheel, centered at Y:-300 */}
@@ -249,8 +249,13 @@ function Navigate({ onNavigate, courseData = {}, setCourseData, user, courseStat
  * NavigateWheel - Large centered wheel for Navigate page
  * This is a specialized version of NavWheel for the full-page display
  */
-function NavigateWheel({ onNavigate }) {
+function NavigateWheel({ onNavigate, wheelRotation = 0 }) {
   const [hoveredSection, setHoveredSection] = React.useState(null)
+
+  // Check for reduced motion preference
+  const prefersReducedMotion = typeof window !== 'undefined'
+    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    : false
   const [isInOuterRing, setIsInOuterRing] = React.useState(false)
   const [isPulsing, setIsPulsing] = React.useState(false)
   const wheelRef = React.useRef(null)
@@ -391,6 +396,14 @@ function NavigateWheel({ onNavigate }) {
             <stop offset="100%" stopColor={THEME.AMBER_DARKEST} />
           </linearGradient>
         </defs>
+
+        {/* Rotating group - ring, tick marks, arrows, icons */}
+        <g
+          transform={`rotate(${wheelRotation}, ${size / 2}, ${size / 2})`}
+          style={{
+            transition: prefersReducedMotion ? 'none' : 'transform 420ms cubic-bezier(0.22, 1, 0.36, 1)'
+          }}
+        >
 
         {/* Outer circle */}
         <circle
@@ -542,6 +555,8 @@ function NavigateWheel({ onNavigate }) {
             </g>
           )
         })}
+
+        </g>{/* End rotating group */}
       </svg>
 
       {/* Section labels - PASSIVE (colour change only, no glow, no bold, no click) */}
