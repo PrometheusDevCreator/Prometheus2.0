@@ -82,19 +82,15 @@ function TemplateHub({ onNavigate }) {
           zIndex: 100
         }}
       >
-        {/* Outer ring SVG - EXACT same as NavWheel */}
+        {/* Outer ring SVG - EXACT same as NavWheel (no viewBox, no style width/height) */}
         <svg
           width={SIZE}
           height={SIZE}
           style={{
             position: 'absolute',
             top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%'
+            left: 0
           }}
-          viewBox={`0 0 ${SIZE} ${SIZE}`}
-          preserveAspectRatio="xMidYMid meet"
         >
           <defs>
             <linearGradient id="formatRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
