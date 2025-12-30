@@ -235,19 +235,8 @@ function FormatContent({ onNavigate, user, courseState, exitPending }) {
         {/* Left-Side Placeholder Outputs */}
         <LeftSidePlaceholders />
 
-        {/* Center Area - Hub only (no more PlannedOutputs below) */}
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px'
-          }}
-        >
-          {/* Template Hub - Central radial component */}
-          <TemplateHub onNavigate={handleNavigate} />
-        </div>
+        {/* Template Hub - Fixed positioned, centered on screen (like NavWheel expanded) */}
+        <TemplateHub onNavigate={handleNavigate} />
 
         {/* Right Panel - Configuration */}
         <OutputConfigPanel />
