@@ -456,7 +456,7 @@ function App() {
             currentPage === 'define' ? '' :  /* COURSE INFORMATION removed per founder request */
             currentPage === 'design' ? 'COURSE PLANNER' :
             currentPage === 'build' ? '' :  /* Removed - burnt orange label only */
-            currentPage === 'format' ? 'FORMAT' :
+            currentPage === 'format' ? '' :  /* Removed - burnt orange label only */
             currentPage === 'generate' ? 'GENERATE' :
             currentPage === 'navigate' ? 'NAVIGATION' :
             currentPage.toUpperCase()
