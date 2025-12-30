@@ -127,7 +127,7 @@ function Footer({
       <div style={{
         position: 'absolute',
         left: '8.99vw',
-        bottom: '7.34vh',
+        bottom: '9.47vh',
         transform: 'translate(-50%, 50%)',
         zIndex: 100
       }}>
@@ -336,7 +336,7 @@ function HomeButton({ onNavigate }) {
       style={{
         position: 'absolute',
         left: '3.70vw',
-        bottom: '7.34vh',
+        bottom: '9.47vh',
         transform: 'translate(-50%, 50%)',
         display: 'flex',
         flexDirection: 'column',
