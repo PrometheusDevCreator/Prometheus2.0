@@ -290,8 +290,8 @@ function LogarithmicDurationWheel({
             )
           })}
 
-          {/* Current position indicator */}
-          <g transform={`rotate(${rotation - 90}, ${size / 2}, ${size / 2})`}>
+          {/* Current position indicator - North (top) = 0 */}
+          <g transform={`rotate(${rotation}, ${size / 2}, ${size / 2})`}>
             <polygon
               points={`${size / 2},8 ${size / 2 - 6},20 ${size / 2 + 6},20`}
               fill={isActive ? THEME.GREEN_BRIGHT : THEME.AMBER}
@@ -329,7 +329,7 @@ function LogarithmicDurationWheel({
               fontFamily: THEME.FONT_MONO,
               fontWeight: '600',
               color: numeralColor,
-              textShadow: value > 0 ? `0 0 10px ${THEME.GREEN_BRIGHT}` : 'none',
+              textShadow: 'none',
               transition: 'all 0.2s ease',
               lineHeight: 1
             }}
@@ -373,7 +373,7 @@ function LogarithmicDurationWheel({
       {/* Label below wheel */}
       <span
         style={{
-          fontSize: '1.2vh',
+          fontSize: '1.4vh',
           fontFamily: THEME.FONT_PRIMARY,
           letterSpacing: '0.15vh',
           color: isActive ? THEME.AMBER : THEME.TEXT_SECONDARY,

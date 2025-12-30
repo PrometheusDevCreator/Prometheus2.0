@@ -1,54 +1,34 @@
 /**
  * DurationWheelPanel - Duration, Level/Seniority & Structure Configuration
  *
- * 3-Column Layout (left to right):
- * - Left: Large Duration wheel (100% = 135px)
- * - Center: Level and Seniority wheels (75% = 101px)
- * - Right: Module, Semester, Term wheels (50% = 68px)
+ * 2-Row Layout:
+ * - Top Row: Level (left), Content (center), Seniority (right)
+ * - Bottom Row: Modules (left), Duration (center), Semesters/Terms (right)
+ *   All centers aligned horizontally
  *
- * Vertical Alignment:
- * - Duration center aligns with Semester center
- * - Level center aligns with midpoint between Module and Semester
- * - Seniority center aligns with midpoint between Semester and Term
+ * Features:
+ * - Toggle to swap between Semesters and Terms wheel
  *
  * Validation:
  * - Duration + Level + Seniority are REQUIRED
  * - Structure (Module/Semester/Term) is OPTIONAL (default 0)
  */
 
-import { useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import LogarithmicDurationWheel from './LogarithmicDurationWheel'
 import CategoricalWheel from './CategoricalWheel'
 import ContentWheel from './ContentWheel'
 import DurationWheel from './DurationWheel'
 import { THEME, LEVEL_OPTIONS, SENIORITY_OPTIONS } from '../../constants/theme'
 
-// Wheel sizes (relative to Duration = 100%)
-const SIZE_DURATION = 135    // 100%
-const SIZE_LEVEL = 101       // 75%
-const SIZE_STRUCTURE = 68    // 50%
+// Wheel sizes
+const SIZE_DURATION = 93     // Main duration wheel (reduced 15%)
+const SIZE_LEVEL = 86        // Level, Content, Seniority wheels
+const SIZE_STRUCTURE = 58    // Modules, Semesters/Terms wheels
 
-// Layout calculations
-// Structure gap decreased by 15% (was 40, now 34)
-const STRUCTURE_GAP = 34
-const OPTIONAL_LABEL_HEIGHT = 16
-const WHEEL_LABEL_HEIGHT = 18  // Height of label below each wheel
-
-// Calculate structure wheel centers (from top of structure column content)
-const MODULE_CENTER = SIZE_STRUCTURE / 2
-const SEMESTER_CENTER = SIZE_STRUCTURE + STRUCTURE_GAP + SIZE_STRUCTURE / 2
-const TERM_CENTER = SIZE_STRUCTURE + STRUCTURE_GAP + SIZE_STRUCTURE + STRUCTURE_GAP + SIZE_STRUCTURE / 2
-
-// Center column gap increased by 15% for 3 wheels (Level, Seniority, Content)
-// We distribute 3 wheels evenly across the structure column height
-const CENTER_COLUMN_HEIGHT = 3 * SIZE_STRUCTURE + 2 * STRUCTURE_GAP
-// Position centers for 3 wheels distributed evenly
-const LEVEL_Y = SIZE_LEVEL / 2  // Top wheel
-const CONTENT_Y = CENTER_COLUMN_HEIGHT / 2  // Middle wheel (aligned with Duration and Semester)
-const SENIORITY_Y = CENTER_COLUMN_HEIGHT - SIZE_LEVEL / 2  // Bottom wheel
-
-// Total height of wheel area (structure column defines the height)
-const STRUCTURE_COLUMN_HEIGHT_TOTAL = 3 * SIZE_STRUCTURE + 2 * STRUCTURE_GAP
+// Layout spacing
+const ROW_GAP = 12           // Gap between rows
+const HORIZONTAL_OFFSET = 100 // Offset for outer wheels
 
 function DurationWheelPanel({
   values = {
@@ -67,6 +47,9 @@ function DurationWheelPanel({
   onBatchChange,
   showValidation = true
 }) {
+  // Toggle state: false = Semesters, true = Terms
+  const [showTerms, setShowTerms] = useState(false)
+
   // Determine current duration value and unit from values
   const getDurationValue = () => {
     if (values.weeks > 0) return { value: values.weeks, unit: 'WEEKS' }
@@ -104,6 +87,11 @@ function DurationWheelPanel({
     }
   }, [onChange, onBatchChange])
 
+  // Handle toggle between Semesters and Terms
+  const handleToggleStructureType = useCallback(() => {
+    setShowTerms(prev => !prev)
+  }, [])
+
   // Calculate total duration for display
   const getTotalDuration = () => {
     if (values.weeks > 0) return `${values.weeks} Week${values.weeks !== 1 ? 's' : ''}`
@@ -116,8 +104,11 @@ function DurationWheelPanel({
   const getStructure = () => {
     const parts = []
     if (values.modules > 0) parts.push(`${values.modules}M`)
-    if (values.semesters > 0) parts.push(`${values.semesters}S`)
-    if (values.terms > 0) parts.push(`${values.terms}T`)
+    if (showTerms) {
+      if (values.terms > 0) parts.push(`${values.terms}T`)
+    } else {
+      if (values.semesters > 0) parts.push(`${values.semesters}S`)
+    }
     return parts.length > 0 ? parts.join('/') : '---'
   }
 
@@ -126,30 +117,78 @@ function DurationWheelPanel({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '0.8vh',
+        gap: `${ROW_GAP}px`,
         padding: '0.5vh 0'
       }}
     >
-      {/* Main 3-column layout with relative positioning for alignment */}
+      {/* ROW 1 (TOP): Level, Content, Seniority wheels */}
       <div
         style={{
           display: 'flex',
+          justifyContent: 'center',
           alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: '1.5vw',
-          position: 'relative',
-          minHeight: STRUCTURE_COLUMN_HEIGHT_TOTAL + OPTIONAL_LABEL_HEIGHT + WHEEL_LABEL_HEIGHT
+          gap: '16px'
         }}
       >
-        {/* Column 1 (LEFT): Duration Wheel - center aligns with Content and Semester */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            marginTop: OPTIONAL_LABEL_HEIGHT + CONTENT_Y - SIZE_DURATION / 2 + 30
-          }}
-        >
+        {/* Level wheel - offset LEFT */}
+        <div style={{ marginRight: `${HORIZONTAL_OFFSET}px` }}>
+          <CategoricalWheel
+            value={values.level}
+            options={LEVEL_OPTIONS}
+            label="LEVEL"
+            onChange={(v) => handleChange('level', v)}
+            size={SIZE_LEVEL}
+            required={true}
+          />
+        </div>
+        <ContentWheel
+          value={values.contentType}
+          onChange={(v) => handleChange('contentType', v)}
+          size={SIZE_LEVEL}
+        />
+        {/* Seniority wheel - offset RIGHT */}
+        <div style={{ marginLeft: `${HORIZONTAL_OFFSET}px` }}>
+          <CategoricalWheel
+            value={values.seniority}
+            options={SENIORITY_OPTIONS}
+            label="SENIORITY"
+            onChange={(v) => handleChange('seniority', v)}
+            size={SIZE_LEVEL}
+            required={true}
+          />
+        </div>
+      </div>
+
+      {/* ROW 2 (BOTTOM): Modules | Duration | Semesters/Terms - all centers aligned */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '16px'
+        }}
+      >
+        {/* Modules wheel - offset LEFT to align below Level */}
+        <div style={{
+          marginRight: `${HORIZONTAL_OFFSET - 20}px`,
+          marginTop: '10px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center'
+        }}>
+          <DurationWheel
+            value={values.modules}
+            min={0}
+            max={12}
+            label="MODULES"
+            onChange={(v) => handleChange('modules', v)}
+            size={SIZE_STRUCTURE}
+            isStructure={true}
+          />
+        </div>
+
+        {/* Duration wheel - centered */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <LogarithmicDurationWheel
             value={durationValue}
             unit={durationUnit}
@@ -167,116 +206,15 @@ function DurationWheelPanel({
           )}
         </div>
 
-        {/* Column 2 (CENTER): Level, Content & Seniority wheels */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            position: 'relative',
-            height: CENTER_COLUMN_HEIGHT + OPTIONAL_LABEL_HEIGHT,
-            minWidth: SIZE_LEVEL + 10
-          }}
-        >
-          {/* Level wheel - top position */}
-          <div
-            style={{
-              position: 'absolute',
-              top: OPTIONAL_LABEL_HEIGHT + LEVEL_Y - SIZE_LEVEL / 2
-            }}
-          >
-            <CategoricalWheel
-              value={values.level}
-              options={LEVEL_OPTIONS}
-              label="LEVEL"
-              onChange={(v) => handleChange('level', v)}
-              size={SIZE_LEVEL}
-              required={true}
-            />
-          </div>
-
-          {/* Content wheel - middle position (aligned with Duration and Semester) */}
-          <div
-            style={{
-              position: 'absolute',
-              top: OPTIONAL_LABEL_HEIGHT + CONTENT_Y - SIZE_LEVEL / 2 + 20
-            }}
-          >
-            <ContentWheel
-              value={values.contentType}
-              onChange={(v) => handleChange('contentType', v)}
-              size={SIZE_LEVEL}
-            />
-          </div>
-
-          {/* Seniority wheel - bottom position */}
-          <div
-            style={{
-              position: 'absolute',
-              top: OPTIONAL_LABEL_HEIGHT + SENIORITY_Y - SIZE_LEVEL / 2 + 50
-            }}
-          >
-            <CategoricalWheel
-              value={values.seniority}
-              options={SENIORITY_OPTIONS}
-              label="SENIORITY"
-              onChange={(v) => handleChange('seniority', v)}
-              size={SIZE_LEVEL}
-              required={true}
-            />
-          </div>
-        </div>
-
-        {/* Column 3 (RIGHT): Structure Wheels - Optional */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center'
-          }}
-        >
-          {/* Optional label */}
-          <span
-            style={{
-              fontSize: '0.8vh',
-              fontFamily: THEME.FONT_PRIMARY,
-              color: THEME.TEXT_DIM,
-              letterSpacing: '0.1vh',
-              height: OPTIONAL_LABEL_HEIGHT,
-              display: 'flex',
-              alignItems: 'center'
-            }}
-          >
-            (optional)
-          </span>
-
-          {/* Structure wheels with consistent gaps */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: `${STRUCTURE_GAP}px`
-            }}
-          >
-            <DurationWheel
-              value={values.modules}
-              min={0}
-              max={12}
-              label="MODULES"
-              onChange={(v) => handleChange('modules', v)}
-              size={SIZE_STRUCTURE}
-              isStructure={true}
-            />
-            <DurationWheel
-              value={values.semesters}
-              min={0}
-              max={6}
-              label="SEMESTERS"
-              onChange={(v) => handleChange('semesters', v)}
-              size={SIZE_STRUCTURE}
-              isStructure={true}
-            />
+        {/* Semesters/Terms wheel - offset RIGHT to align below Seniority */}
+        <div style={{
+          marginLeft: `${HORIZONTAL_OFFSET - 20}px`,
+          marginTop: '10px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center'
+        }}>
+          {showTerms ? (
             <DurationWheel
               value={values.terms}
               min={0}
@@ -286,34 +224,71 @@ function DurationWheelPanel({
               size={SIZE_STRUCTURE}
               isStructure={true}
             />
-          </div>
-
-          {/* Structure summary */}
-          <span
+          ) : (
+            <DurationWheel
+              value={values.semesters}
+              min={0}
+              max={6}
+              label="SEMESTERS"
+              onChange={(v) => handleChange('semesters', v)}
+              size={SIZE_STRUCTURE}
+              isStructure={true}
+            />
+          )}
+          {/* Toggle button */}
+          <button
+            onClick={handleToggleStructureType}
             style={{
-              fontSize: '0.8vh',
-              fontFamily: THEME.FONT_MONO,
+              marginTop: '4px',
+              padding: '2px 8px',
+              fontSize: '0.75vh',
+              fontFamily: THEME.FONT_PRIMARY,
               color: THEME.TEXT_DIM,
-              marginTop: '4px'
+              background: 'transparent',
+              border: `1px solid ${THEME.BORDER}`,
+              borderRadius: '3px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.borderColor = THEME.AMBER
+              e.target.style.color = THEME.AMBER
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.borderColor = THEME.BORDER
+              e.target.style.color = THEME.TEXT_DIM
             }}
           >
-            {getStructure()}
-          </span>
+            ↔ {showTerms ? 'SEM' : 'TERM'}
+          </button>
         </div>
       </div>
 
-      {/* Summary Row */}
+      {/* Structure summary */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          fontSize: '0.8vh',
+          fontFamily: THEME.FONT_MONO,
+          color: THEME.TEXT_DIM
+        }}
+      >
+        {getStructure()}
+      </div>
+
+      {/* Summary Row - compact */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          gap: '2vw',
+          gap: '1.5vw',
           fontSize: '0.9vh',
           fontFamily: THEME.FONT_MONO,
-          padding: '0.5vh 0',
+          padding: '0.3vh 0',
           borderTop: `1px solid ${THEME.BORDER}`,
-          marginTop: '0.5vh'
+          marginTop: '0.3vh'
         }}
       >
         <span style={{ color: hasDuration ? THEME.GREEN_BRIGHT : THEME.TEXT_DIM }}>
@@ -329,7 +304,7 @@ function DurationWheelPanel({
         </span>
       </div>
 
-      {/* Validation message */}
+      {/* Validation message - compact */}
       {showValidation && !isValid && (
         <div
           style={{
@@ -340,7 +315,7 @@ function DurationWheelPanel({
             animation: 'pulse 1.5s ease-in-out infinite'
           }}
         >
-          * Duration, Level and Seniority are required
+          * Duration, Level and Seniority required
         </div>
       )}
 

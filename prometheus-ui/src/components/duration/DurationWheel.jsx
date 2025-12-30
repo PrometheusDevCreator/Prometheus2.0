@@ -269,7 +269,7 @@ function DurationWheel({
               fontFamily: THEME.FONT_MONO,
               fontWeight: '600',
               color: numeralColor,
-              textShadow: value > 0 ? `0 0 8px ${THEME.GREEN_BRIGHT}` : 'none',
+              textShadow: 'none',
               transition: 'all 0.2s ease'
             }}
           >
@@ -313,7 +313,7 @@ function DurationWheel({
       {/* Label below wheel */}
       <span
         style={{
-          fontSize: size > 90 ? '1.1vh' : '0.95vh',
+          fontSize: size > 90 ? '1.25vh' : '1.1vh',
           fontFamily: THEME.FONT_PRIMARY,
           letterSpacing: '0.12vh',
           color: isActive ? THEME.AMBER : (isStructure ? THEME.TEXT_DIM : THEME.TEXT_SECONDARY),

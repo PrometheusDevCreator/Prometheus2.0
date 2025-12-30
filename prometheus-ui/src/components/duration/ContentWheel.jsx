@@ -322,14 +322,14 @@ function ContentWheel({
             padding: '4px'
           }}
         >
-          {/* Theory percentage */}
+          {/* Theory percentage - increased 10% */}
           <span
             style={{
-              fontSize: '0.9vh',
+              fontSize: '1.0vh',
               fontFamily: THEME.FONT_MONO,
               color: theoryColor,
               lineHeight: 1,
-              textShadow: theoryPercent > 50 ? `0 0 6px ${THEME.GREEN_BRIGHT}` : 'none'
+              textShadow: 'none'
             }}
           >
             T:{theoryPercent}%
@@ -341,18 +341,18 @@ function ContentWheel({
               width: '60%',
               height: '1px',
               background: THEME.BORDER_LIGHT,
-              margin: '3px 0'
+              margin: '2px 0'
             }}
           />
 
-          {/* Practical percentage */}
+          {/* Practical percentage - increased 10% */}
           <span
             style={{
-              fontSize: '0.9vh',
+              fontSize: '1.0vh',
               fontFamily: THEME.FONT_MONO,
               color: practicalColor,
               lineHeight: 1,
-              textShadow: practicalPercent > 50 ? `0 0 6px ${THEME.GREEN_BRIGHT}` : 'none'
+              textShadow: 'none'
             }}
           >
             P:{practicalPercent}%
@@ -363,7 +363,7 @@ function ContentWheel({
       {/* Label below wheel */}
       <span
         style={{
-          fontSize: size > 90 ? '1vh' : '0.85vh',
+          fontSize: size > 90 ? '1.15vh' : '1vh',
           fontFamily: THEME.FONT_PRIMARY,
           letterSpacing: '0.1vh',
           color: isActive ? THEME.AMBER : THEME.TEXT_SECONDARY,

@@ -253,14 +253,14 @@ function CategoricalWheel({
             padding: '4px'
           }}
         >
-          {/* Value display */}
+          {/* Value display - increased 10% */}
           <span
             style={{
-              fontSize: size > 90 ? '1.1vh' : '0.9vh',
+              fontSize: size > 80 ? '1.2vh' : '1.0vh',
               fontFamily: THEME.FONT_PRIMARY,
               fontWeight: '500',
               color: textColor,
-              textShadow: hasValue ? `0 0 6px ${THEME.GREEN_BRIGHT}` : 'none',
+              textShadow: 'none',
               transition: 'all 0.2s ease',
               textAlign: 'center',
               lineHeight: 1.2,
@@ -277,7 +277,7 @@ function CategoricalWheel({
       {/* Label below wheel */}
       <span
         style={{
-          fontSize: size > 90 ? '1vh' : '0.85vh',
+          fontSize: size > 90 ? '1.15vh' : '1vh',
           fontFamily: THEME.FONT_PRIMARY,
           letterSpacing: '0.1vh',
           color: isActive ? THEME.AMBER : THEME.TEXT_SECONDARY,
