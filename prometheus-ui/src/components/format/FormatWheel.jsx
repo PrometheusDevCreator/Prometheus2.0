@@ -28,7 +28,7 @@ function FormatWheel({ onNavigate }) {
     { type: 'presentation', label: 'PRESENTATION', angle: 45 },   // NE
     { type: 'timetable', label: 'TIMETABLE', angle: 135 },        // SE
     { type: 'lesson_plan', label: 'LESSON PLAN', angle: 225 },    // SW
-    { type: 'qa_form', label: 'QA FORM', angle: 315 }             // NW
+    { type: 'handbook', label: 'HANDBOOK', angle: 315 }           // NW
   ]
 
   // SAME SIZE AS NavigateWheel
@@ -139,11 +139,13 @@ function FormatWheel({ onNavigate }) {
             <line x1="6" y1="18" x2="15" y2="18" stroke={iconColor} strokeWidth="1.5"/>
           </g>
         )
-      case 'qa_form':
+      case 'handbook':
         return (
           <g transform={`translate(${x - iconSize}, ${y - iconSize})`}>
-            <path d="M7.5 12l4.5 4.5L22.5 3" fill="none" stroke={iconColor} strokeWidth="2.2"/>
-            <path d="M21 12v9a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 21V4.5A1.5 1.5 0 014.5 3H15" fill="none" stroke={iconColor} strokeWidth="1.8"/>
+            <path d="M4 19.5A2.5 2.5 0 016.5 17H20" fill="none" stroke={iconColor} strokeWidth="1.8"/>
+            <path d="M4 4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15z" fill="none" stroke={iconColor} strokeWidth="1.8"/>
+            <line x1="8" y1="6" x2="16" y2="6" stroke={iconColor} strokeWidth="1.5"/>
+            <line x1="8" y1="10" x2="14" y2="10" stroke={iconColor} strokeWidth="1.5"/>
           </g>
         )
       default:
@@ -304,6 +306,11 @@ function FormatWheel({ onNavigate }) {
         if (output.angle === 225) transformStyle = 'translate(0, -100%)'     // SW - left of point
         if (output.angle === 315) transformStyle = 'translate(0, 0)'         // NW - left of point
 
+        // Horizontal offset: right labels +100px, left labels -100px
+        let horizontalOffset = 0
+        if (output.angle === 45 || output.angle === 135) horizontalOffset = 100   // Right side
+        if (output.angle === 225 || output.angle === 315) horizontalOffset = -100 // Left side
+
         return (
           <div
             key={output.type}
@@ -312,7 +319,7 @@ function FormatWheel({ onNavigate }) {
             onMouseLeave={() => setHoveredOutput(null)}
             style={{
               position: 'absolute',
-              left: `calc(50% + ${pos.x}px)`,
+              left: `calc(50% + ${pos.x + horizontalOffset}px)`,
               top: `calc(50% + ${pos.y}px)`,
               transform: transformStyle,
               fontSize: '18px',
@@ -394,43 +401,6 @@ function FormatWheel({ onNavigate }) {
         GENERATE
       </div>
 
-      {/* Current output indicator */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 'calc(50% + 220px)',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          textAlign: 'center'
-        }}
-      >
-        <div
-          style={{
-            fontSize: '18px',
-            letterSpacing: '5px',
-            color: THEME.AMBER,
-            fontFamily: THEME.FONT_MONO,
-            marginBottom: '6px'
-          }}
-        >
-          {hoveredOutput
-            ? outputs.find(o => o.type === hoveredOutput)?.label
-            : selectedOutput
-              ? outputs.find(o => o.type === selectedOutput)?.label
-              : 'FORMAT'
-          }
-        </div>
-        <div
-          style={{
-            fontSize: '14px',
-            letterSpacing: '3px',
-            color: THEME.TEXT_DIM,
-            fontFamily: THEME.FONT_MONO
-          }}
-        >
-          {hoveredOutput ? 'CLICK TO SELECT' : selectedOutput ? 'SELECTED OUTPUT' : 'TEMPLATE MAPPING'}
-        </div>
-      </div>
     </div>
   )
 }
