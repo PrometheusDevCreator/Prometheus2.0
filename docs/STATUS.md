@@ -5,7 +5,7 @@
 > This is the **single source of truth** for Prometheus project status.
 > AI assistants should update this file at the end of each significant session.
 
-**Last Updated:** 2025-12-21
+**Last Updated:** 2025-12-30
 **Last Session By:** Claude Code (CC)
 
 ---
@@ -23,11 +23,11 @@
 
 | Component | State | Last Change | Notes |
 |-----------|-------|-------------|-------|
-| **prometheus-ui** | STABLE | 2025-12-18 | React frontend functional |
+| **prometheus-ui** | STABLE | 2025-12-30 | React frontend functional |
 | **Login page** | COMPLETE | 2025-12-15 | Click-to-login implemented |
 | **Navigate page** | COMPLETE | 2025-12-15 | NavWheel navigation working |
-| **Define page** | LOCKED | 2025-12-13 | 100% specification achieved |
-| **Design - Overview** | FUNCTIONAL | 2025-12-15 | Timetable grid, lesson bubbles |
+| **Define page** | UPDATED | 2025-12-30 | Wheel layout refined, Module Name removed |
+| **Design - Overview** | ENHANCED | 2025-12-30 | Rotational wheels, resizable blocks, timetable bars |
 | **Design - Scalar** | FUNCTIONAL | 2025-12-15 | Manager/Viewer tabs, 3-column hierarchy |
 | **Build page** | PLACEHOLDER | - | Footer integrated only |
 | **Format page** | PLACEHOLDER | - | Footer integrated only |
@@ -55,11 +55,11 @@
 
 | Date | Session | Key Changes |
 |------|---------|-------------|
-| 2025-12-21 | CC | Documentation overhaul: TODO.md, IDEAS.md, STATUS.md restructured, GRID_REFERENCE.md aligned |
+| 2025-12-30 | CC | Define page wheel refinements, Design page Overview enhancements |
+| 2025-12-29 | CC | Rotational wheels, resizable OVERVIEW blocks, TIMETABLE reference bars |
+| 2025-12-21 | CC | Documentation overhaul: TODO.md, IDEAS.md, STATUS.md restructured |
 | 2025-12-18 | CC | Grid system implementation and verification |
 | 2025-12-17 | CC | UI_DOCTRINE v2.1, PLAYWRIGHT_CONFIG v1.2 - 1890×940 baseline |
-| 2025-12-15 | CC | DESIGN tab fix, LO verb fix, responsive font scaling |
-| 2025-12-13 | CC | Define.jsx locked at 100% specification |
 
 ---
 
@@ -84,8 +84,10 @@ None currently.
 
 *Important context for the next session:*
 
-- UI is stable and should NOT be modified without explicit request
-- Documentation structure now includes TODO.md and IDEAS.md
+- Define page wheel layout restructured to 2 rows (Level/Content/Seniority + Modules/Duration/Semesters)
+- Module Name dropdown removed from Define - to be relocated to Design page (location TBC)
+- Semester/Terms now toggle via single wheel with swap button
+- Design page OVERVIEW tab has rotational wheels and resizable blocks
 - All baseline references aligned to 1890×940 viewport
 - Founder wants AI assistants to be immediately up to speed on session start
 
