@@ -27,7 +27,7 @@ import Footer from '../components/Footer'
 import { TemplateProvider, useTemplate } from '../contexts/TemplateContext'
 
 // Format components
-import TemplateHub from '../components/format/TemplateHub'
+import FormatWheel from '../components/format/FormatWheel'
 import OutputConfigPanel from '../components/format/OutputConfigPanel'
 
 // Planned output placeholder data
@@ -235,8 +235,8 @@ function FormatContent({ onNavigate, user, courseState, exitPending }) {
         {/* Left-Side Placeholder Outputs */}
         <LeftSidePlaceholders />
 
-        {/* Template Hub - Fixed positioned, centered on screen (like NavWheel expanded) */}
-        <TemplateHub onNavigate={handleNavigate} />
+        {/* Format Wheel - 525px, same as NavigateWheel per Controller directive */}
+        <FormatWheel onNavigate={handleNavigate} />
 
         {/* Right Panel - Configuration */}
         <OutputConfigPanel />
