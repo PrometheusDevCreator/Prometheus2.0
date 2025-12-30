@@ -87,6 +87,34 @@ function snapToGrid(minutes, gridSize = 5) {
 }
 
 // ============================================
+// SLIDE TYPES - 6 types for BUILD page (Correction #2)
+// ============================================
+export const SLIDE_TYPES = [
+  { id: 'agenda', name: 'Agenda', label: 'AGENDA' },
+  { id: 'summary', name: 'Summary', label: 'SUMMARY' },
+  { id: 'lesson_title', name: 'Lesson Title', label: 'LESSON TITLE' },
+  { id: 'user_defined_1', name: 'User Defined 1', label: 'USER DEFINED 1' },
+  { id: 'user_defined_2', name: 'User Defined 2', label: 'USER DEFINED 2' },
+  { id: 'user_defined_3', name: 'User Defined 3', label: 'USER DEFINED 3' }
+]
+
+// ============================================
+// DEFAULT SLIDE FACTORY (Correction #1 - 1 default slide per lesson)
+// ============================================
+const createDefaultSlide = () => ({
+  id: `slide-${Date.now()}`,
+  type: 'lesson_title',
+  contentBlocks: [
+    { subtopicId: null, text: '' },
+    { subtopicId: null, text: '' },
+    { subtopicId: null, text: '' },
+    { subtopicId: null, text: '' },
+    { subtopicId: null, text: '' }
+  ],
+  instructorNotes: ''
+})
+
+// ============================================
 // LESSON TYPES - 10 types per DESIGN_Page mockup
 // ============================================
 export const LESSON_TYPES = [
@@ -238,6 +266,16 @@ export function DesignProvider({ children, courseData, setCourseData }) {
   const [multiSelection, setMultiSelection] = useState({
     items: [],      // Array of { type, id }
     active: false   // Whether multi-selection mode is active
+  })
+
+  // --------------------------------------------
+  // BUILD PAGE STATE (for slide authoring)
+  // --------------------------------------------
+  const [buildSelection, setBuildSelection] = useState({
+    moduleId: null,
+    lessonId: null,
+    topicId: null,
+    slideIndex: 0
   })
 
   // Toggle item in multi-selection
@@ -817,6 +855,271 @@ export function DesignProvider({ children, courseData, setCourseData }) {
       })
     })
   }, [])
+
+  // --------------------------------------------
+  // SHARED UPDATE HELPERS (Corrections #3, #4 - Single Source of Truth)
+  // Both DESIGN and BUILD use these for edits
+  // --------------------------------------------
+
+  // Update lesson title (shared helper for both pages)
+  const updateLessonTitle = useCallback((lessonId, title) => {
+    setLessons(prev => prev.map(lesson =>
+      lesson.id === lessonId ? { ...lesson, title } : lesson
+    ))
+  }, [])
+
+  // Update topic title in lesson (with Scalar auto-sync)
+  const updateTopicTitle = useCallback((topicId, title) => {
+    // Update in lessons
+    setLessons(prev => prev.map(lesson => ({
+      ...lesson,
+      topics: (lesson.topics || []).map(t =>
+        t.id === topicId || t.scalarTopicId === topicId
+          ? { ...t, title }
+          : t
+      )
+    })))
+
+    // Update in scalar data
+    setScalarData(prev => {
+      const newData = { ...prev, modules: [...prev.modules] }
+      for (let m = 0; m < newData.modules.length; m++) {
+        const module = { ...newData.modules[m] }
+        newData.modules[m] = module
+        module.learningObjectives = [...module.learningObjectives]
+        for (let l = 0; l < module.learningObjectives.length; l++) {
+          const lo = { ...module.learningObjectives[l] }
+          module.learningObjectives[l] = lo
+          lo.topics = [...lo.topics]
+          for (let t = 0; t < lo.topics.length; t++) {
+            if (lo.topics[t].id === topicId) {
+              lo.topics[t] = { ...lo.topics[t], title }
+              return newData
+            }
+          }
+        }
+      }
+      return prev
+    })
+  }, [])
+
+  // Update subtopic title in lesson (with Scalar auto-sync)
+  const updateSubtopicTitle = useCallback((subtopicId, title) => {
+    // Update in lessons
+    setLessons(prev => prev.map(lesson => ({
+      ...lesson,
+      topics: (lesson.topics || []).map(topic => ({
+        ...topic,
+        subtopics: (topic.subtopics || []).map(s =>
+          s.id === subtopicId || s.scalarSubtopicId === subtopicId
+            ? { ...s, title }
+            : s
+        )
+      }))
+    })))
+
+    // Update in scalar data
+    setScalarData(prev => {
+      const newData = { ...prev, modules: [...prev.modules] }
+      for (let m = 0; m < newData.modules.length; m++) {
+        const module = { ...newData.modules[m] }
+        newData.modules[m] = module
+        module.learningObjectives = [...module.learningObjectives]
+        for (let l = 0; l < module.learningObjectives.length; l++) {
+          const lo = { ...module.learningObjectives[l] }
+          module.learningObjectives[l] = lo
+          lo.topics = [...lo.topics]
+          for (let t = 0; t < lo.topics.length; t++) {
+            const topic = { ...lo.topics[t] }
+            lo.topics[t] = topic
+            topic.subtopics = [...(topic.subtopics || [])]
+            for (let s = 0; s < topic.subtopics.length; s++) {
+              if (topic.subtopics[s].id === subtopicId) {
+                topic.subtopics[s] = { ...topic.subtopics[s], title }
+                return newData
+              }
+            }
+          }
+        }
+      }
+      return prev
+    })
+  }, [])
+
+  // Update learning objective (Correction #3: updates lesson.learningObjectives, NOT scalarData)
+  const updateLearningObjectiveText = useCallback((lessonId, loIndex, text) => {
+    setLessons(prev => prev.map(lesson => {
+      if (lesson.id !== lessonId) return lesson
+      const newLOs = [...(lesson.learningObjectives || [])]
+      if (loIndex >= 0 && loIndex < newLOs.length) {
+        newLOs[loIndex] = text
+      }
+      return { ...lesson, learningObjectives: newLOs }
+    }))
+  }, [])
+
+  // --------------------------------------------
+  // SLIDE OPERATIONS (for BUILD page)
+  // --------------------------------------------
+
+  // Ensure lesson has at least one slide (Correction #1: 1 default slide per lesson on first entry)
+  const ensureLessonHasDefaultSlide = useCallback((lessonId) => {
+    setLessons(prev => prev.map(lesson => {
+      if (lesson.id !== lessonId) return lesson
+      if (lesson.slides && lesson.slides.length > 0) return lesson
+      // Create default slide
+      return { ...lesson, slides: [createDefaultSlide()] }
+    }))
+  }, [])
+
+  // Add new slide to lesson (Correction #1: explicit creation only)
+  const addSlideToLesson = useCallback((lessonId, slideType = 'lesson_title') => {
+    const newSlide = {
+      id: `slide-${Date.now()}`,
+      type: slideType,
+      contentBlocks: [
+        { subtopicId: null, text: '' },
+        { subtopicId: null, text: '' },
+        { subtopicId: null, text: '' },
+        { subtopicId: null, text: '' },
+        { subtopicId: null, text: '' }
+      ],
+      instructorNotes: ''
+    }
+
+    setLessons(prev => prev.map(lesson => {
+      if (lesson.id !== lessonId) return lesson
+      return { ...lesson, slides: [...(lesson.slides || []), newSlide] }
+    }))
+
+    return newSlide.id
+  }, [])
+
+  // Duplicate slide in lesson
+  const duplicateSlide = useCallback((lessonId, slideIndex) => {
+    setLessons(prev => prev.map(lesson => {
+      if (lesson.id !== lessonId) return lesson
+      const slides = lesson.slides || []
+      if (slideIndex < 0 || slideIndex >= slides.length) return lesson
+
+      const sourceSlide = slides[slideIndex]
+      const newSlide = {
+        ...sourceSlide,
+        id: `slide-${Date.now()}`,
+        contentBlocks: sourceSlide.contentBlocks.map(block => ({ ...block }))
+      }
+
+      const newSlides = [...slides]
+      newSlides.splice(slideIndex + 1, 0, newSlide)
+      return { ...lesson, slides: newSlides }
+    }))
+  }, [])
+
+  // Update slide type
+  const updateSlideType = useCallback((lessonId, slideIndex, newType) => {
+    setLessons(prev => prev.map(lesson => {
+      if (lesson.id !== lessonId) return lesson
+      const slides = [...(lesson.slides || [])]
+      if (slideIndex >= 0 && slideIndex < slides.length) {
+        slides[slideIndex] = { ...slides[slideIndex], type: newType }
+      }
+      return { ...lesson, slides }
+    }))
+  }, [])
+
+  // Update slide content block
+  const updateSlideContentBlock = useCallback((lessonId, slideIndex, blockIndex, updates) => {
+    setLessons(prev => prev.map(lesson => {
+      if (lesson.id !== lessonId) return lesson
+      const slides = [...(lesson.slides || [])]
+      if (slideIndex >= 0 && slideIndex < slides.length) {
+        const slide = { ...slides[slideIndex] }
+        const blocks = [...slide.contentBlocks]
+        if (blockIndex >= 0 && blockIndex < blocks.length) {
+          blocks[blockIndex] = { ...blocks[blockIndex], ...updates }
+        }
+        slide.contentBlocks = blocks
+        slides[slideIndex] = slide
+      }
+      return { ...lesson, slides }
+    }))
+  }, [])
+
+  // Update slide instructor notes (Correction #7: explicit field)
+  const updateSlideInstructorNotes = useCallback((lessonId, slideIndex, notes) => {
+    setLessons(prev => prev.map(lesson => {
+      if (lesson.id !== lessonId) return lesson
+      const slides = [...(lesson.slides || [])]
+      if (slideIndex >= 0 && slideIndex < slides.length) {
+        slides[slideIndex] = { ...slides[slideIndex], instructorNotes: notes }
+      }
+      return { ...lesson, slides }
+    }))
+  }, [])
+
+  // Delete slide from lesson
+  const deleteSlide = useCallback((lessonId, slideIndex) => {
+    setLessons(prev => prev.map(lesson => {
+      if (lesson.id !== lessonId) return lesson
+      const slides = [...(lesson.slides || [])]
+      if (slideIndex >= 0 && slideIndex < slides.length) {
+        slides.splice(slideIndex, 1)
+      }
+      // Ensure at least one slide remains
+      if (slides.length === 0) {
+        slides.push(createDefaultSlide())
+      }
+      return { ...lesson, slides }
+    }))
+  }, [])
+
+  // Erase content block text (Correction #5: UI action only, sets text = "")
+  const eraseSlideContentBlock = useCallback((lessonId, slideIndex, blockIndex) => {
+    updateSlideContentBlock(lessonId, slideIndex, blockIndex, { text: '' })
+  }, [updateSlideContentBlock])
+
+  // --------------------------------------------
+  // PROGRESS CALCULATION (Correction #6 - 3 primary columns + instructorNotes only)
+  // --------------------------------------------
+
+  const calculateLessonProgress = useCallback((lesson) => {
+    if (!lesson?.slides?.length) return 0
+
+    let totalFields = 0
+    let populatedFields = 0
+
+    lesson.slides.forEach(slide => {
+      // Count ONLY 3 primary content blocks (Correction #6)
+      slide.contentBlocks.slice(0, 3).forEach(block => {
+        totalFields++
+        if (block.text?.trim()) populatedFields++
+      })
+      // Count instructor notes
+      totalFields++
+      if (slide.instructorNotes?.trim()) populatedFields++
+    })
+
+    return totalFields > 0 ? Math.round((populatedFields / totalFields) * 100) : 0
+  }, [])
+
+  // Get all subtopics for a lesson (for BUILD dropdown population)
+  const getLessonSubtopics = useCallback((lessonId) => {
+    const lesson = lessons.find(l => l.id === lessonId)
+    if (!lesson) return []
+
+    const subtopics = []
+    ;(lesson.topics || []).forEach(topic => {
+      ;(topic.subtopics || []).forEach(subtopic => {
+        subtopics.push({
+          id: subtopic.id || subtopic.scalarSubtopicId,
+          title: subtopic.title,
+          topicTitle: topic.title,
+          number: subtopic.number
+        })
+      })
+    })
+    return subtopics
+  }, [lessons])
 
   // --------------------------------------------
   // DRAG OPERATIONS (Phase 3)
@@ -1693,8 +1996,31 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     courseData,
     setCourseData,
 
+    // Shared update helpers (Corrections #3, #4)
+    updateLessonTitle,
+    updateTopicTitle,
+    updateSubtopicTitle,
+    updateLearningObjectiveText,
+
+    // Build page state
+    buildSelection,
+    setBuildSelection,
+
+    // Slide operations (BUILD page)
+    ensureLessonHasDefaultSlide,
+    addSlideToLesson,
+    duplicateSlide,
+    updateSlideType,
+    updateSlideContentBlock,
+    updateSlideInstructorNotes,
+    deleteSlide,
+    eraseSlideContentBlock,
+    calculateLessonProgress,
+    getLessonSubtopics,
+
     // Constants
     LESSON_TYPES,
+    SLIDE_TYPES,
     PC_COLORS
   }), [
     activeTab, viewMode, currentModule, currentWeek, currentDay, overviewBlocks,
@@ -1715,7 +2041,13 @@ export function DesignProvider({ children, courseData, setCourseData }) {
     isUnallocatedNumber,
     highlightedItems, updateHighlightedItems, clearHighlights, isItemHighlighted,
     selection, select, startEditing, clearSelection,
-    editorCollapsed, courseData, setCourseData
+    editorCollapsed, courseData, setCourseData,
+    // Shared update helpers
+    updateLessonTitle, updateTopicTitle, updateSubtopicTitle, updateLearningObjectiveText,
+    // Build page state and operations
+    buildSelection, ensureLessonHasDefaultSlide, addSlideToLesson, duplicateSlide,
+    updateSlideType, updateSlideContentBlock, updateSlideInstructorNotes,
+    deleteSlide, eraseSlideContentBlock, calculateLessonProgress, getLessonSubtopics
   ])
 
   return (

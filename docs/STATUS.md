@@ -12,7 +12,7 @@
 
 ## Quick Summary
 
-- **UI:** Stable and complete for current pages (Login, Navigate, Define, Design)
+- **UI:** Stable and complete for current pages (Login, Navigate, Define, Design, BUILD)
 - **Backend:** Scaffolded only - API structure exists but not connected
 - **PKE Engine:** Placeholder - not yet implemented
 - **Documentation:** Overhauled 2025-12-21 - now properly structured
@@ -29,7 +29,7 @@
 | **Define page** | UPDATED | 2025-12-30 | Wheel layout refined, Module Name removed |
 | **Design - Overview** | ENHANCED | 2025-12-30 | Rotational wheels, resizable blocks, timetable bars |
 | **Design - Scalar** | FUNCTIONAL | 2025-12-15 | Manager/Viewer tabs, 3-column hierarchy |
-| **Build page** | PLACEHOLDER | - | Footer integrated only |
+| **Build page** | IMPLEMENTED | 2025-12-30 | Slide authoring, 5 columns, progress tracking |
 | **Format page** | PLACEHOLDER | - | Footer integrated only |
 | **Generate page** | PLACEHOLDER | - | Footer integrated only |
 | **core/api** | SCAFFOLDED | - | FastAPI structure, not connected |
@@ -55,11 +55,11 @@
 
 | Date | Session | Key Changes |
 |------|---------|-------------|
+| 2025-12-30 | CC | BUILD page implementation with slide authoring, bidirectional sync |
 | 2025-12-30 | CC | Define page wheel refinements, Design page Overview enhancements |
 | 2025-12-29 | CC | Rotational wheels, resizable OVERVIEW blocks, TIMETABLE reference bars |
 | 2025-12-21 | CC | Documentation overhaul: TODO.md, IDEAS.md, STATUS.md restructured |
 | 2025-12-18 | CC | Grid system implementation and verification |
-| 2025-12-17 | CC | UI_DOCTRINE v2.1, PLAYWRIGHT_CONFIG v1.2 - 1890×940 baseline |
 
 ---
 
@@ -84,12 +84,14 @@ None currently.
 
 *Important context for the next session:*
 
-- Define page wheel layout restructured to 2 rows (Level/Content/Seniority + Modules/Duration/Semesters)
-- Module Name dropdown removed from Define - to be relocated to Design page (location TBC)
-- Semester/Terms now toggle via single wheel with swap button
-- Design page OVERVIEW tab has rotational wheels and resizable blocks
+- BUILD page now implemented with full slide authoring functionality
+- DesignContext extended with slide operations, shared helpers, progress calculation
+- 7 Founder/Controller corrections applied to BUILD implementation
+- Slides belong to lessons; bidirectional sync between BUILD and DESIGN pages
+- Explicit "+ New Slide" button required (no auto-creation on navigation)
+- Progress counts only 3 primary columns + instructor notes per slide
+- Format and Generate pages remain placeholders
 - All baseline references aligned to 1890×940 viewport
-- Founder wants AI assistants to be immediately up to speed on session start
 
 ---
 

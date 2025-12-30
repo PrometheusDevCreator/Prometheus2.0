@@ -1,20 +1,49 @@
 /**
- * Build Page - Placeholder
+ * Build Page - Lesson-Level Content Authoring Workspace
  *
- * Coming Soon page with full frame structure
+ * Features:
+ * - Module/Lesson/Topic selection cascade
+ * - Slide type selection (6 types per Correction #2)
+ * - 5 content columns (3 primary + 2 optional)
+ * - Slide navigation with explicit creation (Correction #1)
+ * - Instructor Notes field (Correction #7)
+ * - Progress indicator (Correction #6)
+ * - Bidirectional sync with DESIGN page
+ *
+ * Per approved plan: Uses DesignContext for shared state
  */
 
-import { useState, useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { THEME } from '../constants/theme'
 import Footer from '../components/Footer'
-import pkeButton from '../assets/PKE_Button.png'
+import { DesignProvider, useDesign } from '../contexts/DesignContext'
 
-function Build({ onNavigate, courseLoaded, user, courseState }) {
-  const [isPKEActive, setIsPKEActive] = useState(false)
+// Build components
+import BuildSelectorBar from '../components/build/BuildSelectorBar'
+import BuildSlideTypeBar from '../components/build/BuildSlideTypeBar'
+import BuildSlideNav from '../components/build/BuildSlideNav'
+import BuildContentColumns from '../components/build/BuildContentColumns'
+import BuildProgressBar from '../components/build/BuildProgressBar'
+
+/**
+ * Build page inner content (must be inside DesignProvider)
+ */
+function BuildContent({ onNavigate, user, courseState, exitPending }) {
+  const { lessons, buildSelection, calculateLessonProgress } = useDesign()
 
   const handleNavigate = useCallback((section) => {
     onNavigate?.(section)
   }, [onNavigate])
+
+  // Get current lesson for progress
+  const currentLesson = useMemo(() => {
+    return lessons.find(l => l.id === buildSelection.lessonId)
+  }, [lessons, buildSelection.lessonId])
+
+  // Calculate progress for Footer
+  const progress = useMemo(() => {
+    return currentLesson ? calculateLessonProgress(currentLesson) : 0
+  }, [currentLesson, calculateLessonProgress])
 
   return (
     <div
@@ -27,94 +56,63 @@ function Build({ onNavigate, courseLoaded, user, courseState }) {
         position: 'relative'
       }}
     >
-      {/* PKE Button - centered horizontally at Y:630 (matching Define page) */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '730px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 10
-        }}
-      >
-        <img
-          src={pkeButton}
-          alt="PKE"
-          onClick={() => setIsPKEActive(!isPKEActive)}
-          style={{
-            width: '28px',
-            height: '28px',
-            cursor: 'pointer',
-            opacity: isPKEActive ? 1 : 0.7,
-            transition: 'opacity 0.2s ease'
-          }}
-        />
-      </div>
+      {/* Selector Bar - Module/Lesson/Topic dropdowns + LO summary */}
+      <BuildSelectorBar />
 
-      {/* Main Content - Coming Soon */}
+      {/* Slide Type Bar */}
+      <BuildSlideTypeBar />
+
+      {/* Slide Navigation */}
+      <BuildSlideNav />
+
+      {/* Main Content Area - 5 Columns */}
       <div
         style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center'
+          position: 'relative',
+          minHeight: 0,
+          overflow: 'hidden'
         }}
       >
-        <div
-          className="fade-in-scale"
-          style={{
-            textAlign: 'center'
-          }}
-        >
-          <div
-            style={{
-              fontSize: '48px',
-              color: THEME.AMBER_DARK,
-              marginBottom: '20px',
-              opacity: 0.5
-            }}
-          >
-            ⚙
-          </div>
-          <h2
-            style={{
-              fontSize: '14px',
-              letterSpacing: '6px',
-              color: THEME.TEXT_DIM,
-              fontFamily: THEME.FONT_PRIMARY,
-              marginBottom: '12px'
-            }}
-          >
-            COMING SOON
-          </h2>
-          <p
-            style={{
-              fontSize: '10px',
-              letterSpacing: '2px',
-              color: THEME.TEXT_MUTED,
-              fontFamily: THEME.FONT_MONO
-            }}
-          >
-            Build functionality is under development
-          </p>
-        </div>
+        <BuildContentColumns />
       </div>
 
-      {/* Shared Footer Component */}
+      {/* Progress Bar */}
+      <BuildProgressBar />
+
+      {/* Footer */}
       <Footer
         currentSection="build"
         onNavigate={handleNavigate}
-        isPKEActive={isPKEActive}
-        onPKEToggle={setIsPKEActive}
+        isPKEActive={false}
+        onPKEToggle={() => {}}
         onSave={() => {}}
         onClear={() => {}}
         onDelete={() => {}}
         user={user || { name: '---' }}
         courseState={courseState || { startDate: null, saveCount: 0 }}
-        progress={15}
+        progress={progress}
+        exitPending={exitPending}
       />
     </div>
+  )
+}
+
+/**
+ * Build Page - Wrapped with DesignProvider for shared state
+ */
+function Build({ onNavigate, courseData, setCourseData, courseLoaded, user, courseState, exitPending }) {
+  return (
+    <DesignProvider courseData={courseData} setCourseData={setCourseData}>
+      <BuildContent
+        onNavigate={onNavigate}
+        user={user}
+        courseState={courseState}
+        exitPending={exitPending}
+      />
+    </DesignProvider>
   )
 }
 

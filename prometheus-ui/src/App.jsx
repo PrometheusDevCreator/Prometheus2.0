@@ -334,6 +334,8 @@ function App() {
         return (
           <Build
             onNavigate={handleNavigate}
+            courseData={courseData}
+            setCourseData={setCourseData}
             courseLoaded={courseLoaded}
             user={userData}
             courseState={courseState}
