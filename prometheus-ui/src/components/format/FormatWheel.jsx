@@ -7,13 +7,12 @@
  * - Diagonal positions (45°, 135°, 225°, 315°) instead of cardinal (0°, 90°, 180°, 270°)
  * - Icons instead of arrows
  * - Output type labels instead of section labels
- * - Center hub with logo navigates to GENERATE
+ * - Center hub contains GENERATE text, navigates to GENERATE page
  */
 
 import React from 'react'
 import { THEME } from '../../constants/theme'
 import { useTemplate } from '../../contexts/TemplateContext'
-import logo from '../../assets/burntorangelogo.png'
 
 function FormatWheel({ onNavigate }) {
   const { selectedOutput, setSelectedOutput, getOutputStatus } = useTemplate()
@@ -160,7 +159,7 @@ function FormatWheel({ onNavigate }) {
       onMouseLeave={() => setIsInOuterRing(false)}
       style={{
         position: 'fixed',
-        top: '50%',
+        top: 'calc(50% - 70px)',
         left: '50%',
         transform: 'translate(-50%, -50%)',
         width: `${size}px`,
@@ -345,7 +344,7 @@ function FormatWheel({ onNavigate }) {
         )
       })}
 
-      {/* Center hub with logo */}
+      {/* Center hub */}
       <div
         onClick={handleCenterClick}
         onMouseEnter={() => setCenterHovered(true)}
@@ -370,30 +369,18 @@ function FormatWheel({ onNavigate }) {
             ? `0 0 40px rgba(212, 115, 12, 0.5)`
             : `0 0 20px rgba(212, 115, 12, 0.2)`
         }}
-      >
-        <img
-          src={logo}
-          alt="Prometheus"
-          style={{
-            width: '70px',
-            height: '70px',
-            objectFit: 'contain',
-            filter: centerHovered ? 'drop-shadow(0 0 15px rgba(212, 115, 12, 0.6))' : 'none',
-            transition: 'all 0.3s ease'
-          }}
-        />
-      </div>
+      />
 
-      {/* Center label (GENERATE) */}
+      {/* Center label (GENERATE) - centered in hub */}
       <div
         onClick={handleCenterClick}
         onMouseEnter={() => setCenterHovered(true)}
         onMouseLeave={() => setCenterHovered(false)}
         style={{
           position: 'absolute',
-          top: 'calc(50% + 75px)',
+          top: '50%',
           left: '50%',
-          transform: 'translateX(-50%)',
+          transform: 'translate(-50%, -50%)',
           fontSize: '17px',
           letterSpacing: '3px',
           color: centerHovered ? THEME.AMBER : THEME.TEXT_DIM,
