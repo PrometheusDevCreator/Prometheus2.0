@@ -1,22 +1,24 @@
 /**
  * PKEInterface - PKE Interaction Window Component
- * 
+ *
  * B5: 100% size increase from previous dimensions
  * - Previous: 454px × 38px
  * - New: 908px × 76px
- * 
+ *
  * B11: Glow effect on activation:
  * - 3px burnt orange (#FF6600) glow/shadow around border
  * - Subtle pulse animation (~3s cycle) when active
- * 
- * Deactivation triggers (handled by parent):
- * - Second press of PKE button (toggle)
- * - Navigation button press
- * - SAVE, LOAD, CLEAR, DELETE button press
+ *
+ * Activation/Deactivation:
+ * - Click inside PKE window to activate
+ * - Click outside PKE window to deactivate
  */
+
+import { useRef, useEffect, useCallback } from 'react'
 
 function PKEInterface({
   isActive = false,
+  onToggle, // Handler to toggle active state
   onClose,
   // Delete workflow props
   deleteLoNumber = null, // LO number being deleted (1-indexed)
@@ -25,6 +27,37 @@ function PKEInterface({
   onDelete = null, // Handler for DELETE selection
   onCancel = null // Handler for cancel (click away)
 }) {
+  const containerRef = useRef(null)
+
+  // Handle click inside to activate
+  const handleClick = useCallback((e) => {
+    e.stopPropagation()
+    if (!isActive) {
+      onToggle?.(true)
+    }
+  }, [isActive, onToggle])
+
+  // Handle click outside to deactivate
+  useEffect(() => {
+    if (!isActive) return
+
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        onToggle?.(false)
+        onCancel?.()
+      }
+    }
+
+    // Add listener with slight delay to avoid immediate trigger
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside)
+    }, 100)
+
+    return () => {
+      clearTimeout(timeoutId)
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isActive, onToggle, onCancel])
   // A7: New gradient style - lightest at center, darker toward ends
   const defaultGradient = 'linear-gradient(to right, #3b3838, #767171 25%, #ffffff 50%, #767171 75%, #3b3838)'
 
@@ -89,6 +122,8 @@ function PKEInterface({
 
   return (
     <div
+      ref={containerRef}
+      onClick={handleClick}
       className={`flex items-center justify-center transition-all duration-300 ${isActive ? 'pke-glow-pulse' : ''}`}
       style={{
         width: 'var(--pke-w)',            /* 908px @ 1920 */
@@ -101,7 +136,8 @@ function PKEInterface({
         boxShadow: isActive
           ? '0 0 1.11vh 0.37vh rgba(255, 102, 0, 0.6)' /* 12px 4px @ 1080 */
           : 'none',
-        marginLeft: '1.82vw'              /* 35px @ 1920 */
+        marginLeft: '1.82vw',             /* 35px @ 1920 */
+        cursor: isActive ? 'default' : 'pointer'
       }}
     >
       <div

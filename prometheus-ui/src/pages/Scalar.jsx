@@ -16,7 +16,6 @@ import { THEME } from '../constants/theme'
 import ScalarManager from '../components/ScalarManager'
 import ScalarViewer from '../components/ScalarViewer'
 import Footer from '../components/Footer'
-import pkeButton from '../assets/PKE_Button.png'
 
 function Scalar({ onNavigate, courseData, courseLoaded, user, courseState }) {
   const [activeTab, setActiveTab] = useState('manager') // 'manager' | 'viewer'
@@ -49,7 +48,7 @@ function Scalar({ onNavigate, courseData, courseLoaded, user, courseState }) {
           borderBottom: `1px solid ${THEME.BORDER}`
         }}
       >
-        {/* Left: Title and PKE */}
+        {/* Left: Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <h1
             style={{
@@ -61,17 +60,6 @@ function Scalar({ onNavigate, courseData, courseLoaded, user, courseState }) {
           >
             SCALAR
           </h1>
-          <img
-            src={pkeButton}
-            alt="PKE"
-            onClick={() => setIsPKEActive(!isPKEActive)}
-            style={{
-              width: '28px',
-              height: '28px',
-              cursor: 'pointer',
-              opacity: isPKEActive ? 1 : 0.7
-            }}
-          />
         </div>
 
         {/* Center: Import Scalar */}
@@ -86,16 +74,6 @@ function Scalar({ onNavigate, courseData, courseLoaded, user, courseState }) {
           >
             Import Scalar
           </span>
-          <img
-            src={pkeButton}
-            alt="Import"
-            style={{
-              width: '24px',
-              height: '24px',
-              cursor: 'pointer',
-              opacity: 0.6
-            }}
-          />
         </div>
 
         {/* Right: Module selector and Tabs */}

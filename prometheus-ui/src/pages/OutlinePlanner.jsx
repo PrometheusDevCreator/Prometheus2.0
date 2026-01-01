@@ -17,7 +17,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { THEME } from '../constants/theme'
 import Footer from '../components/Footer'
-import pkeButton from '../assets/PKE_Button.png'
 import breakSymbol from '../assets/Break_Symbol.png'
 
 // Constants
@@ -724,30 +723,6 @@ function OutlinePlanner({ onNavigate, courseData, setCourseData, courseLoaded, u
         overflowY: 'hidden'
       }}
     >
-      {/* PKE Button */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '730px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 10
-        }}
-      >
-        <img
-          src={pkeButton}
-          alt="PKE"
-          onClick={() => setIsPKEActive(!isPKEActive)}
-          style={{
-            width: '28px',
-            height: '28px',
-            cursor: 'pointer',
-            opacity: isPKEActive ? 1 : 0.7,
-            transition: 'opacity 0.2s ease'
-          }}
-        />
-      </div>
-
       {/* Main Content Area - removed horizontal padding to allow proper centering */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingTop: '10px', paddingBottom: '10px', overflow: 'visible', minWidth: '1200px' }}>
 

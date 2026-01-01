@@ -19,7 +19,6 @@ import GradientBorder from '../components/GradientBorder'
 import Footer from '../components/Footer'
 import DefinePageDurationWheel from '../components/define/DefinePageDurationWheel'
 import DefinePageContentWheel from '../components/define/DefinePageContentWheel'
-import pkeButton from '../assets/PKE_Button.png'
 
 // ============================================
 // DEFINE LAYOUT TOKENS (Phase 3R)
@@ -37,7 +36,6 @@ const D = {
   textareaMinH: 'var(--define-textarea-min-h)',
 
   // positioning
-  pkeTop: 'var(--define-pke-top)',
 
   // typography
   fs18: 'var(--define-fs-18)',
@@ -475,30 +473,6 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
         position: 'relative'
       }}
     >
-      {/* PKE Button - centered horizontally at Y:600 */}
-      <div
-        style={{
-          position: 'absolute',
-          top: D.pkeTop,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 10
-        }}
-      >
-        <img
-          src={pkeButton}
-          alt="PKE"
-          onClick={() => setIsPKEActive(!isPKEActive)}
-          style={{
-            width: '28px',
-            height: '28px',
-            cursor: 'pointer',
-            opacity: isPKEActive ? 1 : 0.7,
-            transition: 'opacity 0.2s ease'
-          }}
-        />
-      </div>
-
       {/* Main Content - Three Columns */}
       <div
         style={{

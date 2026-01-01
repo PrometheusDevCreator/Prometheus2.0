@@ -187,9 +187,10 @@ function Footer({
               </button>
             </div>
 
-            {/* PKE Interface */}
+            {/* PKE Interface - click inside to activate, click outside to deactivate */}
             <PKEInterface
               isActive={isPKEActive}
+              onToggle={onPKEToggle}
               onClose={() => onPKEToggle?.(false)}
               deleteLoNumber={deleteLoNumber}
               deleteStep={deleteStep}
