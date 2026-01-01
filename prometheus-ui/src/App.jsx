@@ -72,7 +72,7 @@ function App() {
   const [courseData, setCourseData] = useState({
     title: '',
     thematic: '',
-    module: 1,
+    module: 0,
     moduleTitles: [],  // Array of module titles
     code: '',
     duration: 1,
@@ -142,7 +142,7 @@ function App() {
     setCourseData({
       title: '',
       thematic: '',
-      module: 1,
+      module: 0,
       moduleTitles: [],  // Reset module titles
       code: '',
       duration: 1,

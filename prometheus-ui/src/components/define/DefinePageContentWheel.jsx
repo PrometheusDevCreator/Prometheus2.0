@@ -322,20 +322,6 @@ function DefinePageContentWheel({
             )
           })}
 
-          {/* Drag direction indicator arrow */}
-          <path
-            d={`M ${size - 35} ${25} Q ${size - 20} ${40} ${size - 25} ${55}`}
-            fill="none"
-            stroke={THEME.AMBER_DARK}
-            strokeWidth={1.5}
-            strokeDasharray="3,3"
-            opacity={0.6}
-          />
-          <polygon
-            points={`${size - 28},${52} ${size - 22},${58} ${size - 30},${60}`}
-            fill={THEME.AMBER_DARK}
-            opacity={0.6}
-          />
         </svg>
 
         {/* Draggable handle (orange circle) */}
@@ -376,7 +362,7 @@ function DefinePageContentWheel({
         >
           <span
             style={{
-              fontSize: selectedCategory === 'theoryPractical' ? '36px' : '42px',
+              fontSize: selectedCategory === 'theoryPractical' ? '14px' : '17px',
               fontFamily: THEME.FONT_PRIMARY,
               fontWeight: '300',
               color: THEME.GREEN_BRIGHT,

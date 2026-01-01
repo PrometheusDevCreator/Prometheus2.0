@@ -61,6 +61,7 @@ function DefinePageDurationWheel({
   const [selectedCategory, setSelectedCategory] = useState('days') // Default to days
   const [isHovered, setIsHovered] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
+  const [rotation, setRotation] = useState(0) // Local rotation state for smooth dragging
   const wheelRef = useRef(null)
   const startAngle = useRef(0)
   const startRotation = useRef(0)
@@ -68,9 +69,20 @@ function DefinePageDurationWheel({
   // Get current category config and value
   const categoryConfig = DURATION_CATEGORIES[selectedCategory]
   const currentValue = values[selectedCategory] || 0
-  const rotation = valueToRotation(currentValue, categoryConfig.min, categoryConfig.max)
 
   const isActive = isDragging || isHovered
+
+  // Get rotation for current value
+  const getRotation = () => {
+    return valueToRotation(currentValue, categoryConfig.min, categoryConfig.max)
+  }
+
+  // Update rotation when category or value changes (sync with external value)
+  useEffect(() => {
+    if (!isDragging) {
+      setRotation(getRotation())
+    }
+  }, [selectedCategory, values, isDragging])
 
   // Calculate angle from center of wheel
   const getAngleFromCenter = useCallback((clientX, clientY) => {
@@ -104,6 +116,9 @@ function DefinePageDurationWheel({
     // Update rotation (clamped)
     let newRotation = startRotation.current + deltaAngle
     newRotation = Math.max(0, Math.min(330, newRotation))
+
+    // Update local rotation state for smooth visual feedback
+    setRotation(newRotation)
 
     // Convert to value and notify
     const newValue = rotationToValue(newRotation, categoryConfig.min, categoryConfig.max)
@@ -256,20 +271,6 @@ function DefinePageDurationWheel({
             )
           })}
 
-          {/* Drag direction indicator arrow */}
-          <path
-            d={`M ${size - 35} ${25} Q ${size - 20} ${40} ${size - 25} ${55}`}
-            fill="none"
-            stroke={THEME.AMBER_DARK}
-            strokeWidth={1.5}
-            strokeDasharray="3,3"
-            opacity={0.6}
-          />
-          <polygon
-            points={`${size - 28},${52} ${size - 22},${58} ${size - 30},${60}`}
-            fill={THEME.AMBER_DARK}
-            opacity={0.6}
-          />
         </svg>
 
         {/* Draggable handle (orange circle) */}
@@ -310,7 +311,7 @@ function DefinePageDurationWheel({
         >
           <span
             style={{
-              fontSize: '72px',
+              fontSize: '18px',
               fontFamily: THEME.FONT_MONO,
               fontWeight: '300',
               color: THEME.GREEN_BRIGHT,

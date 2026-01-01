@@ -118,7 +118,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
   const [formData, setFormData] = useState({
     title: courseData?.title || '',
     thematic: courseData?.thematic || '',
-    module: courseData?.module || 1,
+    module: courseData?.module ?? 0,
     moduleTitles: courseData?.moduleTitles || [], // Array of module titles
     code: courseData?.code || '',
     // Duration wheel values (new)
@@ -185,7 +185,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
 
   // Handle module count decrease (- button)
   const handleModuleDecrease = useCallback(() => {
-    if (formData.module <= 1) return
+    if (formData.module <= 0) return
     const newCount = formData.module - 1
     updateField('module', newCount)
     // Adjust current index if needed
@@ -356,7 +356,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
     setFormData({
       title: '',
       thematic: '',
-      module: 1,
+      module: 0,
       moduleTitles: [],  // Reset module titles
       code: '',
       // Duration wheel values reset
@@ -592,7 +592,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
             <label style={{ ...labelStyle(false), marginBottom: '12px', display: 'block' }}>
               Delivery Method
             </label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
               {DELIVERY_OPTIONS.map(mode => {
                 const isSelected = formData.deliveryModes.includes(mode)
                 return (
