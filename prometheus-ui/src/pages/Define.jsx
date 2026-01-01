@@ -15,10 +15,10 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { THEME, LEVEL_OPTIONS, SENIORITY_OPTIONS, DELIVERY_OPTIONS } from '../constants/theme'
-import Slider from '../components/Slider'
-import DurationWheelPanel from '../components/duration/DurationWheelPanel'
 import GradientBorder from '../components/GradientBorder'
 import Footer from '../components/Footer'
+import DefinePageDurationWheel from '../components/define/DefinePageDurationWheel'
+import DefinePageContentWheel from '../components/define/DefinePageContentWheel'
 import pkeButton from '../assets/PKE_Button.png'
 
 // ============================================
@@ -587,51 +587,77 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
             </GradientBorder>
           </div>
 
-          {/* Duration & Structure Wheels Panel */}
+          {/* Delivery Mode Buttons - moved from center column */}
           <div style={{ marginTop: D.gapMd }}>
-            <DurationWheelPanel
-              values={{
-                hours: formData.hours,
-                days: formData.days,
-                weeks: formData.weeks,
-                level: formData.level,
-                seniority: formData.seniority,
-                contentType: formData.contentType,
-                modules: formData.module,  // Sync with formData.module for backwards compat
-                semesters: formData.semesters,
-                terms: formData.terms
-              }}
-              onChange={(field, value) => {
-                if (field === 'modules') {
-                  // Sync modules wheel with formData.module
-                  updateField('module', value)
-                  // Ensure moduleTitles array has enough slots
-                  if (value > formData.moduleTitles.length) {
-                    const newTitles = [...formData.moduleTitles]
-                    while (newTitles.length < value) {
-                      newTitles.push('')
-                    }
-                    setFormData(prev => ({ ...prev, moduleTitles: newTitles }))
-                  }
-                  // Adjust current module index if needed
-                  if (currentModuleIndex >= value && value > 0) {
-                    setCurrentModuleIndex(value - 1)
-                  }
-                } else {
-                  updateField(field, value)
-                }
-                setActiveColumn('left')
-                setHasUnsavedChanges(true)
-              }}
-              onBatchChange={(updates) => {
-                Object.entries(updates).forEach(([field, value]) => {
-                  updateField(field, value)
-                })
-                setActiveColumn('left')
-                setHasUnsavedChanges(true)
-              }}
-              showValidation={true}
-            />
+            <label style={{ ...labelStyle(false), marginBottom: '12px', display: 'block' }}>
+              Delivery Method
+            </label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+              {DELIVERY_OPTIONS.map(mode => {
+                const isSelected = formData.deliveryModes.includes(mode)
+                return (
+                  <button
+                    key={mode}
+                    onClick={() => { toggleDelivery(mode); setActiveColumn('left') }}
+                    style={{
+                      padding: '10px 12px',
+                      fontSize: D.fs14,
+                      letterSpacing: '1.5px',
+                      fontFamily: THEME.FONT_PRIMARY,
+                      background: isSelected ? THEME.GRADIENT_BUTTON : 'transparent',
+                      border: `1px solid ${isSelected ? THEME.AMBER : THEME.BORDER}`,
+                      borderRadius: '14px',
+                      color: isSelected ? THEME.WHITE : THEME.TEXT_SECONDARY,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {mode}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Accreditation Toggles - moved from center column */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: D.gapMd }}>
+            {[
+              { key: 'qualification', label: 'Qualification' },
+              { key: 'accredited', label: 'Accredited' },
+              { key: 'certified', label: 'Certified' }
+            ].map(toggle => (
+              <div key={toggle.key} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button
+                  onClick={() => { updateField(toggle.key, !formData[toggle.key]); setActiveColumn('left') }}
+                  style={{
+                    width: '48px',
+                    height: '22px',
+                    borderRadius: '11px',
+                    background: formData[toggle.key] ? THEME.AMBER : THEME.BORDER_GREY,
+                    border: 'none',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    transition: 'background 0.2s ease'
+                  }}
+                >
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '2px',
+                      left: formData[toggle.key] ? '26px' : '2px',
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '50%',
+                      background: THEME.WHITE,
+                      transition: 'left 0.2s ease'
+                    }}
+                  />
+                </button>
+                <span style={{ fontSize: D.fs15, color: THEME.TEXT_SECONDARY, fontFamily: THEME.FONT_PRIMARY }}>
+                  {toggle.label}
+                </span>
+              </div>
+            ))}
           </div>
 
         </div>
@@ -673,7 +699,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
           </h2>
 
           {/* Description textarea - aligned with Title input in left column */}
-          <div style={{ marginTop: '25px', width: '100%' }}>  {/* Moved down 30px to Y:+260 */}
+          <div style={{ marginTop: '25px', width: '100%' }}>
             <GradientBorder isActive={isFieldActive('description')}>
               <textarea
                 value={formData.description}
@@ -684,7 +710,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                 onMouseLeave={() => setHoveredField(null)}
                 style={{
                   ...inputStyle,
-                  minHeight: D.textareaMinH,
+                  minHeight: '120px',
                   resize: 'vertical'
                 }}
                 placeholder="Enter course description..."
@@ -692,77 +718,64 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
             </GradientBorder>
           </div>
 
-          {/* Delivery Mode Buttons - moved down 15px */}
-          <div style={{ marginTop: '15px' }}>
-            <label style={{ ...labelStyle(false), marginBottom: '12px', display: 'block' }}>
-              Delivery Method
-            </label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-              {DELIVERY_OPTIONS.map(mode => {
-                const isSelected = formData.deliveryModes.includes(mode)
-                return (
-                  <button
-                    key={mode}
-                    onClick={() => { toggleDelivery(mode); setActiveColumn('center') }}
-                    style={{
-                      padding: '12px 14px',
-                      fontSize: D.fs14,
-                      letterSpacing: '2px',
-                      fontFamily: THEME.FONT_PRIMARY,
-                      background: isSelected ? THEME.GRADIENT_BUTTON : 'transparent',
-                      border: `1px solid ${isSelected ? THEME.AMBER : THEME.BORDER}`,
-                      borderRadius: '16px',
-                      color: isSelected ? THEME.WHITE : THEME.TEXT_SECONDARY,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    {mode}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+          {/* Duration and Content Wheels - two columns below description */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'flex-start',
+              gap: '60px',
+              marginTop: '30px',
+              flex: 1
+            }}
+          >
+            {/* Duration Wheel */}
+            <DefinePageDurationWheel
+              values={{
+                hours: formData.hours,
+                days: formData.days,
+                weeks: formData.weeks,
+                modules: formData.module,
+                terms: formData.terms,
+                semesters: formData.semesters
+              }}
+              onChange={(field, value) => {
+                if (field === 'modules') {
+                  updateField('module', value)
+                  // Ensure moduleTitles array has enough slots
+                  if (value > formData.moduleTitles.length) {
+                    const newTitles = [...formData.moduleTitles]
+                    while (newTitles.length < value) {
+                      newTitles.push('')
+                    }
+                    setFormData(prev => ({ ...prev, moduleTitles: newTitles }))
+                  }
+                  if (currentModuleIndex >= value && value > 0) {
+                    setCurrentModuleIndex(value - 1)
+                  }
+                } else {
+                  updateField(field, value)
+                }
+                setActiveColumn('center')
+                setHasUnsavedChanges(true)
+              }}
+              size={240}
+            />
 
-          {/* Toggle Options */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '60px', width: '100%' }}>
-            {[
-              { key: 'qualification', label: 'Qualification' },
-              { key: 'accredited', label: 'Accredited' },
-              { key: 'certified', label: 'Certified' }
-            ].map(toggle => (
-              <div key={toggle.key} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  onClick={() => { updateField(toggle.key, !formData[toggle.key]); setActiveColumn('center') }}
-                  style={{
-                    width: '54px',
-                    height: '24px',
-                    borderRadius: '12px',
-                    background: formData[toggle.key] ? THEME.AMBER : THEME.BORDER_GREY,
-                    border: 'none',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    transition: 'background 0.2s ease'
-                  }}
-                >
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: '2px',
-                      left: formData[toggle.key] ? '30px' : '2px',
-                      width: '18px',
-                      height: '18px',
-                      borderRadius: '50%',
-                      background: THEME.WHITE,
-                      transition: 'left 0.2s ease'
-                    }}
-                  />
-                </button>
-                <span style={{ fontSize: D.fs15, color: THEME.TEXT_SECONDARY, fontFamily: THEME.FONT_PRIMARY }}>
-                  {toggle.label}
-                </span>
-              </div>
-            ))}
+            {/* Content Wheel */}
+            <DefinePageContentWheel
+              values={{
+                level: formData.level,
+                seniority: formData.seniority,
+                contentType: formData.contentType
+              }}
+              onChange={(field, value) => {
+                updateField(field, value)
+                setActiveColumn('center')
+                setHasUnsavedChanges(true)
+              }}
+              size={240}
+            />
           </div>
         </div>
 
