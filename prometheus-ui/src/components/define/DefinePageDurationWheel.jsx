@@ -95,7 +95,7 @@ function DefinePageDurationWheel({
     return angle * (180 / Math.PI)
   }, [])
 
-  // Handle rotational drag
+  // Handle rotational drag - cumulative approach (same as CONTENT wheel)
   const handleMouseDown = useCallback((e) => {
     e.preventDefault()
     setIsDragging(true)
@@ -109,12 +109,14 @@ function DefinePageDurationWheel({
     const currentAngle = getAngleFromCenter(e.clientX, e.clientY)
     let deltaAngle = currentAngle - startAngle.current
 
-    // Handle angle wrapping
+    // Normalize delta to -180 to 180 range (handles wrap-around at 6 o'clock)
     if (deltaAngle > 180) deltaAngle -= 360
     if (deltaAngle < -180) deltaAngle += 360
 
-    // Update rotation (clamped)
+    // Apply delta from original start position (cumulative)
     let newRotation = startRotation.current + deltaAngle
+
+    // Clamp to valid range (0 to 330 degrees)
     newRotation = Math.max(0, Math.min(330, newRotation))
 
     // Update local rotation state for smooth visual feedback
