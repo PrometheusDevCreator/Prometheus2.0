@@ -28,6 +28,8 @@ import { TemplateProvider, useTemplate } from '../contexts/TemplateContext'
 
 // Format components
 import FormatWheel from '../components/format/FormatWheel'
+import TemplateSelector from '../components/format/TemplateSelector'
+import FormatToolPanel from '../components/format/FormatToolPanel'
 import OutputConfigPanel from '../components/format/OutputConfigPanel'
 
 // Planned output placeholder data
@@ -135,9 +137,13 @@ function LeftSidePlaceholders() {
 
 /**
  * FormatContent - Inner content component (inside TemplateProvider)
+ *
+ * PROGRESSIVE DISCLOSURE:
+ * - Initial state: Only wheel + SELECT TEMPLATE visible
+ * - Wheel option click: Reveals left tool panel (UPLOAD, MAKE TEMPLATE, CONVERT)
  */
 function FormatContent({ onNavigate, user, courseState, exitPending }) {
-  const { isLoading, error, clearError } = useTemplate()
+  const { isLoading, error, clearError, selectedOutput } = useTemplate()
 
   const handleNavigate = useCallback((section) => {
     onNavigate?.(section)
@@ -232,14 +238,36 @@ function FormatContent({ onNavigate, user, courseState, exitPending }) {
           position: 'relative'
         }}
       >
-        {/* Left-Side Placeholder Outputs */}
-        <LeftSidePlaceholders />
-
         {/* Format Wheel - 525px, same as NavigateWheel per Controller directive */}
         <FormatWheel onNavigate={handleNavigate} />
 
-        {/* Right Panel - Configuration */}
-        <OutputConfigPanel />
+        {/* Template Selector - below wheel on centerline */}
+        <div
+          style={{
+            position: 'fixed',
+            left: '50%',
+            top: 'calc(50% + 220px)',
+            transform: 'translateX(-50%)',
+            zIndex: 150,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
+          }}
+        >
+          <TemplateSelector />
+        </div>
+
+        {/* Left Tool Panel - appears when wheel option is selected */}
+        <FormatToolPanel
+          isVisible={!!selectedOutput}
+          selectedOutput={selectedOutput}
+        />
+
+        {/* Left-Side Placeholder Outputs - hidden until tool panel actions complete */}
+        {/* <LeftSidePlaceholders /> */}
+
+        {/* Right Panel - hidden until configuration needed */}
+        {/* <OutputConfigPanel /> */}
       </div>
 
       {/* Footer */}

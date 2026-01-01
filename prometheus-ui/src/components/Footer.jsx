@@ -19,8 +19,8 @@ import PKEInterface from './PKEInterface'
 import silverButtonImage from '../assets/Silver_Button.png'
 import ConfirmableButton from './shared/ConfirmableButton'
 
-// Navigation order for < > arrows (Format excluded - only via Navigation Hub)
-const NAV_ORDER = ['navigate', 'define', 'design', 'build', 'generate']
+// Navigation order for < > arrows
+const NAV_ORDER = ['navigate', 'define', 'design', 'build', 'format', 'generate']
 
 function Footer({
   currentSection = 'define',
