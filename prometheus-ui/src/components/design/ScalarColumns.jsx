@@ -15,7 +15,7 @@
  * - Unallocated topics with red serial numbers
  */
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { THEME } from '../../constants/theme'
 import { useDesign } from '../../contexts/DesignContext'
 
@@ -32,6 +32,7 @@ function ScalarColumns({ module }) {
   const {
     scalarData,
     scheduledLessons,
+    unscheduledLessons,
     addLearningObjective,
     addTopic,
     addSubtopic,
@@ -67,9 +68,116 @@ function ScalarColumns({ module }) {
   // Flatten LOs, Topics, Subtopics for column display
   const learningObjectives = module?.learningObjectives || []
 
-  const allTopics = learningObjectives.flatMap(lo =>
+  // Topics from scalar LOs
+  const scalarTopics = learningObjectives.flatMap(lo =>
     (lo.topics || []).map(topic => ({ ...topic, loId: lo.id, loOrder: lo.order }))
   )
+
+  // Also collect topics from lessons that might not be in scalarData
+  // (e.g., topics added via LessonEditorModal)
+  // Include both scheduled and unscheduled lessons
+  const lessonTopics = useMemo(() => {
+    const scalarTopicIds = new Set(scalarTopics.map(t => t.id))
+    const topicsFromLessons = []
+    const seenTopicIds = new Set()
+
+    // Build maps of LO IDs and text to their order numbers from scalarData
+    const loOrderMap = {}      // Maps LO ID to order
+    const loTextToIdMap = {}   // Maps LO text/description to ID
+    const loTextToOrderMap = {} // Maps LO text/description to order
+
+    learningObjectives.forEach(lo => {
+      loOrderMap[lo.id] = lo.order
+      // Store text mappings (for LOs assigned by text in Lesson Editor)
+      const loText = lo.text || `${lo.verb || ''} ${lo.description || ''}`.trim()
+      if (loText) {
+        loTextToIdMap[loText] = lo.id
+        loTextToOrderMap[loText] = lo.order
+      }
+    })
+
+    // Track topic count per LO to assign proper order numbers
+    const topicCountPerLo = {}
+
+    // Also count existing scalar topics per LO
+    scalarTopics.forEach(topic => {
+      if (topic.loId) {
+        topicCountPerLo[topic.loId] = (topicCountPerLo[topic.loId] || 0) + 1
+      }
+    })
+
+    // Track unallocated topic count separately
+    let unallocatedCount = 0
+
+    // Collect from all lessons (both scheduled and unscheduled)
+    const allLessons = [...scheduledLessons, ...unscheduledLessons]
+
+    allLessons.forEach(lesson => {
+      // Get the lesson's primary LO assignment (could be ID or text)
+      const lessonLoValue = lesson.learningObjectives?.[0] || null
+      // Look up by ID first, then by text
+      const lessonLoId = loOrderMap[lessonLoValue] !== undefined
+        ? lessonLoValue
+        : loTextToIdMap[lessonLoValue] || null
+      const lessonLoOrder = loOrderMap[lessonLoValue]
+        ?? loTextToOrderMap[lessonLoValue]
+        ?? null
+
+      ;(lesson.topics || []).forEach((topic, topicIdx) => {
+        // Skip if this topic already exists in scalar (by id or scalarTopicId)
+        if (scalarTopicIds.has(topic.id) || scalarTopicIds.has(topic.scalarTopicId)) {
+          return
+        }
+        // Skip duplicates from multiple lessons
+        if (seenTopicIds.has(topic.id)) {
+          return
+        }
+        seenTopicIds.add(topic.id)
+
+        // Use topic's loId, or fall back to lesson's LO assignment
+        const topicLoValue = topic.loId || lessonLoValue
+        // Look up by ID first, then by text
+        const topicLoId = loOrderMap[topicLoValue] !== undefined
+          ? topicLoValue
+          : loTextToIdMap[topicLoValue] || null
+        const topicLoOrder = loOrderMap[topicLoValue]
+          ?? loTextToOrderMap[topicLoValue]
+          ?? null
+
+        // Calculate order within the LO (or within unallocated)
+        // Use a consistent key for counting (prefer resolved ID)
+        const loKey = topicLoId || topicLoValue
+        let topicOrder
+        if (topicLoOrder !== null) {
+          // Allocated to an LO - count within that LO
+          topicCountPerLo[loKey] = (topicCountPerLo[loKey] || 0) + 1
+          topicOrder = topicCountPerLo[loKey]
+        } else {
+          unallocatedCount++
+          topicOrder = unallocatedCount
+        }
+
+        // Add lesson topic to display
+        topicsFromLessons.push({
+          id: topic.id,
+          title: topic.title,
+          order: topicOrder, // Order within its LO group
+          loId: topicLoId,
+          loOrder: topicLoOrder, // Use actual LO order for proper numbering
+          subtopics: topic.subtopics || [],
+          expanded: topic.subtopics?.length > 0, // Auto-expand if has subtopics
+          fromLesson: true,
+          lessonId: lesson.id,
+          topicIndex: topicIdx // Preserve original order within lesson
+        })
+      })
+    })
+
+    return topicsFromLessons
+  }, [scheduledLessons, unscheduledLessons, scalarTopics, learningObjectives])
+
+  // Merge scalar topics and lesson topics
+  const allTopics = [...scalarTopics, ...lessonTopics]
 
   const allSubtopics = allTopics.flatMap(topic =>
     (topic.subtopics || []).map(sub => ({
@@ -766,26 +874,29 @@ function TopicWithSubtopics({
     setShowContextMenu({ x: e.clientX, y: e.clientY })
   }, [])
 
-  // Highlight styling - linking source takes priority with green glow
+  // Highlight styling - NO orange backgrounds/borders per user spec
   const highlightBg = isInLinkingSession
-    ? 'rgba(0, 255, 0, 0.25)'
-    : isHighlighted
-      ? 'rgba(212, 115, 12, 0.15)'
-      : isSelected
-        ? 'rgba(212, 115, 12, 0.08)'
-        : isMultiSelected
-          ? 'rgba(0, 255, 0, 0.1)'
-          : hovered
-            ? 'rgba(255, 255, 255, 0.03)'
-            : 'transparent'
+    ? 'rgba(0, 255, 0, 0.15)'
+    : isSelected
+      ? 'rgba(255, 255, 255, 0.05)'
+      : isMultiSelected
+        ? 'rgba(0, 255, 0, 0.1)'
+        : 'transparent'
 
   const highlightBorder = isInLinkingSession
     ? '2px solid #00FF00'
-    : isHighlighted || isSelected
-      ? `1px solid ${THEME.AMBER}`
+    : isSelected
+      ? `1px solid ${THEME.TEXT_DIM}`
       : isMultiSelected
         ? '1px solid #00FF00'
         : '1px solid transparent'
+
+  // Text color: hover → burnt orange, highlighted → green, normal → white
+  const labelColor = isHighlighted
+    ? '#00FF00'
+    : hovered
+      ? THEME.AMBER
+      : THEME.TEXT_PRIMARY
 
   return (
     <div style={{ marginBottom: '0.3vh' }}>
@@ -880,10 +991,11 @@ function TopicWithSubtopics({
               flex: 1,
               fontSize: FONT.LABEL,
               fontFamily: THEME.FONT_PRIMARY,
-              color: isHighlighted ? THEME.WHITE : THEME.TEXT_PRIMARY,
+              color: labelColor, // Uses hover/highlight/normal color logic
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              transition: 'color 0.15s ease'
             }}
           >
             {topic.title}
@@ -1008,26 +1120,29 @@ function SubtopicRow({
     setShowContextMenu({ x: e.clientX, y: e.clientY })
   }, [])
 
-  // Highlight styling - linking source takes priority with green glow
+  // Highlight styling - NO orange backgrounds/borders per user spec
   const highlightBg = isInLinkingSession
-    ? 'rgba(0, 255, 0, 0.25)'
-    : isHighlighted
-      ? 'rgba(212, 115, 12, 0.15)'
-      : isSelected
-        ? 'rgba(212, 115, 12, 0.08)'
-        : isMultiSelected
-          ? 'rgba(0, 255, 0, 0.1)'
-          : hovered
-            ? 'rgba(255, 255, 255, 0.03)'
-            : 'transparent'
+    ? 'rgba(0, 255, 0, 0.15)'
+    : isSelected
+      ? 'rgba(255, 255, 255, 0.05)'
+      : isMultiSelected
+        ? 'rgba(0, 255, 0, 0.1)'
+        : 'transparent'
 
   const highlightBorder = isInLinkingSession
     ? '2px solid #00FF00'
-    : isHighlighted || isSelected
-      ? `1px solid ${THEME.AMBER}`
+    : isSelected
+      ? `1px solid ${THEME.TEXT_DIM}`
       : isMultiSelected
         ? '1px solid #00FF00'
         : '1px solid transparent'
+
+  // Text color: hover → burnt orange, highlighted → green, normal → white
+  const labelColor = isHighlighted
+    ? '#00FF00'
+    : hovered
+      ? THEME.AMBER
+      : THEME.TEXT_DIM // Subtopics use dimmer text by default
 
   return (
     <>
@@ -1097,10 +1212,11 @@ function SubtopicRow({
               flex: 1,
               fontSize: FONT.BADGE,
               fontFamily: THEME.FONT_PRIMARY,
-              color: isHighlighted ? THEME.WHITE : THEME.TEXT_DIM,
+              color: labelColor, // Uses hover/highlight/normal color logic
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              transition: 'color 0.15s ease'
             }}
           >
             {subtopic.title}
@@ -1257,26 +1373,30 @@ function ScalarColumnItem({
     setShowContextMenu(null)
   }, [])
 
-  // Highlight styling - linking source takes priority with green glow
+  // Highlight styling - NO orange backgrounds/borders per user spec
+  // Highlighted items get green text, hovered get orange text (handled in label color)
   const highlightBg = isInLinkingSession
-    ? 'rgba(0, 255, 0, 0.25)'
-    : isHighlighted
-      ? 'rgba(212, 115, 12, 0.15)'
-      : isSelected
-        ? 'rgba(212, 115, 12, 0.08)'
-        : isMultiSelected
-          ? 'rgba(0, 255, 0, 0.1)'
-          : hovered
-            ? 'rgba(255, 255, 255, 0.03)'
-            : 'transparent'
+    ? 'rgba(0, 255, 0, 0.15)'
+    : isSelected
+      ? 'rgba(255, 255, 255, 0.05)' // Subtle selection indicator
+      : isMultiSelected
+        ? 'rgba(0, 255, 0, 0.1)'
+        : 'transparent' // No background for highlighted or hovered
 
   const highlightBorder = isInLinkingSession
     ? '2px solid #00FF00'
-    : isHighlighted || isSelected
-      ? `1px solid ${THEME.AMBER}`
+    : isSelected
+      ? `1px solid ${THEME.TEXT_DIM}` // Subtle border for selected
       : isMultiSelected
         ? '1px solid #00FF00'
-        : '1px solid transparent'
+        : '1px solid transparent' // No orange border for highlighted
+
+  // Text color: hover → burnt orange, highlighted → green, normal → white
+  const labelColor = isHighlighted
+    ? '#00FF00' // Highlighted items get luminous green text
+    : hovered
+      ? THEME.AMBER // Hovered items get burnt orange text
+      : THEME.TEXT_PRIMARY // Normal state
 
   return (
     <>
@@ -1394,10 +1514,11 @@ function ScalarColumnItem({
               flex: 1,
               fontSize: FONT.LABEL,
               fontFamily: THEME.FONT_PRIMARY,
-              color: isHighlighted ? THEME.WHITE : THEME.TEXT_PRIMARY,
+              color: labelColor, // Uses hover/highlight/normal color logic
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              transition: 'color 0.15s ease'
             }}
           >
             {label}
