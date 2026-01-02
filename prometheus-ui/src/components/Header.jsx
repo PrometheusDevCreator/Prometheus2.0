@@ -7,6 +7,7 @@
  * - Info Cluster: Right-aligned at (right:20px, top:15px), grey labels, values "---" when empty
  * - Horizontal Line: Y=85, full width gradient
  * - Page Title: Centered, Y=92 (7px below line), 18px font
+ * - Lesson Editor: Below page title with < > navigation arrows
  *
  * EXIT FUNCTION:
  * - Logo is clickable to initiate exit workflow
@@ -16,9 +17,13 @@
  * This component is used by ALL pages for consistent header layout.
  */
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import logo from '../assets/burntorangelogo.png'
 import { THEME } from '../constants/theme'
+import LessonEditorLozenge from './LessonEditorLozenge'
+
+// Navigation order for < > arrows
+const NAV_ORDER = ['navigate', 'define', 'design', 'build', 'format', 'generate']
 
 function Header({
   pageTitle,
@@ -26,8 +31,33 @@ function Header({
   courseData = {},
   isNavigationHub = false,
   onExitClick,
-  exitPending = false
+  exitPending = false,
+  // Lesson Editor props
+  lessonEditorOpen = false,
+  onLessonEditorToggle,
+  selectedLessonId = null,  // Currently selected lesson ID for Lesson Editor
+  // Navigation props
+  currentSection,
+  onNavigate
 }) {
+  // Navigation arrow handlers
+  const [prevHovered, setPrevHovered] = useState(false)
+  const [nextHovered, setNextHovered] = useState(false)
+
+  const handlePrevPage = useCallback(() => {
+    const currentIndex = NAV_ORDER.indexOf(currentSection)
+    if (currentIndex > 0) {
+      onNavigate?.(NAV_ORDER[currentIndex - 1])
+    }
+  }, [currentSection, onNavigate])
+
+  const handleNextPage = useCallback(() => {
+    const currentIndex = NAV_ORDER.indexOf(currentSection)
+    if (currentIndex < NAV_ORDER.length - 1) {
+      onNavigate?.(NAV_ORDER[currentIndex + 1])
+    }
+  }, [currentSection, onNavigate])
+
   // Default values that should display as '---' until user changes them
   const defaultValues = ['Foundational', 'Junior', 0, 1, '', 'Hours']
 
@@ -177,22 +207,75 @@ function Header({
       {/* Page Title - centered, Y=102 (moved down 10px), font 21px (15% larger) */}
       {/* Navigation Hub title is shown above the line, so hide it here */}
       {!isNavigationHub && (
-        <h2
-          style={{
-            position: 'absolute',
-            top: '9.44vh',        /* 102px @ 1080 */
-            left: '50%',
-            transform: 'translateX(-50%)',
-            fontFamily: THEME.FONT_PRIMARY,
-            fontSize: '1.94vh',   /* 21px @ 1080 */
-            fontWeight: 500,
-            color: '#f0f0f0',
-            letterSpacing: '0.1em',
-            margin: 0
-          }}
-        >
-          {pageTitle}
-        </h2>
+        <>
+          <h2
+            style={{
+              position: 'absolute',
+              top: '9.44vh',        /* 102px @ 1080 */
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontFamily: THEME.FONT_PRIMARY,
+              fontSize: '1.94vh',   /* 21px @ 1080 */
+              fontWeight: 500,
+              color: '#f0f0f0',
+              letterSpacing: '0.1em',
+              margin: 0
+            }}
+          >
+            {pageTitle}
+          </h2>
+
+          {/* Lesson Editor Lozenge with Navigation Arrows - just below horizontal line */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '7.8vh',         /* Positioned to fit within header bounds */
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1.2vh',
+              zIndex: 20
+            }}
+          >
+            <button
+              onClick={handlePrevPage}
+              onMouseEnter={() => setPrevHovered(true)}
+              onMouseLeave={() => setPrevHovered(false)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: prevHovered ? THEME.AMBER : THEME.WHITE,
+                fontSize: '2vh',
+                cursor: 'pointer',
+                padding: '0.4vh 0.5vw',
+                transition: 'color 0.2s ease'
+              }}
+            >
+              &lt;
+            </button>
+            <LessonEditorLozenge
+              isActive={lessonEditorOpen}
+              onClick={() => onLessonEditorToggle?.(!lessonEditorOpen, selectedLessonId)}
+            />
+            <button
+              onClick={handleNextPage}
+              onMouseEnter={() => setNextHovered(true)}
+              onMouseLeave={() => setNextHovered(false)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: nextHovered ? THEME.AMBER : THEME.WHITE,
+                fontSize: '2vh',
+                cursor: 'pointer',
+                padding: '0.4vh 0.5vw',
+                transition: 'color 0.2s ease'
+              }}
+            >
+              &gt;
+            </button>
+          </div>
+        </>
       )}
     </header>
   )
