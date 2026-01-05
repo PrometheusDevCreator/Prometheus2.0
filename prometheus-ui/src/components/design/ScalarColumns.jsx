@@ -62,16 +62,32 @@ function ScalarColumns({ module }) {
     handleShiftClickLink,
     clearLinkingSource,
     linkToSource,
-    isSessionLinked
+    isSessionLinked,
+    // Topic-LO toggle linking
+    toggleTopicLOLink,
+    // Canonical data store (deterministic numbering)
+    canonicalData,
+    getCanonicalTopicSerial,
+    getCanonicalSubtopicSerial
   } = useDesign()
 
   // Flatten LOs, Topics, Subtopics for column display
   const learningObjectives = module?.learningObjectives || []
 
-  // Topics from scalar LOs
-  const scalarTopics = learningObjectives.flatMap(lo =>
+  // Topics from scalar LOs (linked topics)
+  const linkedScalarTopics = learningObjectives.flatMap(lo =>
     (lo.topics || []).map(topic => ({ ...topic, loId: lo.id, loOrder: lo.order }))
   )
+
+  // Unlinked topics from scalarData (x.N numbering)
+  const unlinkedScalarTopics = (scalarData.unlinkedTopics || []).map(topic => ({
+    ...topic,
+    loId: null,
+    loOrder: null
+  }))
+
+  // Combine linked and unlinked topics
+  const scalarTopics = [...linkedScalarTopics, ...unlinkedScalarTopics]
 
   // Also collect topics from lessons that might not be in scalarData
   // (e.g., topics added via LessonEditorModal)
@@ -226,8 +242,25 @@ function ScalarColumns({ module }) {
 
   // Handle item click for highlighting, or shift-click for universal linking
   const handleItemClick = useCallback((type, id, event) => {
-    // If shift is held, use universal linking system
+    // If shift is held, check for Topic ↔ LO toggle linking first
     if (event?.shiftKey) {
+      // PHASE 3: Toggle link between Topic and LO
+      // If an LO is selected (orange) and user SHIFT+clicks a Topic → toggle link
+      if (selection.type === 'lo' && type === 'topic') {
+        toggleTopicLOLink(id, selection.id)
+        // Update highlights to show new relationships
+        updateHighlightedItems('lo', selection.id)
+        return
+      }
+      // If a Topic is selected (orange) and user SHIFT+clicks an LO → toggle link
+      if (selection.type === 'topic' && type === 'lo') {
+        toggleTopicLOLink(selection.id, id)
+        // Update highlights to show new relationships
+        updateHighlightedItems('topic', selection.id)
+        return
+      }
+
+      // Fallback to universal linking system for other element types
       // Get item name for display
       let itemName = `${type} ${id}`
       if (type === 'lo') {
@@ -291,7 +324,7 @@ function ScalarColumns({ module }) {
     // Normal click - select and highlight
     select(type, id)
     updateHighlightedItems(type, id)
-  }, [select, updateHighlightedItems, handleShiftClickLink, linkToSource, linkingSource, learningObjectives, allTopics, allSubtopics, scheduledLessons, performanceCriteria])
+  }, [select, updateHighlightedItems, handleShiftClickLink, linkToSource, linkingSource, learningObjectives, allTopics, allSubtopics, scheduledLessons, performanceCriteria, selection, toggleTopicLOLink])
 
   // Handle PC click - select for linking mode
   const handlePCClick = useCallback((pcId) => {
@@ -471,16 +504,15 @@ function ScalarColumns({ module }) {
         linkItemToPC={linkItemToPC}
         unlinkItemFromPC={unlinkItemFromPC}
         onAddTopic={() => {
-          // Add to highlighted LO if available, otherwise first LO
+          // Add to selected/highlighted LO if available, otherwise create unlinked topic
           const selectedLoId = selection.type === 'lo' ? selection.id : null
-          if (selectedLoId) {
-            addTopic(selectedLoId)
-          } else if (learningObjectives.length > 0) {
-            addTopic(learningObjectives[0].id)
-          }
+          // Pass null to addTopic to create unlinked topic (x.N numbering)
+          addTopic(selectedLoId)
         }}
         onAddSubtopic={showAddSubtopic ? () => addSubtopic(selectedTopicId) : null}
         showAddSubtopic={showAddSubtopic}
+        getCanonicalTopicSerial={getCanonicalTopicSerial}
+        getCanonicalSubtopicSerial={getCanonicalSubtopicSerial}
       />
 
       {/* Column 4: Performance Criteria */}
@@ -624,7 +656,9 @@ function TopicsColumn({
   unlinkItemFromPC,
   onAddTopic,
   onAddSubtopic,
-  showAddSubtopic
+  showAddSubtopic,
+  getCanonicalTopicSerial,
+  getCanonicalSubtopicSerial
 }) {
   return (
     <div
@@ -746,6 +780,8 @@ function TopicsColumn({
                 linkItemToPC={linkItemToPC}
                 unlinkItemFromPC={unlinkItemFromPC}
                 isUnallocated={false}
+                getCanonicalTopicSerial={getCanonicalTopicSerial}
+                getCanonicalSubtopicSerial={getCanonicalSubtopicSerial}
               />
             ))}
 
@@ -794,6 +830,8 @@ function TopicsColumn({
                 linkItemToPC={linkItemToPC}
                 unlinkItemFromPC={unlinkItemFromPC}
                 isUnallocated={true}
+                getCanonicalTopicSerial={getCanonicalTopicSerial}
+                getCanonicalSubtopicSerial={getCanonicalSubtopicSerial}
               />
             ))}
           </>
@@ -832,7 +870,10 @@ function TopicWithSubtopics({
   deleteScalarNode,
   linkItemToPC,
   unlinkItemFromPC,
-  isUnallocated
+  isUnallocated,
+  // Canonical serial getters (deterministic numbering)
+  getCanonicalTopicSerial,
+  getCanonicalSubtopicSerial
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(topic.title)
@@ -842,10 +883,12 @@ function TopicWithSubtopics({
   const subtopics = topic.subtopics || []
   const hasSubtopics = subtopics.length > 0
 
-  // Topic number format
-  const topicNumber = topic.loOrder != null
-    ? `${topic.loOrder}.${topic.order}`
-    : `x.${topic.order || 1}`
+  // Topic number format - use canonical getter if available, fallback to legacy computation
+  const topicNumber = getCanonicalTopicSerial
+    ? getCanonicalTopicSerial(topic.id)
+    : (topic.loOrder != null
+        ? `${topic.loOrder}.${topic.order}`
+        : `x.${topic.order || 1}`)
 
   // Handle double-click to edit
   const handleDoubleClick = useCallback((e) => {
@@ -891,12 +934,14 @@ function TopicWithSubtopics({
         ? '1px solid #00FF00'
         : '1px solid transparent'
 
-  // Text color: hover → burnt orange, highlighted → green, normal → white
-  const labelColor = isHighlighted
-    ? '#00FF00'
-    : hovered
-      ? THEME.AMBER
-      : THEME.TEXT_PRIMARY
+  // Text color: selected → orange, highlighted → green, hover → amber, normal → white
+  const labelColor = isSelected
+    ? '#FF6600'  // Selected item is ORANGE
+    : isHighlighted
+      ? '#00FF00'  // Related/highlighted items are GREEN
+      : hovered
+        ? THEME.AMBER
+        : THEME.TEXT_PRIMARY
 
   return (
     <div style={{ marginBottom: '0.3vh' }}>
@@ -1030,9 +1075,12 @@ function TopicWithSubtopics({
 
       {/* Nested Subtopics (indented) */}
       {isExpanded && subtopics.map(sub => {
-        const subNumber = topic.loOrder != null
-          ? `${topic.loOrder}.${topic.order}.${sub.order}`
-          : `x.${topic.order || 1}.${sub.order}`
+        // Use canonical getter if available, fallback to legacy computation
+        const subNumber = getCanonicalSubtopicSerial
+          ? getCanonicalSubtopicSerial(sub.id)
+          : (topic.loOrder != null
+              ? `${topic.loOrder}.${topic.order}.${sub.order}`
+              : `x.${topic.order || 1}.${sub.order}`)
 
         return (
           <SubtopicRow
@@ -1137,12 +1185,14 @@ function SubtopicRow({
         ? '1px solid #00FF00'
         : '1px solid transparent'
 
-  // Text color: hover → burnt orange, highlighted → green, normal → white
-  const labelColor = isHighlighted
-    ? '#00FF00'
-    : hovered
-      ? THEME.AMBER
-      : THEME.TEXT_DIM // Subtopics use dimmer text by default
+  // Text color: selected → orange, highlighted → green, hover → amber, normal → dim
+  const labelColor = isSelected
+    ? '#FF6600'  // Selected item is ORANGE
+    : isHighlighted
+      ? '#00FF00'  // Related/highlighted items are GREEN
+      : hovered
+        ? THEME.AMBER
+        : THEME.TEXT_DIM // Subtopics use dimmer text by default
 
   return (
     <>
@@ -1391,12 +1441,14 @@ function ScalarColumnItem({
         ? '1px solid #00FF00'
         : '1px solid transparent' // No orange border for highlighted
 
-  // Text color: hover → burnt orange, highlighted → green, normal → white
-  const labelColor = isHighlighted
-    ? '#00FF00' // Highlighted items get luminous green text
-    : hovered
-      ? THEME.AMBER // Hovered items get burnt orange text
-      : THEME.TEXT_PRIMARY // Normal state
+  // Text color: selected → orange, highlighted → green, hover → amber, normal → white
+  const labelColor = isSelected
+    ? '#FF6600'  // Selected item is ORANGE
+    : isHighlighted
+      ? '#00FF00'  // Related/highlighted items are GREEN
+      : hovered
+        ? THEME.AMBER
+        : THEME.TEXT_PRIMARY
 
   return (
     <>

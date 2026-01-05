@@ -21,6 +21,109 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react'
 
 // ============================================
+// DEBUG INSTRUMENTATION - Hierarchy Linking & Numbering
+// ============================================
+const DEBUG_HIERARCHY = true // Set to false to disable debug logging
+
+const debugLog = (action, data) => {
+  if (!DEBUG_HIERARCHY) return
+  const timestamp = new Date().toISOString().slice(11, 23)
+  console.group(`🔧 [${timestamp}] ${action}`)
+  console.log('Data:', data)
+  console.trace('Stack trace')
+  console.groupEnd()
+}
+
+// Compute topic serial number for debugging
+const computeTopicSerialDebug = (topic, loOrder) => {
+  if (!topic) return 'NULL_TOPIC'
+  if (loOrder != null && loOrder > 0) {
+    return `${loOrder}.${topic.order || '?'}`
+  }
+  return `x.${topic.order || '?'}`
+}
+
+// Compute subtopic serial number for debugging
+const computeSubtopicSerialDebug = (subtopic, topicSerial) => {
+  if (!subtopic) return 'NULL_SUBTOPIC'
+  return `${topicSerial}.${subtopic.order || '?'}`
+}
+
+// ============================================
+// CANONICAL SERIAL COMPUTATION (Deterministic Numbering)
+// Serial numbers are ALWAYS computed from structure, never stored
+// ============================================
+
+/**
+ * Compute topic serial number from canonical data
+ * @param {Object} topic - Topic object with { id, loId, order }
+ * @param {Object} losMap - Map of LO id -> LO object
+ * @param {Object} topicsMap - Map of topic id -> topic object
+ * @returns {string} Serial like "1.2" or "x.3"
+ */
+function computeTopicSerial(topic, losMap, topicsMap) {
+  if (!topic) return '?.?'
+
+  if (!topic.loId) {
+    // Unlinked topic: x.{orderWithinUnlinked}
+    const unlinkedTopics = Object.values(topicsMap)
+      .filter(t => t.loId === null)
+      .sort((a, b) => (a.order || 0) - (b.order || 0))
+    const idx = unlinkedTopics.findIndex(t => t.id === topic.id)
+    return `x.${idx >= 0 ? idx + 1 : topic.order || 1}`
+  }
+
+  // Linked topic: {loOrder}.{orderWithinLO}
+  const lo = losMap[topic.loId]
+  if (!lo) return `?.${topic.order || 1}`
+
+  const loTopics = Object.values(topicsMap)
+    .filter(t => t.loId === topic.loId)
+    .sort((a, b) => (a.order || 0) - (b.order || 0))
+  const idx = loTopics.findIndex(t => t.id === topic.id)
+  return `${lo.order}.${idx >= 0 ? idx + 1 : topic.order || 1}`
+}
+
+/**
+ * Compute subtopic serial number from canonical data
+ * @param {Object} subtopic - Subtopic object with { id, topicId, order }
+ * @param {Object} topicsMap - Map of topic id -> topic object
+ * @param {Object} losMap - Map of LO id -> LO object
+ * @param {Object} subtopicsMap - Map of subtopic id -> subtopic object
+ * @returns {string} Serial like "1.2.3" or "x.1.2"
+ */
+function computeSubtopicSerial(subtopic, topicsMap, losMap, subtopicsMap) {
+  if (!subtopic) return '?.?.?'
+
+  const parentTopic = topicsMap[subtopic.topicId]
+  if (!parentTopic) return `?.?.${subtopic.order || 1}`
+
+  const topicSerial = computeTopicSerial(parentTopic, losMap, topicsMap)
+
+  const siblingSubtopics = Object.values(subtopicsMap)
+    .filter(s => s.topicId === subtopic.topicId)
+    .sort((a, b) => (a.order || 0) - (b.order || 0))
+  const idx = siblingSubtopics.findIndex(s => s.id === subtopic.id)
+
+  return `${topicSerial}.${idx >= 0 ? idx + 1 : subtopic.order || 1}`
+}
+
+/**
+ * Recalculate order numbers for all topics in a group
+ * @param {Object} topicsMap - Map of topic id -> topic object (will be mutated)
+ * @param {string|null} loId - LO ID or null for unlinked group
+ */
+function recalculateCanonicalGroupOrders(topicsMap, loId) {
+  const groupTopics = Object.values(topicsMap)
+    .filter(t => t.loId === loId)
+    .sort((a, b) => (a.order || 0) - (b.order || 0))
+
+  groupTopics.forEach((topic, idx) => {
+    topicsMap[topic.id] = { ...topic, order: idx + 1 }
+  })
+}
+
+// ============================================
 // DATA MODEL TYPES (for reference)
 // ============================================
 /**
@@ -246,9 +349,110 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
         learningObjectives: initialLOs
       }
     ],
+    // Unlinked topics (not assigned to any LO) - display as x.1, x.2, etc.
+    unlinkedTopics: [],
     // Performance Criteria - tagging system across hierarchy
     performanceCriteria: []
   })
+
+  // --------------------------------------------
+  // CANONICAL DATA STORE (Normalized - Single Source of Truth)
+  // This is the authoritative store for hierarchy elements
+  // Serial numbers are COMPUTED from this, never stored
+  // --------------------------------------------
+  const [canonicalData, setCanonicalData] = useState({
+    los: {},        // { [loId]: { id, moduleId, verb, description, order } }
+    topics: {},     // { [topicId]: { id, loId|null, title, order } }
+    subtopics: {},  // { [subtopicId]: { id, topicId, title, order } }
+    // Lesson associations via junction arrays
+    lessonLOs: [],      // [{ lessonId, loId, isPrimary }]
+    lessonTopics: [],   // [{ lessonId, topicId }]
+    lessonSubtopics: [] // [{ lessonId, subtopicId }]
+  })
+
+  // Initialize canonical store from scalarData on mount
+  useEffect(() => {
+    const los = {}
+    const topics = {}
+    const subtopics = {}
+
+    // Migrate from scalarData structure
+    scalarData.modules.forEach(module => {
+      ;(module.learningObjectives || []).forEach(lo => {
+        los[lo.id] = {
+          id: lo.id,
+          moduleId: module.id,
+          verb: lo.verb,
+          description: lo.description,
+          order: lo.order
+        }
+
+        ;(lo.topics || []).forEach((topic, tIdx) => {
+          topics[topic.id] = {
+            id: topic.id,
+            loId: lo.id,
+            title: topic.title,
+            order: topic.order || tIdx + 1,
+            expanded: topic.expanded || false
+          }
+
+          ;(topic.subtopics || []).forEach((sub, sIdx) => {
+            subtopics[sub.id] = {
+              id: sub.id,
+              topicId: topic.id,
+              title: sub.title,
+              order: sub.order || sIdx + 1
+            }
+          })
+        })
+      })
+    })
+
+    // Migrate unlinked topics
+    ;(scalarData.unlinkedTopics || []).forEach((topic, tIdx) => {
+      topics[topic.id] = {
+        id: topic.id,
+        loId: null,
+        title: topic.title,
+        order: topic.order || tIdx + 1,
+        expanded: topic.expanded || false
+      }
+
+      ;(topic.subtopics || []).forEach((sub, sIdx) => {
+        subtopics[sub.id] = {
+          id: sub.id,
+          topicId: topic.id,
+          title: sub.title,
+          order: sub.order || sIdx + 1
+        }
+      })
+    })
+
+    if (Object.keys(los).length > 0 || Object.keys(topics).length > 0) {
+      debugLog('CANONICAL_STORE_INITIALIZED', {
+        loCount: Object.keys(los).length,
+        topicCount: Object.keys(topics).length,
+        subtopicCount: Object.keys(subtopics).length,
+        los: Object.values(los).map(l => `${l.order}. ${l.verb}`),
+        topics: Object.values(topics).map(t => `${t.id}: loId=${t.loId}, order=${t.order}`)
+      })
+      setCanonicalData(prev => ({ ...prev, los, topics, subtopics }))
+    }
+  }, []) // Run once on mount
+
+  // Computed: Get topic serial from canonical store
+  const getCanonicalTopicSerial = useCallback((topicId) => {
+    const topic = canonicalData.topics[topicId]
+    if (!topic) return '?.?'
+    return computeTopicSerial(topic, canonicalData.los, canonicalData.topics)
+  }, [canonicalData])
+
+  // Computed: Get subtopic serial from canonical store
+  const getCanonicalSubtopicSerial = useCallback((subtopicId) => {
+    const subtopic = canonicalData.subtopics[subtopicId]
+    if (!subtopic) return '?.?.?'
+    return computeSubtopicSerial(subtopic, canonicalData.topics, canonicalData.los, canonicalData.subtopics)
+  }, [canonicalData])
 
   // Highlighted items for cross-column highlighting in Scalar
   const [highlightedItems, setHighlightedItems] = useState({
@@ -446,6 +650,271 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     return null
   }, [scalarData])
 
+  // Helper: Get LO by ID from scalar data
+  const getLOById = useCallback((loId) => {
+    if (!loId) return null
+    for (const module of scalarData.modules) {
+      const lo = module.learningObjectives.find(l => l.id === loId)
+      if (lo) return lo
+    }
+    return null
+  }, [scalarData])
+
+  // Helper: Calculate display number for a topic
+  // Returns "x.N" for unlinked, "{loOrder}.N" for linked
+  const calculateTopicNumber = useCallback((topic, allTopicsInGroup, loOrder) => {
+    if (!loOrder) {
+      // Unlinked topic - x.{order}
+      const order = topic.order || (allTopicsInGroup.findIndex(t => t.id === topic.id) + 1)
+      return `x.${order}`
+    }
+    // Linked topic - {loOrder}.{order}
+    const order = topic.order || (allTopicsInGroup.findIndex(t => t.id === topic.id) + 1)
+    return `${loOrder}.${order}`
+  }, [])
+
+  // Helper: Calculate display number for a subtopic
+  const calculateSubtopicNumber = useCallback((subtopic, parentTopicNumber) => {
+    const order = subtopic.order || 1
+    return `${parentTopicNumber}.${order}`
+  }, [])
+
+  // Recalculate order numbers for all topics in a group (same loId or all unlinked)
+  const recalculateGroupOrders = useCallback((loId) => {
+    setScalarData(prev => {
+      const newData = { ...prev }
+
+      if (loId === null) {
+        // Recalculate unlinked topics
+        newData.unlinkedTopics = (prev.unlinkedTopics || []).map((topic, idx) => ({
+          ...topic,
+          order: idx + 1
+        }))
+        return newData
+      }
+
+      // Recalculate topics for specific LO
+      newData.modules = prev.modules.map(module => ({
+        ...module,
+        learningObjectives: module.learningObjectives.map(lo => {
+          if (lo.id !== loId) return lo
+          return {
+            ...lo,
+            topics: (lo.topics || []).map((topic, idx) => ({
+              ...topic,
+              order: idx + 1
+            }))
+          }
+        })
+      }))
+      return newData
+    })
+  }, [])
+
+  // Toggle topic-LO link: if linked to this LO, unlink; otherwise link to this LO
+  const toggleTopicLOLink = useCallback((topicId, targetLoId) => {
+    debugLog('TOGGLE_TOPIC_LO_LINK_START', { topicId, targetLoId })
+
+    // Update canonical store FIRST (authoritative)
+    setCanonicalData(prev => {
+      const topic = prev.topics[topicId]
+      if (!topic) {
+        debugLog('TOGGLE_CANONICAL_TOPIC_NOT_FOUND', { topicId })
+        return prev
+      }
+
+      const sourceLoId = topic.loId
+      const newTopics = { ...prev.topics }
+
+      // Determine action: if currently linked to targetLoId, unlink; otherwise link
+      if (sourceLoId === targetLoId) {
+        // Unlink: set loId to null
+        const unlinkedCount = Object.values(prev.topics).filter(t => t.loId === null).length
+        newTopics[topicId] = { ...topic, loId: null, order: unlinkedCount + 1 }
+        debugLog('TOGGLE_CANONICAL_UNLINKED', {
+          topicId,
+          previousLoId: sourceLoId,
+          newOrder: unlinkedCount + 1,
+          newSerial: computeTopicSerial(newTopics[topicId], prev.los, newTopics)
+        })
+      } else {
+        // Link to targetLoId
+        const targetLoTopics = Object.values(prev.topics).filter(t => t.loId === targetLoId)
+        newTopics[topicId] = { ...topic, loId: targetLoId, order: targetLoTopics.length + 1 }
+        debugLog('TOGGLE_CANONICAL_LINKED', {
+          topicId,
+          previousLoId: sourceLoId,
+          targetLoId,
+          newOrder: targetLoTopics.length + 1,
+          newSerial: computeTopicSerial(newTopics[topicId], prev.los, newTopics)
+        })
+      }
+
+      // Recalculate orders for source group
+      if (sourceLoId !== null) {
+        recalculateCanonicalGroupOrders(newTopics, sourceLoId)
+      } else {
+        recalculateCanonicalGroupOrders(newTopics, null)
+      }
+
+      return { ...prev, topics: newTopics }
+    })
+
+    // Also update legacy scalarData for backward compatibility
+    setScalarData(prev => {
+      const newData = { ...prev }
+      let topicToMove = null
+      let sourceLoId = null
+      let wasUnlinked = false
+      let sourceLoOrder = null
+
+      // First, find and remove the topic from its current location
+      // Check in unlinked topics
+      const unlinkedIdx = (prev.unlinkedTopics || []).findIndex(t => t.id === topicId)
+      if (unlinkedIdx !== -1) {
+        topicToMove = { ...(prev.unlinkedTopics || [])[unlinkedIdx] }
+        newData.unlinkedTopics = (prev.unlinkedTopics || []).filter(t => t.id !== topicId)
+        wasUnlinked = true
+      }
+
+      // Check in LO topics
+      if (!topicToMove) {
+        newData.modules = prev.modules.map(module => ({
+          ...module,
+          learningObjectives: module.learningObjectives.map(lo => {
+            const topicIdx = (lo.topics || []).findIndex(t => t.id === topicId)
+            if (topicIdx !== -1) {
+              topicToMove = { ...lo.topics[topicIdx] }
+              sourceLoId = lo.id
+              sourceLoOrder = lo.order
+              return {
+                ...lo,
+                topics: lo.topics.filter(t => t.id !== topicId).map((t, idx) => ({ ...t, order: idx + 1 }))
+              }
+            }
+            return lo
+          })
+        }))
+      }
+
+      if (!topicToMove) {
+        return prev
+      }
+
+      // Determine action: if currently linked to targetLoId, unlink; otherwise link to targetLoId
+      if (sourceLoId === targetLoId) {
+        // Currently linked to this LO - unlink (move to unlinkedTopics)
+        topicToMove.loId = null
+        topicToMove.order = (newData.unlinkedTopics || []).length + 1
+        newData.unlinkedTopics = [...(newData.unlinkedTopics || []), topicToMove]
+      } else {
+        // Link to targetLoId
+        topicToMove.loId = targetLoId
+        newData.modules = newData.modules.map(module => ({
+          ...module,
+          learningObjectives: module.learningObjectives.map(lo => {
+            if (lo.id !== targetLoId) return lo
+            const newOrder = (lo.topics || []).length + 1
+            topicToMove.order = newOrder
+            return {
+              ...lo,
+              topics: [...(lo.topics || []), topicToMove]
+            }
+          })
+        }))
+      }
+
+      // Recalculate orders for unlinked topics
+      newData.unlinkedTopics = (newData.unlinkedTopics || []).map((t, idx) => ({ ...t, order: idx + 1 }))
+
+      return newData
+    })
+  }, [])
+
+  // Unlink topic from its LO (move to unlinked group)
+  const unlinkTopic = useCallback((topicId) => {
+    setScalarData(prev => {
+      const newData = { ...prev }
+      let topicToMove = null
+
+      // Find and remove topic from its LO
+      newData.modules = prev.modules.map(module => ({
+        ...module,
+        learningObjectives: module.learningObjectives.map(lo => {
+          const topicIdx = (lo.topics || []).findIndex(t => t.id === topicId)
+          if (topicIdx !== -1) {
+            topicToMove = { ...lo.topics[topicIdx], loId: null }
+            return {
+              ...lo,
+              topics: lo.topics.filter(t => t.id !== topicId).map((t, idx) => ({ ...t, order: idx + 1 }))
+            }
+          }
+          return lo
+        })
+      }))
+
+      if (topicToMove) {
+        topicToMove.order = (prev.unlinkedTopics || []).length + 1
+        newData.unlinkedTopics = [...(prev.unlinkedTopics || []), topicToMove]
+      }
+
+      return topicToMove ? newData : prev
+    })
+  }, [])
+
+  // Link topic to an LO (move from unlinked or another LO)
+  const linkTopicToLO = useCallback((topicId, targetLoId) => {
+    setScalarData(prev => {
+      const newData = { ...prev }
+      let topicToMove = null
+
+      // Check in unlinked topics first
+      const unlinkedIdx = (prev.unlinkedTopics || []).findIndex(t => t.id === topicId)
+      if (unlinkedIdx !== -1) {
+        topicToMove = { ...(prev.unlinkedTopics || [])[unlinkedIdx] }
+        newData.unlinkedTopics = (prev.unlinkedTopics || [])
+          .filter(t => t.id !== topicId)
+          .map((t, idx) => ({ ...t, order: idx + 1 }))
+      }
+
+      // Check in other LO topics
+      if (!topicToMove) {
+        newData.modules = prev.modules.map(module => ({
+          ...module,
+          learningObjectives: module.learningObjectives.map(lo => {
+            const topicIdx = (lo.topics || []).findIndex(t => t.id === topicId)
+            if (topicIdx !== -1 && lo.id !== targetLoId) {
+              topicToMove = { ...lo.topics[topicIdx] }
+              return {
+                ...lo,
+                topics: lo.topics.filter(t => t.id !== topicId).map((t, idx) => ({ ...t, order: idx + 1 }))
+              }
+            }
+            return lo
+          })
+        }))
+      }
+
+      if (!topicToMove) return prev // Already in target LO or not found
+
+      // Add to target LO
+      topicToMove.loId = targetLoId
+      newData.modules = (newData.modules || prev.modules).map(module => ({
+        ...module,
+        learningObjectives: module.learningObjectives.map(lo => {
+          if (lo.id !== targetLoId) return lo
+          topicToMove.order = (lo.topics || []).length + 1
+          return {
+            ...lo,
+            topics: [...(lo.topics || []), topicToMove]
+          }
+        })
+      }))
+
+      return newData
+    })
+  }, [])
+
   // Helper: Recalculate topic numbers for a lesson based on LO assignment
   const recalculateLessonTopicNumbers = useCallback((lessons, lessonId) => {
     return lessons.map(lesson => {
@@ -541,10 +1010,22 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
 
     // Read current lesson to get LO info (lessons state is stable for this read)
     const lesson = lessons.find(l => l.id === lessonId)
-    if (!lesson) return
+    if (!lesson) {
+      debugLog('ADD_TOPIC_TO_LESSON_FAILED', { lessonId, reason: 'Lesson not found' })
+      return
+    }
 
     const primaryLOId = lesson.learningObjectives?.[0] || null
     const loOrder = getLOOrder(primaryLOId)
+
+    debugLog('ADD_TOPIC_TO_LESSON_START', {
+      lessonId,
+      lessonTitle: lesson.title,
+      primaryLOId,
+      loOrder,
+      allLessonLOs: lesson.learningObjectives,
+      existingTopicCount: (lesson.topics || []).length
+    })
 
     // Update lessons state
     setLessons(prev => {
@@ -562,6 +1043,12 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
           scalarTopicId: null,
           subtopics: []
         }
+        debugLog('ADD_TOPIC_TO_LESSON_UNLINKED', {
+          topicId: lessonTopicId,
+          topicTitle,
+          number: newTopic.number,
+          reason: 'No LO assigned to lesson'
+        })
         return prev.map(l =>
           l.id === lessonId
             ? { ...l, topics: [...(l.topics || []), newTopic] }
@@ -571,17 +1058,28 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
 
       // Calculate next topic number for this LO across all lessons
       let maxTopicNum = 0
+      const scannedLessons = []
       prev.forEach(l => {
         const loPrimary = l.learningObjectives?.[0]
         if (loPrimary === primaryLOId) {
           const isSameOrBefore = (l.day < currentLesson.day) ||
             (l.day === currentLesson.day && (l.startTime || '0000') <= (currentLesson.startTime || '0000'))
           if (isSameOrBefore) {
+            const topicsFound = []
             l.topics?.forEach(t => {
               const match = t.number?.match(/^\d+\.(\d+)$/)
               if (match) {
-                maxTopicNum = Math.max(maxTopicNum, parseInt(match[1]))
+                const num = parseInt(match[1])
+                maxTopicNum = Math.max(maxTopicNum, num)
+                topicsFound.push({ number: t.number, parsed: num })
               }
+            })
+            scannedLessons.push({
+              lessonId: l.id,
+              lessonTitle: l.title,
+              day: l.day,
+              startTime: l.startTime,
+              topicsFound
             })
           }
         }
@@ -594,6 +1092,17 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
         loId: primaryLOId,
         scalarTopicId: scalarTopicId
       }
+
+      debugLog('ADD_TOPIC_TO_LESSON_LINKED', {
+        topicId: lessonTopicId,
+        scalarTopicId,
+        topicTitle,
+        number: newTopic.number,
+        loOrder,
+        maxTopicNumFound: maxTopicNum,
+        scannedLessons,
+        totalLessonsWithSameLO: scannedLessons.length
+      })
 
       return prev.map(l =>
         l.id === lessonId
@@ -1226,6 +1735,8 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
 
   // Add new LO to a module
   const addLearningObjective = useCallback((moduleId) => {
+    const loId = `lo-${Date.now()}`
+
     setScalarData(prev => {
       const newData = { ...prev, modules: [...prev.modules] }
       const moduleIndex = newData.modules.findIndex(m => m.id === moduleId)
@@ -1236,7 +1747,7 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       module.learningObjectives = [...module.learningObjectives]
 
       const newLO = {
-        id: `lo-${Date.now()}`,
+        id: loId,
         verb: 'IDENTIFY',
         description: 'new learning objective',
         order: module.learningObjectives.length + 1,
@@ -1246,13 +1757,86 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       module.learningObjectives.push(newLO)
       return newData
     })
+
+    // Also update canonical store
+    setCanonicalData(prev => {
+      const existingLOs = Object.values(prev.los)
+      const newOrder = existingLOs.length + 1
+
+      debugLog('ADD_LO_CANONICAL', { loId, order: newOrder })
+
+      return {
+        ...prev,
+        los: {
+          ...prev.los,
+          [loId]: {
+            id: loId,
+            moduleId: moduleId,
+            verb: 'IDENTIFY',
+            description: 'new learning objective',
+            order: newOrder
+          }
+        }
+      }
+    })
   }, [])
 
-  // Add new Topic to an LO
+  // Add new Topic to an LO (or unlinked if loId is null)
   const addTopic = useCallback((loId) => {
+    const topicId = `topic-${Date.now()}`
+    debugLog('ADD_TOPIC_START', { loId, topicId, action: 'Creating new topic' })
+
+    // Update canonical store FIRST
+    setCanonicalData(prev => {
+      // Count existing topics in this group
+      const groupTopics = Object.values(prev.topics).filter(t => t.loId === loId)
+      const newOrder = groupTopics.length + 1
+
+      const newTopic = {
+        id: topicId,
+        loId: loId,
+        title: 'New Topic',
+        order: newOrder,
+        expanded: false
+      }
+
+      const lo = loId ? prev.los[loId] : null
+      debugLog('ADD_TOPIC_CANONICAL', {
+        topicId,
+        loId,
+        loOrder: lo?.order,
+        newOrder,
+        computedSerial: computeTopicSerial(newTopic, prev.los, { ...prev.topics, [topicId]: newTopic }),
+        existingInGroup: groupTopics.length
+      })
+
+      return {
+        ...prev,
+        topics: { ...prev.topics, [topicId]: newTopic }
+      }
+    })
+
+    // Also update legacy scalarData for backward compatibility
     setScalarData(prev => {
       const newData = { ...prev, modules: [...prev.modules] }
 
+      // If no loId provided, add to unlinkedTopics
+      if (!loId) {
+        const newTopic = {
+          id: topicId,
+          title: 'New Topic',
+          order: (prev.unlinkedTopics || []).length + 1,
+          loId: null,
+          expanded: false,
+          subtopics: []
+        }
+        return {
+          ...newData,
+          unlinkedTopics: [...(prev.unlinkedTopics || []), newTopic]
+        }
+      }
+
+      // Otherwise add to the specified LO
       for (let m = 0; m < newData.modules.length; m++) {
         const module = { ...newData.modules[m] }
         newData.modules[m] = module
@@ -1265,9 +1849,10 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
           if (lo.id === loId) {
             lo.topics = [...lo.topics]
             const newTopic = {
-              id: `topic-${Date.now()}`,
+              id: topicId,
               title: 'New Topic',
               order: lo.topics.length + 1,
+              loId: lo.id,
               expanded: false,
               subtopics: []
             }
@@ -1282,8 +1867,54 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
 
   // Add new Subtopic to a Topic
   const addSubtopic = useCallback((topicId) => {
+    const subtopicId = `subtopic-${Date.now()}`
+
+    // Update canonical store FIRST
+    setCanonicalData(prev => {
+      // Count existing subtopics for this topic
+      const siblingSubtopics = Object.values(prev.subtopics).filter(s => s.topicId === topicId)
+      const newOrder = siblingSubtopics.length + 1
+
+      const newSubtopic = {
+        id: subtopicId,
+        topicId: topicId,
+        title: 'New Subtopic',
+        order: newOrder
+      }
+
+      debugLog('ADD_SUBTOPIC_CANONICAL', {
+        subtopicId,
+        topicId,
+        newOrder,
+        computedSerial: computeSubtopicSerial(newSubtopic, prev.topics, prev.los, { ...prev.subtopics, [subtopicId]: newSubtopic }),
+        existingSiblings: siblingSubtopics.length
+      })
+
+      return {
+        ...prev,
+        subtopics: { ...prev.subtopics, [subtopicId]: newSubtopic }
+      }
+    })
+
+    // Also update legacy scalarData for backward compatibility
     setScalarData(prev => {
       const newData = { ...prev, modules: [...prev.modules] }
+
+      // Check unlinked topics first
+      const unlinkedIdx = (prev.unlinkedTopics || []).findIndex(t => t.id === topicId)
+      if (unlinkedIdx !== -1) {
+        newData.unlinkedTopics = [...(prev.unlinkedTopics || [])]
+        const topic = { ...newData.unlinkedTopics[unlinkedIdx] }
+        topic.subtopics = [...(topic.subtopics || [])]
+        topic.subtopics.push({
+          id: subtopicId,
+          title: 'New Subtopic',
+          order: topic.subtopics.length + 1
+        })
+        topic.expanded = true
+        newData.unlinkedTopics[unlinkedIdx] = topic
+        return newData
+      }
 
       for (let m = 0; m < newData.modules.length; m++) {
         const module = { ...newData.modules[m] }
@@ -1300,9 +1931,9 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
             lo.topics[t] = topic
 
             if (topic.id === topicId) {
-              topic.subtopics = [...topic.subtopics]
+              topic.subtopics = [...(topic.subtopics || [])]
               const newSubtopic = {
-                id: `subtopic-${Date.now()}`,
+                id: subtopicId,
                 title: 'New Subtopic',
                 order: topic.subtopics.length + 1
               }
@@ -1317,10 +1948,21 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     })
   }, [])
 
-  // Update scalar node (LO, Topic, or Subtopic)
+  // Update scalar node (LO, Topic, or Subtopic) with cross-app syncing
   const updateScalarNode = useCallback((nodeType, nodeId, updates) => {
+    // Update scalarData
     setScalarData(prev => {
       const newData = { ...prev, modules: [...prev.modules] }
+
+      // Also check unlinked topics
+      if (nodeType === 'topic') {
+        const unlinkedIdx = (prev.unlinkedTopics || []).findIndex(t => t.id === nodeId)
+        if (unlinkedIdx !== -1) {
+          newData.unlinkedTopics = [...(prev.unlinkedTopics || [])]
+          newData.unlinkedTopics[unlinkedIdx] = { ...newData.unlinkedTopics[unlinkedIdx], ...updates }
+          return newData
+        }
+      }
 
       for (let m = 0; m < newData.modules.length; m++) {
         const module = { ...newData.modules[m] }
@@ -1361,12 +2003,85 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       }
       return prev
     })
-  }, [])
+
+    // CROSS-APP SYNC: Sync LO updates to courseData.learningObjectives
+    if (nodeType === 'lo' && (updates.verb || updates.description)) {
+      // Find the LO in scalarData to get its current data
+      let targetLO = null
+      for (const module of scalarData.modules) {
+        const found = module.learningObjectives.find(lo => lo.id === nodeId)
+        if (found) {
+          targetLO = found
+          break
+        }
+      }
+
+      if (targetLO && setCourseData) {
+        const newVerb = updates.verb || targetLO.verb
+        const newDesc = updates.description || targetLO.description
+        const newLoText = `${newVerb} ${newDesc}`.trim()
+        const oldLoText = `${targetLO.verb} ${targetLO.description}`.trim()
+
+        setCourseData(prev => {
+          if (!prev.learningObjectives) return prev
+          const newLOs = prev.learningObjectives.map(loText => {
+            // Match by exact text or by position (order)
+            if (loText === oldLoText) {
+              return newLoText
+            }
+            return loText
+          })
+          return { ...prev, learningObjectives: newLOs }
+        })
+      }
+    }
+
+    // CROSS-APP SYNC: Sync Topic title updates to lessons
+    if (nodeType === 'topic' && updates.title) {
+      setLessons(prev => prev.map(lesson => ({
+        ...lesson,
+        topics: (lesson.topics || []).map(t => {
+          // Match by scalarTopicId or by id
+          if (t.scalarTopicId === nodeId || t.id === nodeId) {
+            return { ...t, title: updates.title }
+          }
+          return t
+        })
+      })))
+    }
+
+    // CROSS-APP SYNC: Sync Subtopic title updates to lessons
+    if (nodeType === 'subtopic' && updates.title) {
+      setLessons(prev => prev.map(lesson => ({
+        ...lesson,
+        topics: (lesson.topics || []).map(topic => ({
+          ...topic,
+          subtopics: (topic.subtopics || []).map(s => {
+            if (s.scalarSubtopicId === nodeId || s.id === nodeId) {
+              return { ...s, title: updates.title }
+            }
+            return s
+          })
+        }))
+      })))
+    }
+  }, [scalarData.modules, setCourseData, setLessons])
 
   // Delete scalar node
   const deleteScalarNode = useCallback((nodeType, nodeId) => {
     setScalarData(prev => {
       const newData = { ...prev, modules: [...prev.modules] }
+
+      // Check for unlinked topic first
+      if (nodeType === 'topic') {
+        const unlinkedIdx = (prev.unlinkedTopics || []).findIndex(t => t.id === nodeId)
+        if (unlinkedIdx !== -1) {
+          newData.unlinkedTopics = (prev.unlinkedTopics || [])
+            .filter(t => t.id !== nodeId)
+            .map((t, idx) => ({ ...t, order: idx + 1 }))
+          return newData
+        }
+      }
 
       for (let m = 0; m < newData.modules.length; m++) {
         const module = { ...newData.modules[m] }
@@ -1693,6 +2408,8 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
   // --------------------------------------------
 
   // Set highlighted items based on clicked item
+  // NOTE: The clicked item itself is NOT added to highlights (it gets ORANGE via isSelected)
+  // Only related items are highlighted (GREEN)
   const updateHighlightedItems = useCallback((itemType, itemId) => {
     const newHighlights = {
       los: new Set(),
@@ -1706,8 +2423,7 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       for (const module of scalarData.modules) {
         for (const lo of module.learningObjectives) {
           if (itemType === 'lo' && lo.id === itemId) {
-            // Clicked LO → highlight all its Topics, Subtopics, and linked Lessons
-            newHighlights.los.add(lo.id)
+            // Clicked LO → highlight all its Topics, Subtopics, and linked Lessons (NOT the LO itself)
             lo.topics?.forEach(topic => {
               newHighlights.topics.add(topic.id)
               topic.subtopics?.forEach(sub => newHighlights.subtopics.add(sub.id))
@@ -1723,9 +2439,8 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
 
           for (const topic of lo.topics || []) {
             if (itemType === 'topic' && topic.id === itemId) {
-              // Clicked Topic → highlight parent LO, all Subtopics, and linked Lessons
+              // Clicked Topic → highlight parent LO, all Subtopics, and linked Lessons (NOT the topic itself)
               newHighlights.los.add(lo.id)
-              newHighlights.topics.add(topic.id)
               topic.subtopics?.forEach(sub => newHighlights.subtopics.add(sub.id))
               // Find lessons that have this topic
               lessons.forEach(lesson => {
@@ -1738,10 +2453,9 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
 
             for (const subtopic of topic.subtopics || []) {
               if (itemType === 'subtopic' && subtopic.id === itemId) {
-                // Clicked Subtopic → highlight parent Topic, grandparent LO, and linked Lessons
+                // Clicked Subtopic → highlight parent Topic, grandparent LO, and linked Lessons (NOT the subtopic itself)
                 newHighlights.los.add(lo.id)
                 newHighlights.topics.add(topic.id)
-                newHighlights.subtopics.add(subtopic.id)
                 // Find lessons that have this subtopic
                 lessons.forEach(lesson => {
                   lesson.topics?.forEach(t => {
@@ -1762,14 +2476,16 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     if (itemType === 'lesson') {
       const lesson = lessons.find(l => l.id === itemId)
       if (lesson) {
-        newHighlights.lessons.add(lesson.id)
+        // Don't add the lesson itself to highlights (it gets ORANGE via isSelected)
         // Highlight all LOs assigned to this lesson
         lesson.learningObjectives?.forEach(loId => newHighlights.los.add(loId))
         // Highlight all topics and subtopics
         lesson.topics?.forEach(topic => {
           if (topic.scalarTopicId) newHighlights.topics.add(topic.scalarTopicId)
+          if (topic.id) newHighlights.topics.add(topic.id)
           topic.subtopics?.forEach(sub => {
             if (sub.scalarSubtopicId) newHighlights.subtopics.add(sub.scalarSubtopicId)
+            if (sub.id) newHighlights.subtopics.add(sub.id)
           })
         })
       }
@@ -1935,6 +2651,21 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     addSubtopic,
     createLessonFromScalar,
 
+    // Canonical data store (normalized - single source of truth)
+    canonicalData,
+    setCanonicalData,
+    getCanonicalTopicSerial,
+    getCanonicalSubtopicSerial,
+
+    // Topic linking/unlinking
+    toggleTopicLOLink,
+    unlinkTopic,
+    linkTopicToLO,
+    recalculateGroupOrders,
+    calculateTopicNumber,
+    calculateSubtopicNumber,
+    getLOById,
+
     // Performance Criteria
     addPerformanceCriteria,
     updatePerformanceCriteria,
@@ -2031,6 +2762,10 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     scalarData, selectedScalarItem, toggleScalarExpand,
     addLearningObjective, addTopic, addSubtopic, updateScalarNode, deleteScalarNode,
     createLessonFromScalar,
+    // Canonical data store
+    canonicalData, getCanonicalTopicSerial, getCanonicalSubtopicSerial,
+    toggleTopicLOLink, unlinkTopic, linkTopicToLO, recalculateGroupOrders,
+    calculateTopicNumber, calculateSubtopicNumber, getLOById,
     addPerformanceCriteria, updatePerformanceCriteria, deletePerformanceCriteria,
     linkItemToPC, unlinkItemFromPC, getLinkedPCs, getLinkedPCsWithColor,
     multiSelection, toggleMultiSelect, clearMultiSelection, isMultiSelected,
