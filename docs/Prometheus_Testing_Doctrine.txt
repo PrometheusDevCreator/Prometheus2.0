@@ -165,5 +165,37 @@ All contributors must:
 Failure to adhere to this doctrine is a defect.
 
 --------------------------------
+10. EXECUTABLE FRAMEWORK (ADDENDUM)
+--------------------------------
+
+As of 7 January 2026, this doctrine is backed by an
+executable testing framework.
+
+IMPLEMENTATION REFERENCE:
+  /docs/TESTING.md
+
+QUICK COMMANDS:
+  npm run test:mt      Minor Tests (MT)
+  npm run test:it      Implementation Tests (IT)
+  npm run test:soc     System Operator Check (SOC)
+  npm run test:soc:full    Full exhaustive SOC
+
+AUTOMATED TRIGGERS:
+  - Pre-commit hook runs MT before each commit
+  - File change threshold (10 changes) recommends IT
+  - Commit threshold (5 commits) recommends IT
+
+SOC REPORTS:
+  Generated in: prometheus-ui/test-results/
+  Format: JSON + text report per Section 7
+
+COVERAGE:
+  - E2E: 12 test sections, 60+ test cases
+  - Unit: Data structures, relationships, state
+  - Visual: Colors, typography, layout
+
+This framework makes the doctrine BINDING and ENFORCEABLE.
+
+--------------------------------
 END OF DOCUMENT
 --------------------------------
