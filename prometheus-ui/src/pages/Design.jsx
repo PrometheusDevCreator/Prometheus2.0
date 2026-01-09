@@ -1,34 +1,26 @@
 /**
  * Design.jsx - Main DESIGN Section Container
  *
- * APPROVED IMPLEMENTATION PLAN - Phase 1
- *
- * This is the new unified DESIGN page that replaces the previous
- * OutlinePlanner.jsx and Scalar.jsx split implementation.
- *
  * Structure:
  * ┌─────────────────────────────────────────────────────────────┐
  * │ NAVIGATION BAR (DesignNavBar)                               │
- * ├──────────────────┬──────────────────────────────────────────┤
- * │ LESSON EDITOR    │ WORKSPACE                                │
- * │ (LessonEditor)   │ - TimetableWorkspace (Phase 2)           │
- * │                  │ - ScalarWorkspace (Phase 5)              │
- * ├──────────────────┴──────────────────────────────────────────┤
- * │ PKE INTERFACE (Footer component)                            │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │ WORKSPACE                                                   │
+ * │ - OverviewWorkspace                                         │
+ * │ - TimetableWorkspace                                        │
+ * │ - ScalarWorkspace                                           │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │ FOOTER (with global Lesson Editor modal access)             │
  * └─────────────────────────────────────────────────────────────┘
  *
- * Phase 1 Deliverable:
- * - Basic layout renders
- * - Tabs switch between TIMETABLE and SCALAR views
- * - Editor panel visible and collapsible
- * - Context provider established
+ * Note: Lesson Editor is now a global modal accessible from Footer
+ * on all pages, not a page-specific component.
  */
 
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { THEME } from '../constants/theme'
 import { DesignProvider, useDesign } from '../contexts/DesignContext'
 import DesignNavBar from '../components/design/DesignNavBar'
-import LessonEditor from '../components/design/LessonEditor'
 import OverviewWorkspace from '../components/design/overview/OverviewWorkspace'
 import TimetableWorkspace from '../components/design/TimetableWorkspace'
 import ScalarWorkspace from '../components/design/ScalarWorkspace'
@@ -46,7 +38,11 @@ function Design({
   setTimetableData,
   courseLoaded,
   user,
-  courseState
+  courseState,
+  exitPending,
+  lessonEditorOpen,
+  onLessonEditorToggle,
+  onSelectedLessonChange  // Callback to report selected lesson to App
 }) {
   return (
     <DesignProvider
@@ -60,6 +56,11 @@ function Design({
         courseLoaded={courseLoaded}
         user={user}
         courseState={courseState}
+        courseData={courseData}
+        timetableData={timetableData}
+        lessonEditorOpen={lessonEditorOpen}
+        onLessonEditorToggle={onLessonEditorToggle}
+        onSelectedLessonChange={onSelectedLessonChange}
       />
     </DesignProvider>
   )
@@ -69,8 +70,17 @@ function Design({
 // PAGE CONTENT (inside provider)
 // ============================================
 
-function DesignPageContent({ onNavigate, courseLoaded, user, courseState }) {
-  const { activeTab, editorCollapsed, courseData } = useDesign()
+function DesignPageContent({ onNavigate, courseLoaded, user, courseState, courseData, timetableData, lessonEditorOpen, onLessonEditorToggle, onSelectedLessonChange }) {
+  const { activeTab, courseData: contextCourseData, selection } = useDesign()
+
+  // Report selected lesson changes to parent (App.jsx)
+  useEffect(() => {
+    if (selection.type === 'lesson' && selection.id) {
+      onSelectedLessonChange?.(selection.id)
+    } else {
+      onSelectedLessonChange?.(null)
+    }
+  }, [selection.type, selection.id, onSelectedLessonChange])
 
   // Handle navigation to other pages
   const handleNavigate = useCallback((section) => {
@@ -101,9 +111,6 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState }) {
           position: 'relative'
         }}
       >
-        {/* Lesson Editor Panel (Left) - renders collapsed tab or expanded panel */}
-        <LessonEditor />
-
         {/* Workspace Area (fills remaining space) */}
         <div
           style={{
@@ -111,8 +118,7 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState }) {
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            position: 'relative',
-            marginLeft: editorCollapsed ? '24px' : '0' // Account for collapsed tab width
+            position: 'relative'
           }}
         >
           {/* Workspace Content - switches based on active tab */}
@@ -140,6 +146,10 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState }) {
         user={user || { name: '---' }}
         courseState={courseState || { startDate: null, saveCount: 0 }}
         progress={0}
+        courseData={courseData}
+        timetableData={timetableData}
+        lessonEditorOpen={lessonEditorOpen}
+        onLessonEditorToggle={onLessonEditorToggle}
       />
     </div>
   )

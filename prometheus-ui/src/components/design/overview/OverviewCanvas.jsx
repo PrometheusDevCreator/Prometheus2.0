@@ -10,7 +10,12 @@
 
 import { useState, useCallback, useRef, useMemo } from 'react'
 import { THEME } from '../../../constants/theme'
+import { LESSON_TYPES } from '../../../contexts/DesignContext'
 import LearningBlock, { BLOCK_TYPES, NESTING_RULES } from './LearningBlock'
+import CourseLine, { LINE_TYPES, LINE_NESTING } from './CourseLine'
+import OverviewLessonCard from './OverviewLessonCard'
+import LessonMarker, { MARKER_WIDTH, MARKER_HEIGHT } from './LessonMarker'
+import UnallocatedLessonsPanel from '../UnallocatedLessonsPanel'
 
 // Helper: Get parent chain for a block (returns array of parent IDs)
 const getParentChain = (blockId, blocks) => {
@@ -88,15 +93,107 @@ const findValidParent = (droppedBlock, allBlocks, draggedBlockId) => {
   })
 }
 
+// Helper: Check if a line is within vertical proximity of another (for stacking)
+const isLineNearParent = (childLine, parentLine) => {
+  if (!childLine || !parentLine) return false
+  // Check if child's Y position is within 60px below parent
+  const parentBottom = parentLine.y + 40  // Parent line height area
+  const childTop = childLine.y
+  return childTop >= parentBottom && childTop <= parentBottom + 60
+}
+
+// Helper: Check if child line's X is within parent's X range
+const isLineWithinParentX = (childLine, parentLine) => {
+  if (!childLine || !parentLine) return false
+  const childLeft = childLine.x
+  const childRight = childLine.x + (childLine.width || 200)
+  const parentLeft = parentLine.x
+  const parentRight = parentLine.x + (parentLine.width || 400)
+  // Child must be mostly within parent's X bounds
+  return childLeft >= parentLeft - 20 && childRight <= parentRight + 20
+}
+
+// Helper: Find valid parent for a line being dragged
+const findValidLineParent = (draggedLine, allLines) => {
+  if (!draggedLine || !draggedLine.isLine) return null
+
+  const nestingRules = LINE_NESTING[draggedLine.type]
+  if (!nestingRules || nestingRules.canBeContainedBy.length === 0) return null
+
+  // Find potential parents that can contain this type
+  const potentialParents = allLines.filter(line => {
+    if (!line.isLine || line.id === draggedLine.id) return false
+    const parentRules = LINE_NESTING[line.type]
+    if (!parentRules?.canContain.includes(draggedLine.type)) return false
+    // Check proximity
+    return isLineNearParent(draggedLine, line) && isLineWithinParentX(draggedLine, line)
+  })
+
+  // Return the closest parent (by Y position)
+  if (potentialParents.length === 0) return null
+  return potentialParents.reduce((closest, current) => {
+    const closestDist = Math.abs((closest.y + 40) - draggedLine.y)
+    const currentDist = Math.abs((current.y + 40) - draggedLine.y)
+    return currentDist < closestDist ? current : closest
+  })
+}
+
+// Helper: Check if a lesson card is near a line (for marker conversion)
+const isLessonNearLine = (lesson, line) => {
+  if (!lesson || !line || !line.isLine) return false
+  // Check if lesson's Y is within line's Y range (+/- 40px)
+  const lineTop = line.y
+  const lineBottom = line.y + 40
+  const lessonCenterY = lesson.y + 35  // Approximate center of lesson card
+  return lessonCenterY >= lineTop - 20 && lessonCenterY <= lineBottom + 20
+}
+
+// Helper: Check if lesson's X is within line's X range
+const isLessonWithinLineX = (lesson, line) => {
+  if (!lesson || !line) return false
+  const lessonCenterX = lesson.x + 90  // Approximate center of lesson card
+  return lessonCenterX >= line.x && lessonCenterX <= line.x + (line.width || 400)
+}
+
+// Helper: Find valid parent line for a lesson being dragged
+const findValidLineForLesson = (lesson, allItems) => {
+  if (!lesson || lesson.isLine) return null
+
+  // Find lines that can contain lessons
+  const validLines = allItems.filter(item => {
+    if (!item.isLine || item.id === lesson.id) return false
+    // DAY and MODULE can contain lessons
+    const parentRules = LINE_NESTING[item.type]
+    // Check if this line type can contain items (DAY, MODULE conceptually can hold lessons)
+    if (item.type !== 'DAY' && item.type !== 'MODULE') return false
+    // Check proximity
+    return isLessonNearLine(lesson, item) && isLessonWithinLineX(lesson, item)
+  })
+
+  if (validLines.length === 0) return null
+  // Return the closest line by Y distance
+  return validLines.reduce((closest, current) => {
+    const closestDist = Math.abs(closest.y - lesson.y)
+    const currentDist = Math.abs(current.y - lesson.y)
+    return currentDist < closestDist ? current : closest
+  })
+}
+
 function OverviewCanvas({
   blocks = [],
   onBlocksChange,
   onBlockAdd,
   onBlockRemove,
-  onBlockUpdate
+  onBlockUpdate,
+  onLessonDeleteRequest,  // Item 13: Callback to trigger PKE delete warning
+  lessonTypes = [],       // Item 18: For UnallocatedLessonsPanel
+  unscheduledLessons = [],// Item 18: For UnallocatedLessonsPanel
+  onUnscheduleLesson      // Item 18: For UnallocatedLessonsPanel
 }) {
   const [selectedBlockId, setSelectedBlockId] = useState(null)
   const [draggingBlockId, setDraggingBlockId] = useState(null)
+  const [potentialParentId, setPotentialParentId] = useState(null)  // For stacking feedback
+  const [potentialLessonLineId, setPotentialLessonLineId] = useState(null)  // For lesson->marker conversion
   const canvasRef = useRef(null)
 
   // Calculate parent chain for selected block
@@ -138,6 +235,20 @@ function OverviewCanvas({
         y: descendant.y + deltaY
       })
     })
+
+    // Check for potential parent during line drag (stacking feedback)
+    if (draggedBlock.isLine) {
+      const updatedLine = { ...draggedBlock, x, y }
+      const potentialParent = findValidLineParent(updatedLine, blocks)
+      setPotentialParentId(potentialParent?.id || null)
+    }
+
+    // Check for potential parent line during lesson drag (Item 10: marker conversion)
+    if (draggedBlock.type === 'LESSON' && !draggedBlock.isLine && !draggedBlock.isMarker) {
+      const updatedLesson = { ...draggedBlock, x, y }
+      const potentialLine = findValidLineForLesson(updatedLesson, blocks)
+      setPotentialLessonLineId(potentialLine?.id || null)
+    }
   }, [blocks, onBlockUpdate])
 
   // Handle drag start
@@ -152,6 +263,50 @@ function OverviewCanvas({
     // Find the block that was dragged
     const draggedBlock = blocks.find(b => b.id === id)
     if (!draggedBlock) return
+
+    // Handle line stacking (Item 7.VI)
+    if (draggedBlock.isLine && potentialParentId) {
+      const parentLine = blocks.find(b => b.id === potentialParentId)
+      if (parentLine) {
+        // Attach line to parent
+        const newNestingDepth = (parentLine.nestingDepth || 0) + 1
+        onBlockUpdate?.(id, {
+          parentId: potentialParentId,
+          nestingDepth: newNestingDepth,
+          isNested: true,
+          isCommitted: true  // Auto-commit when stacked
+        })
+      }
+      setPotentialParentId(null)
+      return
+    }
+
+    // Clear potential parent state
+    setPotentialParentId(null)
+    setPotentialLessonLineId(null)
+
+    // Handle lesson -> marker conversion when dropped on a line (Item 10)
+    if (draggedBlock.type === 'LESSON' && !draggedBlock.isLine && !draggedBlock.isMarker && potentialLessonLineId) {
+      const parentLine = blocks.find(b => b.id === potentialLessonLineId)
+      if (parentLine) {
+        // Convert lesson card to marker
+        // Calculate marker X position relative to line
+        const markerX = Math.max(parentLine.x, Math.min(
+          draggedBlock.x,
+          parentLine.x + (parentLine.width || 400) - MARKER_WIDTH
+        ))
+        const markerY = parentLine.y + 5  // Position marker on the line
+
+        onBlockUpdate?.(id, {
+          isMarker: true,
+          parentLineId: potentialLessonLineId,
+          x: markerX,
+          y: markerY,
+          isCommitted: true
+        })
+        return
+      }
+    }
 
     // Get all descendants that will also need updating
     const descendants = getDescendants(id, blocks)
@@ -239,7 +394,7 @@ function OverviewCanvas({
         }
       })
     }
-  }, [blocks, onBlockUpdate])
+  }, [blocks, onBlockUpdate, potentialParentId, potentialLessonLineId])
 
   // Handle block resize
   const handleSizeChange = useCallback((id, width, height) => {
@@ -256,24 +411,75 @@ function OverviewCanvas({
     onBlockUpdate?.(id, { duration })
   }, [onBlockUpdate])
 
-  // Add new block
+  // Handle line width change
+  const handleWidthChange = useCallback((id, width) => {
+    onBlockUpdate?.(id, { width })
+  }, [onBlockUpdate])
+
+  // Handle line commit (when title is saved)
+  const handleCommit = useCallback((id) => {
+    onBlockUpdate?.(id, { isCommitted: true })
+  }, [onBlockUpdate])
+
+  // Handle lesson delete request (Item 13)
+  const handleLessonDeleteRequest = useCallback((id) => {
+    const lesson = blocks.find(b => b.id === id)
+    if (lesson) {
+      onLessonDeleteRequest?.(id, lesson.title || 'Untitled Lesson')
+    }
+  }, [blocks, onLessonDeleteRequest])
+
+  // Handle marker detach (drag marker off line to convert back to card)
+  const handleMarkerDetach = useCallback((id) => {
+    onBlockUpdate?.(id, {
+      isMarker: false,
+      parentLineId: null
+    })
+  }, [onBlockUpdate])
+
+  // Add new block (or line for non-LESSON types)
   const handleAddBlock = useCallback((type) => {
     const canvasRect = canvasRef.current?.getBoundingClientRect()
-    const blockConfig = BLOCK_TYPES[type]
-    const newBlock = {
-      id: `block-${Date.now()}`,
-      type,
-      title: '',
-      x: canvasRect ? canvasRect.width / 2 - 75 : 200,
-      y: canvasRect ? canvasRect.height / 2 - 30 : 200,
-      width: blockConfig.startDuration * blockConfig.pixelsPerUnit,
-      height: blockConfig.minHeight,
-      duration: blockConfig.startDuration,
-      parentId: null,
-      nestingDepth: 0
+    const isLine = type !== 'LESSON'
+
+    if (isLine) {
+      // Create a CourseLine for TERM, MODULE, WEEK, DAY
+      const lineConfig = LINE_TYPES[type]
+      const newLine = {
+        id: `line-${Date.now()}`,
+        type,
+        title: '',
+        x: canvasRect ? canvasRect.width / 2 - (lineConfig.startDuration * lineConfig.pixelsPerUnit) / 2 : 200,
+        y: canvasRect ? canvasRect.height / 2 - 20 : 200,
+        width: lineConfig.startDuration * lineConfig.pixelsPerUnit,
+        duration: lineConfig.startDuration,
+        isCommitted: false,  // New lines are uncommitted (green)
+        parentId: null,
+        nestingDepth: 0,
+        isLine: true  // Flag to distinguish from blocks
+      }
+      onBlockAdd?.(newLine)
+      setSelectedBlockId(newLine.id)
+    } else {
+      // Create an OverviewLessonCard for LESSON (Item 8)
+      const newLesson = {
+        id: `lesson-${Date.now()}`,
+        type: 'LESSON',
+        lessonType: 'lecture',  // Default lesson type
+        title: '',
+        x: canvasRect ? canvasRect.width / 2 - 90 : 200,
+        y: canvasRect ? canvasRect.height / 2 - 35 : 200,
+        width: 180,
+        height: 70,
+        duration: 30,  // 30 minutes default
+        isCommitted: false,
+        parentLineId: null,
+        isLine: false,
+        isMarker: false
+      }
+      onBlockAdd?.(newLesson)
+      setSelectedBlockId(newLesson.id)
     }
-    onBlockAdd?.(newBlock)
-    setSelectedBlockId(newBlock.id)
   }, [onBlockAdd])
 
   // Delete selected block
@@ -284,6 +490,32 @@ function OverviewCanvas({
     }
   }, [selectedBlockId, onBlockRemove])
 
+  // Item 17: Add lesson by type - generates card centrally above "Select Lesson Type" label
+  const handleAddLessonByType = useCallback((lessonTypeId) => {
+    const canvasRect = canvasRef.current?.getBoundingClientRect()
+    const lessonType = LESSON_TYPES.find(t => t.id === lessonTypeId) || LESSON_TYPES[0]
+    const isBreak = lessonTypeId === 'break'
+
+    const newLesson = {
+      id: `lesson-${Date.now()}`,
+      type: 'LESSON',
+      lessonType: lessonTypeId,
+      title: isBreak ? 'BREAK' : '',
+      x: canvasRect ? canvasRect.width / 2 - 90 : 200,
+      y: 50,  // Position near top, below toolbar
+      width: 180,
+      height: 70,
+      duration: isBreak ? 30 : 60,
+      isCommitted: isBreak,  // BREAK auto-commits with title
+      parentLineId: null,
+      isLine: false,
+      isMarker: false,
+      lessonColor: lessonType.color
+    }
+    onBlockAdd?.(newLesson)
+    setSelectedBlockId(newLesson.id)
+  }, [onBlockAdd])
+
   return (
     <div
       style={{
@@ -293,75 +525,34 @@ function OverviewCanvas({
         overflow: 'hidden'
       }}
     >
-      {/* Toolbar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1vw',
-          padding: '1vh 2vw',
-          borderBottom: `1px solid ${THEME.BORDER}`,
-          background: THEME.BG_DARK
-        }}
-      >
-        <span
+      {/* Delete button bar - only visible when block selected */}
+      {selectedBlockId && (
+        <div
           style={{
-            fontSize: '1.375vh',  // Increased from 1.1vh (+25%)
-            fontFamily: THEME.FONT_PRIMARY,
-            letterSpacing: '0.1em',
-            color: THEME.TEXT_DIM,
-            marginRight: '1vw'
+            display: 'flex',
+            justifyContent: 'flex-end',
+            padding: '0.5vh 2vw',
+            borderBottom: `1px solid ${THEME.BORDER}`,
+            background: THEME.BG_DARK
           }}
         >
-          ADD BLOCK:
-        </span>
-        {Object.keys(BLOCK_TYPES).map((type) => (
-          <button
-            key={type}
-            onClick={() => handleAddBlock(type)}
-            style={{
-              padding: '0.6vh 1vw',
-              fontSize: '1.25vh',  // Increased from 1vh (+25%)
-              fontFamily: THEME.FONT_PRIMARY,
-              letterSpacing: '0.05em',
-              color: BLOCK_TYPES[type].color,
-              background: 'transparent',
-              border: `1px solid ${BLOCK_TYPES[type].color}`,
-              borderRadius: '1.5vh',  // Match action button style
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.background = `${BLOCK_TYPES[type].color}20`
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = 'transparent'
-            }}
-          >
-            + {type}
-          </button>
-        ))}
-
-        {/* Delete button - only when block selected */}
-        {selectedBlockId && (
           <button
             onClick={handleDeleteSelected}
             style={{
-              marginLeft: 'auto',
               padding: '0.6vh 1vw',
-              fontSize: '1.25vh',  // Increased from 1vh (+25%)
+              fontSize: '1.25vh',
               fontFamily: THEME.FONT_PRIMARY,
               color: '#ff4444',
               background: 'transparent',
               border: '1px solid #ff4444',
-              borderRadius: '1.5vh',  // Match action button style
+              borderRadius: '1.5vh',
               cursor: 'pointer'
             }}
           >
             DELETE BLOCK
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Canvas Area */}
       <div
@@ -379,44 +570,237 @@ function OverviewCanvas({
           backgroundColor: THEME.BG_DARK
         }}
       >
-        {/* Empty state */}
-        {blocks.length === 0 && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              textAlign: 'center',
-              color: THEME.TEXT_DIM
-            }}
-          >
-            <p style={{ fontSize: '1.75vh', fontFamily: THEME.FONT_PRIMARY, margin: 0 }}>
-              No blocks yet
-            </p>
-            <p style={{ fontSize: '1.375vh', fontFamily: THEME.FONT_PRIMARY, marginTop: '0.5vh' }}>
-              Use the toolbar above to add TERM, MODULE, WEEK, DAY, or LESSON blocks
-            </p>
-          </div>
-        )}
 
-        {/* Render blocks */}
-        {blocks.map((block) => (
-          <LearningBlock
-            key={block.id}
-            {...block}
-            isSelected={selectedBlockId === block.id}
-            isInActiveParentChain={activeParentChain.includes(block.id)}
-            onSelect={handleBlockSelect}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onPositionChange={handlePositionChange}
-            onSizeChange={handleSizeChange}
-            onDurationChange={handleDurationChange}
-            onTitleChange={handleTitleChange}
+        {/* Item 18-20: Unallocated Lessons Panel - positioned at bottom-right */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '1vh',
+            right: '1vw',
+            zIndex: 50
+          }}
+        >
+          <UnallocatedLessonsPanel
+            lessons={unscheduledLessons}
+            lessonTypes={lessonTypes}
+            onUnscheduleLesson={onUnscheduleLesson}
+          />
+        </div>
+
+        {/* Render blocks, lines, lesson cards, and markers */}
+        {blocks.map((item) => {
+          // Render CourseLine for lines
+          if (item.isLine) {
+            return (
+              <CourseLine
+                key={item.id}
+                {...item}
+                isSelected={selectedBlockId === item.id}
+                isPotentialParent={potentialParentId === item.id || potentialLessonLineId === item.id}
+                isPotentialChild={draggingBlockId === item.id && potentialParentId !== null}
+                onSelect={handleBlockSelect}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onPositionChange={handlePositionChange}
+                onWidthChange={handleWidthChange}
+                onDurationChange={handleDurationChange}
+                onTitleChange={handleTitleChange}
+                onCommit={handleCommit}
+              />
+            )
+          }
+
+          // Render LessonMarker for markers (Item 10-12)
+          if (item.isMarker && item.type === 'LESSON') {
+            return (
+              <LessonMarker
+                key={item.id}
+                id={item.id}
+                lessonData={item}
+                x={item.x}
+                y={item.y}
+                parentLineId={item.parentLineId}
+                isSelected={selectedBlockId === item.id}
+                onSelect={handleBlockSelect}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onPositionChange={handlePositionChange}
+                onDetach={handleMarkerDetach}
+              />
+            )
+          }
+
+          // Render OverviewLessonCard for lesson cards (Item 8-9)
+          if (item.type === 'LESSON' && !item.isLine) {
+            return (
+              <OverviewLessonCard
+                key={item.id}
+                id={item.id}
+                title={item.title}
+                type={item.lessonType || 'lecture'}
+                duration={item.duration || 30}
+                x={item.x}
+                y={item.y}
+                width={item.width}
+                height={item.height}
+                isSelected={selectedBlockId === item.id}
+                isCommitted={item.isCommitted}
+                onSelect={handleBlockSelect}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onPositionChange={handlePositionChange}
+                onTitleChange={handleTitleChange}
+                onDurationChange={handleDurationChange}
+                onCommit={handleCommit}
+                onRequestDelete={handleLessonDeleteRequest}
+              />
+            )
+          }
+
+          // Render LearningBlock for other block types (TERM, MODULE, WEEK, DAY as blocks - legacy)
+          return (
+            <LearningBlock
+              key={item.id}
+              {...item}
+              isSelected={selectedBlockId === item.id}
+              isInActiveParentChain={activeParentChain.includes(item.id)}
+              onSelect={handleBlockSelect}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onPositionChange={handlePositionChange}
+              onSizeChange={handleSizeChange}
+              onDurationChange={handleDurationChange}
+              onTitleChange={handleTitleChange}
+            />
+          )
+        })}
+      </div>
+
+      {/* Lesson Type Palette - positioned at bottom, ~10px above PKE */}
+      {/* Circular buttons with colored ring, no container */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '10px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '1vw',
+          zIndex: 50
+        }}
+      >
+        {LESSON_TYPES.map((lessonType) => (
+          <LessonTypeCircleButton
+            key={lessonType.id}
+            type={lessonType}
+            onClick={() => handleAddLessonByType(lessonType.id)}
           />
         ))}
       </div>
+    </div>
+  )
+}
+
+// ============================================
+// LESSON TYPE CIRCLE BUTTON COMPONENT
+// ============================================
+// Circular button with colored ring inside (4/5ths diameter)
+// Green border on hover, tooltip shows lesson type name
+
+function LessonTypeCircleButton({ type, onClick }) {
+  const [hovered, setHovered] = useState(false)
+  const size = 56 // Same size as ANALYTICS button
+
+  // Inner ring is 4/5ths the diameter of outer circle
+  const innerRingRadius = (size / 2 - 4) * 0.8
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center'
+      }}
+    >
+      {/* Tooltip - shows on hover above the button */}
+      {hovered && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '100%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            marginBottom: '0.5vh',
+            padding: '0.4vh 0.8vw',
+            background: THEME.BG_PANEL,
+            border: `1px solid ${THEME.BORDER}`,
+            borderRadius: '0.5vh',
+            whiteSpace: 'nowrap',
+            zIndex: 100
+          }}
+        >
+          <span
+            style={{
+              fontSize: '1.1vh',
+              color: THEME.TEXT_PRIMARY,
+              fontFamily: THEME.FONT_PRIMARY
+            }}
+          >
+            {type.name}
+          </span>
+        </div>
+      )}
+
+      {/* Circular button */}
+      <button
+        onClick={onClick}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          width: size,
+          height: size,
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          padding: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        <svg
+          width={size}
+          height={size}
+          style={{
+            transition: 'all 0.2s ease'
+          }}
+        >
+          {/* Outer circle border */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={size / 2 - 2}
+            fill="none"
+            stroke={hovered ? THEME.GREEN_BRIGHT : '#444'}
+            strokeWidth={2}
+            style={{ transition: 'stroke 0.2s ease' }}
+          />
+
+          {/* Inner colored ring - 4/5ths diameter, no fill */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={innerRingRadius}
+            fill="none"
+            stroke={type.color}
+            strokeWidth={3}
+            style={{ transition: 'stroke 0.2s ease' }}
+          />
+        </svg>
+      </button>
     </div>
   )
 }

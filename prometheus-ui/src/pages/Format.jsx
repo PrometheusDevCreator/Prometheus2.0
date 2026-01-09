@@ -142,7 +142,7 @@ function LeftSidePlaceholders() {
  * - Initial state: Only wheel + SELECT TEMPLATE visible
  * - Wheel option click: Reveals left tool panel (UPLOAD, MAKE TEMPLATE, CONVERT)
  */
-function FormatContent({ onNavigate, user, courseState, exitPending }) {
+function FormatContent({ onNavigate, user, courseState, exitPending, courseData, timetableData, lessonEditorOpen, onLessonEditorToggle }) {
   const { isLoading, error, clearError, selectedOutput } = useTemplate()
 
   const handleNavigate = useCallback((section) => {
@@ -283,6 +283,10 @@ function FormatContent({ onNavigate, user, courseState, exitPending }) {
         courseState={courseState || { startDate: null, saveCount: 0 }}
         progress={0}
         exitPending={exitPending}
+        courseData={courseData}
+        timetableData={timetableData}
+        lessonEditorOpen={lessonEditorOpen}
+        onLessonEditorToggle={onLessonEditorToggle}
       />
     </div>
   )
@@ -294,7 +298,7 @@ function FormatContent({ onNavigate, user, courseState, exitPending }) {
  * CORRECTION #1: TemplateProvider is AUTHORITATIVE.
  * App.jsx only provides this wrapper - it does NOT manipulate templateData.
  */
-function Format({ onNavigate, courseLoaded, user, courseState, exitPending }) {
+function Format({ onNavigate, courseData, timetableData, courseLoaded, user, courseState, exitPending, lessonEditorOpen, onLessonEditorToggle }) {
   return (
     <TemplateProvider>
       <FormatContent
@@ -302,6 +306,10 @@ function Format({ onNavigate, courseLoaded, user, courseState, exitPending }) {
         user={user}
         courseState={courseState}
         exitPending={exitPending}
+        courseData={courseData}
+        timetableData={timetableData}
+        lessonEditorOpen={lessonEditorOpen}
+        onLessonEditorToggle={onLessonEditorToggle}
       />
     </TemplateProvider>
   )

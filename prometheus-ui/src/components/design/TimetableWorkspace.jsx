@@ -14,6 +14,7 @@ import { THEME } from '../../constants/theme'
 import { useDesign } from '../../contexts/DesignContext'
 import TimeControls from './TimeControls'
 import TimetableGrid from './TimetableGrid'
+import UnallocatedLessonsPanel from './UnallocatedLessonsPanel'
 
 function TimetableWorkspace() {
   const {
@@ -131,15 +132,29 @@ function TimetableWorkspace() {
         </div>
       )}
 
-      {/* Control Zone (includes Unallocated Lessons) */}
+      {/* Lesson Type Control Zone - positioned at bottom center */}
       <ControlZone
         lessonTypes={LESSON_TYPES}
         currentType={currentType}
         onTypeSelect={handleTypeClick}
         hasPendingLesson={!!pendingLesson}
-        unscheduledLessons={unscheduledLessons}
-        onUnscheduleLesson={unscheduleLesson}
       />
+
+      {/* Unallocated Lessons Panel - positioned at bottom-right */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '10px',
+          right: '1vw',
+          zIndex: 50
+        }}
+      >
+        <UnallocatedLessonsPanel
+          lessons={unscheduledLessons}
+          lessonTypes={LESSON_TYPES}
+          onUnscheduleLesson={unscheduleLesson}
+        />
+      </div>
     </div>
   )
 }
@@ -232,78 +247,46 @@ function PendingLessonCard({ lesson, type, onDragStart, onCancel }) {
 // CONTROL ZONE COMPONENT
 // ============================================
 
-function ControlZone({ lessonTypes, currentType, onTypeSelect, hasPendingLesson, unscheduledLessons = [], onUnscheduleLesson }) {
-  // Split types into two rows (5 each)
-  const row1Types = lessonTypes.slice(0, 5)
-  const row2Types = lessonTypes.slice(5, 10)
-
+function ControlZone({ lessonTypes, currentType, onTypeSelect, hasPendingLesson }) {
   return (
     <div
       style={{
-        padding: '1vh 0',
+        position: 'absolute',
+        bottom: '10px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        padding: '0.8vh 1.5vw',
         background: THEME.BG_DARK,
         display: 'flex',
         justifyContent: 'center',
-        marginTop: '-175px',
-        position: 'relative',
-        zIndex: 10
+        alignItems: 'center',
+        zIndex: 50,
+        borderRadius: '1.5vh',
+        border: `1px solid ${THEME.BORDER}`
       }}
     >
-      {/* Container aligned with day bars (full width with padding) */}
-      <div
-        style={{
-          width: 'calc(90% - 100px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '1vw'
-        }}
-      >
-        {/* Lesson Type Palette - 2x5 Grid - aligned left */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5vh', marginLeft: '5px' }}>
-          {/* Row 1 */}
-          <div style={{ display: 'flex', gap: '0.4vw' }}>
-            {row1Types.map(type => (
-              <LessonTypeButton
-                key={type.id}
-                type={type}
-                onClick={() => onTypeSelect(type.id)}
-              />
-            ))}
-          </div>
-          {/* Row 2 */}
-          <div style={{ display: 'flex', gap: '0.4vw' }}>
-            {row2Types.map(type => (
-              <LessonTypeButton
-                key={type.id}
-                type={type}
-                onClick={() => onTypeSelect(type.id)}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Navigation Controls - center */}
-        <div
+      {/* Lesson Type Palette - centered */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5vh' }}>
+        <span
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.8vw',
-            fontSize: '1.55vh',
-            color: THEME.TEXT_DIM
+            fontSize: '1.2vh',
+            fontFamily: THEME.FONT_PRIMARY,
+            letterSpacing: '0.1em',
+            color: THEME.WHITE,
+            textAlign: 'center'
           }}
         >
-          <span style={{ cursor: 'pointer' }}>{'<'}</span>
-          <span style={{ color: THEME.AMBER, cursor: 'pointer' }}>+</span>
-          <span style={{ cursor: 'pointer' }}>{'>'}</span>
+          Select Lesson Type
+        </span>
+        <div style={{ display: 'flex', gap: '0.4vw', flexWrap: 'nowrap' }}>
+          {lessonTypes.map(type => (
+            <LessonTypeButton
+              key={type.id}
+              type={type}
+              onClick={() => onTypeSelect(type.id)}
+            />
+          ))}
         </div>
-
-        {/* Unallocated Lessons - aligned right (always visible) */}
-        <UnallocatedLessons
-          lessons={unscheduledLessons}
-          lessonTypes={lessonTypes}
-          onUnscheduleLesson={onUnscheduleLesson}
-        />
       </div>
     </div>
   )
@@ -367,172 +350,6 @@ function LessonTypeButton({ type, onClick }) {
         {type.name}
       </span>
     </button>
-  )
-}
-
-// ============================================
-// UNALLOCATED LESSONS AREA
-// ============================================
-
-function UnallocatedLessons({ lessons, lessonTypes, onUnscheduleLesson }) {
-  const [collapsed, setCollapsed] = useState(false)
-  const [isDragOver, setIsDragOver] = useState(false)
-
-  // Handle drag start for unallocated lesson
-  const handleDragStart = useCallback((e, lesson) => {
-    e.dataTransfer.setData('lessonId', lesson.id)
-    e.dataTransfer.setData('dragType', 'unallocated')
-    e.dataTransfer.effectAllowed = 'move'
-  }, [])
-
-  // Handle drag over to allow drop
-  const handleDragOver = useCallback((e) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    setIsDragOver(true)
-  }, [])
-
-  // Handle drag leave
-  const handleDragLeave = useCallback((e) => {
-    // Only set false if we're leaving the container itself
-    if (!e.currentTarget.contains(e.relatedTarget)) {
-      setIsDragOver(false)
-    }
-  }, [])
-
-  // Handle drop - unschedule the lesson
-  const handleDrop = useCallback((e) => {
-    e.preventDefault()
-    setIsDragOver(false)
-
-    const lessonId = e.dataTransfer.getData('lessonId')
-    const dragType = e.dataTransfer.getData('dragType')
-
-    // Only accept drops from scheduled lessons (not from unallocated or pending)
-    if (lessonId && dragType !== 'unallocated' && dragType !== 'pending') {
-      onUnscheduleLesson?.(lessonId)
-    }
-  }, [onUnscheduleLesson])
-
-  const getLessonTypeColor = (typeId) => {
-    const type = lessonTypes.find(t => t.id === typeId)
-    return type?.color || '#FF6600'
-  }
-
-  return (
-    <div
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      style={{
-        background: isDragOver ? 'rgba(255, 102, 0, 0.2)' : 'rgba(20, 20, 20, 0.95)',
-        border: `2px solid ${isDragOver ? '#00FF00' : THEME.AMBER}`,
-        borderRadius: '12px',
-        minWidth: '180px',
-        maxWidth: '280px',
-        maxHeight: collapsed ? '36px' : '180px',
-        overflow: 'hidden',
-        transition: 'all 0.2s ease',
-        flexShrink: 0
-      }}
-    >
-      {/* Header */}
-      <div
-        onClick={() => setCollapsed(!collapsed)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0.6vh 0.8vw',
-          borderBottom: collapsed ? 'none' : `1px solid ${THEME.AMBER}40`,
-          cursor: 'pointer'
-        }}
-      >
-        <span
-          style={{
-            fontSize: '1.2vh',
-            color: THEME.AMBER,
-            fontFamily: THEME.FONT_PRIMARY,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05vw',
-            fontWeight: 500
-          }}
-        >
-          Unallocated ({lessons.length})
-        </span>
-        <span style={{ fontSize: '1.2vh', color: THEME.AMBER }}>
-          {collapsed ? '▶' : '▼'}
-        </span>
-      </div>
-
-      {/* Lessons List */}
-      {!collapsed && (
-        <div
-          style={{
-            padding: '0.4vh 0.4vw',
-            maxHeight: '150px',
-            overflowY: 'auto'
-          }}
-        >
-          {lessons.map(lesson => (
-            <div
-              key={lesson.id}
-              draggable
-              onDragStart={(e) => handleDragStart(e, lesson)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4vw',
-                padding: '0.5vh 0.5vw',
-                marginBottom: '0.3vh',
-                background: 'rgba(30, 30, 30, 0.8)',
-                border: '1px solid rgba(100, 100, 100, 0.3)',
-                borderRadius: '8px',
-                cursor: 'grab',
-                transition: 'border-color 0.15s ease'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = THEME.AMBER}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(100, 100, 100, 0.3)'}
-            >
-              {/* Type color bar */}
-              <div
-                style={{
-                  width: '4px',
-                  height: '2.5vh',
-                  background: getLessonTypeColor(lesson.type),
-                  borderRadius: '2px',
-                  flexShrink: 0
-                }}
-              />
-              {/* Title */}
-              <span
-                style={{
-                  fontSize: '1.2vh',
-                  color: THEME.TEXT_PRIMARY,
-                  fontFamily: THEME.FONT_PRIMARY,
-                  flex: 1,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {lesson.title}
-              </span>
-              {/* Duration */}
-              <span
-                style={{
-                  fontSize: '1vh',
-                  color: THEME.TEXT_DIM,
-                  fontFamily: THEME.FONT_MONO
-                }}
-              >
-                {lesson.duration}m
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
   )
 }
 

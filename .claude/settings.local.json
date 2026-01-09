@@ -43,7 +43,22 @@
       "mcp__playwright__browser_evaluate",
       "mcp__playwright__browser_close",
       "mcp__playwright__browser_hover",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(timeout:*)",
+      "Bash(find:*)",
+      "Bash(npx create-next-app@latest:*)",
+      "mcp__playwright__browser_install",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_select_option",
+      "mcp__playwright__browser_drag",
+      "Bash(tasklist:*)",
+      "Bash(git revert:*)",
+      "Bash(git restore:*)",
+      "mcp__playwright__browser_tabs",
+      "Bash(wmic process where \"commandline like ''%mcp-chrome%''\" get processid,commandline)",
+      "Bash(cmd /c \"taskkill /PID 28092 /F\")",
+      "Bash(npm run test:run:*)",
+      "Bash(npm run test:soc:full:*)"
     ]
   }
 }

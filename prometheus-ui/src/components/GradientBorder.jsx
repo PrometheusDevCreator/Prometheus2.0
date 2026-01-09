@@ -1,21 +1,22 @@
 /**
- * GradientBorder - Shared gradient border wrapper component
+ * GradientBorder - Shared border wrapper component for input fields
  *
- * Provides consistent gradient border styling for input fields across the application.
+ * Provides consistent border styling for input fields across the application.
  * Defined as a stable component to prevent re-renders that cause focus loss.
  *
- * A3 Fix: Gradient border with proper colors:
- * - 1px border thickness (flat, no bevel)
- * - Rounded corners (rounded-[20px]) — matches input border-radius
- * - Gradient: darkest #767171 at ends, lightest #FFFFFF at center
- *
- * B10: Supports isActive prop for burnt orange (#FF6600) highlight on hover/focus.
- * pulseRed: When true, shows a quick red pulse animation for validation errors.
- * isInvalid: When true, shows persistent bright red border for invalid state.
+ * Border States:
+ * - Default (empty): Dark border (#1f1f1f) matching Delivery Method buttons
+ * - hasValue (data entered): Light grey (#767171), 0.5px thickness
+ * - isActive (hover/focus): Burnt orange (#FF6600)
+ * - isInvalid: Bright red (#ff3333) with glow
+ * - pulseRed: Red pulse animation for validation errors
  */
-function GradientBorder({ children, className = '', isActive = false, pulseRed = false, isInvalid = false }) {
-  // A3: Gradient - lightest (#FFFFFF) at center, darkest (#767171) at ends
-  const defaultGradient = 'linear-gradient(to right, #767171, #ffffff 50%, #767171)'
+function GradientBorder({ children, className = '', isActive = false, pulseRed = false, isInvalid = false, hasValue = false }) {
+  // Default: Match Delivery Method button border (#1f1f1f)
+  const defaultBorder = '#1f1f1f'
+
+  // After data entry: Light grey, no gradient
+  const hasValueBorder = '#767171'
 
   // B10: Burnt orange solid border when active (hover/focus)
   const activeColor = '#FF6600'
@@ -26,24 +27,30 @@ function GradientBorder({ children, className = '', isActive = false, pulseRed =
   // Bright red for persistent invalid state
   const invalidColor = '#ff3333'
 
-  // Determine background color (priority: pulseRed > isInvalid > isActive > default)
-  let background = defaultGradient
+  // Determine background color (priority: pulseRed > isInvalid > isActive > hasValue > default)
+  let background = defaultBorder
   if (pulseRed) {
     background = redColor
   } else if (isInvalid) {
     background = invalidColor
   } else if (isActive) {
     background = activeColor
+  } else if (hasValue) {
+    background = hasValueBorder
   }
+
+  // Use thinner border (0.5px) when hasValue is true and not active/error
+  const useThinner = hasValue && !isActive && !pulseRed && !isInvalid
+  const paddingClass = useThinner ? 'p-[0.5px]' : 'p-[1px]'
 
   return (
     <div
-      className={`p-[1px] rounded-[20px] ${className}`}
+      className={`${paddingClass} rounded-[20px] ${className}`}
       style={{
         background,
         animation: pulseRed ? 'redPulse 0.3s ease-in-out 2' : 'none',
         boxShadow: pulseRed ? `0 0 10px ${redColor}` : (isInvalid ? `0 0 6px ${invalidColor}` : 'none'),
-        transition: 'box-shadow 0.2s ease, background 0.2s ease'
+        transition: 'box-shadow 0.2s ease, background 0.2s ease, padding 0.2s ease'
       }}
     >
       {children}

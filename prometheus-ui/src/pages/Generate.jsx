@@ -8,7 +8,7 @@ import { useState, useCallback } from 'react'
 import { THEME } from '../constants/theme'
 import Footer from '../components/Footer'
 
-function Generate({ onNavigate, courseLoaded, user, courseState }) {
+function Generate({ onNavigate, courseData, timetableData, courseLoaded, user, courseState, exitPending, lessonEditorOpen, onLessonEditorToggle }) {
   const [isPKEActive, setIsPKEActive] = useState(false)
 
   const handleNavigate = useCallback((section) => {
@@ -88,6 +88,11 @@ function Generate({ onNavigate, courseLoaded, user, courseState }) {
         user={user || { name: '---' }}
         courseState={courseState || { startDate: null, saveCount: 0 }}
         progress={15}
+        exitPending={exitPending}
+        courseData={courseData}
+        timetableData={timetableData}
+        lessonEditorOpen={lessonEditorOpen}
+        onLessonEditorToggle={onLessonEditorToggle}
       />
     </div>
   )

@@ -1,19 +1,60 @@
 /**
  * OverviewHeader - Course Information Display for OVERVIEW Tab
  *
- * Displays:
- * - Course title in luminous green (#00FF00)
- * - Course description (editable)
- * - Learning Objectives list (editable)
+ * Layout (3 columns):
+ * - DESCRIPTION (25% width, reduced by ~50%)
+ * - ADD COURSE ELEMENT (center, buttons for TERM/MODULE/WEEK/DAY)
+ * - LEARNING OBJECTIVES (30% width)
  */
 
 import { useState } from 'react'
 import { THEME } from '../../../constants/theme'
 
+// Block type colors (matching LearningBlock/CourseLine)
+const BLOCK_TYPES = {
+  TERM: { color: '#e8a33a' },
+  MODULE: { color: '#d4730c' },
+  WEEK: { color: '#8B4513' },
+  DAY: { color: '#5a3000' }
+}
+
+/**
+ * CourseElementButton - Individual button for adding course elements
+ *
+ * Styling: Burnt orange border and text (solid color, no gradient)
+ * Hover: Changes to luminous green
+ */
+function CourseElementButton({ type, onClick }) {
+  const [isHovered, setIsHovered] = useState(false)
+
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        padding: '0.6vh 1vw',
+        fontSize: '1.25vh',
+        fontFamily: THEME.FONT_PRIMARY,
+        letterSpacing: '0.05em',
+        color: isHovered ? THEME.GREEN_BRIGHT : THEME.AMBER,
+        background: 'transparent',
+        border: `1px solid ${isHovered ? THEME.GREEN_BRIGHT : THEME.AMBER}`,
+        borderRadius: '1.5vh',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease'
+      }}
+    >
+      +{type}
+    </button>
+  )
+}
+
 function OverviewHeader({
   courseData = {},
   onUpdateDescription,
-  onUpdateObjectives
+  onUpdateObjectives,
+  onAddBlock  // Callback to add course elements (TERM, MODULE, WEEK, DAY)
 }) {
   const [isEditingDesc, setIsEditingDesc] = useState(false)
   const [editedDesc, setEditedDesc] = useState(courseData.description || '')
@@ -28,30 +69,14 @@ function OverviewHeader({
   return (
     <div
       style={{
-        padding: '1.5vh 2vw',
+        padding: '1vh 2vw',
         borderBottom: `1px solid ${THEME.BORDER}`,
-        background: THEME.BG_PANEL
+        background: THEME.BG_DARK
       }}
     >
-      {/* Course Title - Luminous Green (glow removed per request) */}
-      <h2
-        style={{
-          fontFamily: THEME.FONT_PRIMARY,
-          fontSize: '2.75vh',  // Increased from 2.2vh (+25%)
-          fontWeight: 600,
-          color: THEME.GREEN_BRIGHT,
-          letterSpacing: '0.1em',
-          margin: 0,
-          marginBottom: '1vh'
-          // textShadow removed per request
-        }}
-      >
-        {courseData.title || 'UNTITLED COURSE'}
-      </h2>
-
-      <div style={{ display: 'flex', gap: '2vw' }}>
-        {/* Description */}
-        <div style={{ flex: 1 }}>
+      <div style={{ display: 'flex', gap: '2vw', alignItems: 'flex-start' }}>
+        {/* Column 1: Description (reduced to ~25% width) */}
+        <div style={{ width: '25%', flexShrink: 0 }}>
           <label
             style={{
               fontSize: '1.375vh',  // Increased from 1.1vh (+25%)
@@ -108,8 +133,35 @@ function OverviewHeader({
           )}
         </div>
 
-        {/* Learning Objectives Summary */}
-        <div style={{ width: '30%' }}>
+        {/* Column 2: Add Course Element (center) - fully centered horizontally */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <label
+            style={{
+              fontSize: '1.375vh',
+              fontFamily: THEME.FONT_PRIMARY,
+              letterSpacing: '0.15em',
+              color: THEME.WHITE,
+              display: 'block',
+              marginBottom: '0.5vh',
+              textAlign: 'center',
+              width: '100%'
+            }}
+          >
+            ADD COURSE ELEMENT
+          </label>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1vw', width: '100%' }}>
+            {['TERM', 'MODULE', 'WEEK', 'DAY'].map((type) => (
+              <CourseElementButton
+                key={type}
+                type={type}
+                onClick={() => onAddBlock?.(type)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Column 3: Learning Objectives Summary */}
+        <div style={{ width: '30%', flexShrink: 0 }}>
           <label
             style={{
               fontSize: '1.375vh',  // Increased from 1.1vh (+25%)

@@ -25,7 +25,7 @@
  * - Right-click: Context menu
  */
 
-import { useState, useCallback, useMemo, useRef } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { THEME } from '../../constants/theme'
 import { useDesign } from '../../contexts/DesignContext'
 
@@ -40,6 +40,7 @@ function LessonBlock({
     selection,
     select,
     startEditing,
+    clearSelection,
     updateLesson,
     resizeLesson,
     unscheduleLesson,
@@ -52,14 +53,84 @@ function LessonBlock({
   // Refs for drag operations
   const blockRef = useRef(null)
   const dragStartRef = useRef(null)
+  const titleInputRef = useRef(null)
 
   // Local state
   const [isHovered, setIsHovered] = useState(false)
   const [contextMenu, setContextMenu] = useState(null)
 
+  // Inline editing state
+  const [editTitle, setEditTitle] = useState(lesson.title)
+  const [editStartTime, setEditStartTime] = useState(lesson.startTime || '')
+  const [editDuration, setEditDuration] = useState(lesson.duration.toString())
+
   // Determine block state
   const isSelected = selection.type === 'lesson' && selection.id === lesson.id
   const isEditing = isSelected && selection.mode === 'editing'
+
+  // Sync local edit state when lesson changes or editing starts
+  useEffect(() => {
+    setEditTitle(lesson.title)
+    setEditStartTime(lesson.startTime || '')
+    setEditDuration(lesson.duration.toString())
+  }, [lesson.title, lesson.startTime, lesson.duration])
+
+  // Focus title input when editing starts
+  useEffect(() => {
+    if (isEditing && titleInputRef.current) {
+      titleInputRef.current.focus()
+      titleInputRef.current.select()
+    }
+  }, [isEditing])
+
+  // Save inline edits
+  const saveEdits = useCallback(() => {
+    const updates = {}
+
+    if (editTitle.trim() && editTitle !== lesson.title) {
+      updates.title = editTitle.trim()
+    }
+
+    // Parse and validate start time (format: HHMM or HH:MM)
+    if (editStartTime) {
+      const cleanTime = editStartTime.replace(':', '')
+      if (/^\d{4}$/.test(cleanTime)) {
+        updates.startTime = cleanTime
+      }
+    }
+
+    // Parse and validate duration
+    const newDuration = parseInt(editDuration)
+    if (!isNaN(newDuration) && newDuration > 0 && newDuration !== lesson.duration) {
+      updates.duration = Math.max(5, Math.min(480, newDuration))
+    }
+
+    if (Object.keys(updates).length > 0) {
+      updateLesson(lesson.id, updates)
+    }
+
+    clearSelection()
+  }, [editTitle, editStartTime, editDuration, lesson, updateLesson, clearSelection])
+
+  // Cancel edits and revert
+  const cancelEdits = useCallback(() => {
+    setEditTitle(lesson.title)
+    setEditStartTime(lesson.startTime || '')
+    setEditDuration(lesson.duration.toString())
+    clearSelection()
+  }, [lesson, clearSelection])
+
+  // Handle keyboard in edit mode
+  const handleEditKeyDown = useCallback((e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      saveEdits()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      cancelEdits()
+    }
+    e.stopPropagation()
+  }, [saveEdits, cancelEdits])
 
   // Check if lesson has assigned LO (for red border warning)
   // BREAK lessons don't require LOs, so they're always considered "valid"
@@ -311,52 +382,128 @@ function LessonBlock({
           overflow: 'hidden'
         }}
       >
-        {/* Lesson Title - Top */}
-        <div
-          style={{
-            fontSize: '1.4vh',
-            color: isSelected ? THEME.WHITE : THEME.TEXT_PRIMARY,
-            fontFamily: THEME.FONT_PRIMARY,
-            fontWeight: 400,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis'
-          }}
-        >
-          {lesson.title}
-        </div>
+        {/* Lesson Title - Top (editable when isEditing) */}
+        {isEditing ? (
+          <input
+            ref={titleInputRef}
+            type="text"
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            onKeyDown={handleEditKeyDown}
+            onBlur={saveEdits}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              borderBottom: `1px solid ${THEME.AMBER}`,
+              fontSize: '1.4vh',
+              color: THEME.GREEN_BRIGHT,
+              fontFamily: THEME.FONT_PRIMARY,
+              fontWeight: 400,
+              outline: 'none',
+              width: '100%',
+              padding: '0 0 2px 0'
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              fontSize: '1.4vh',
+              color: isSelected ? THEME.WHITE : THEME.TEXT_PRIMARY,
+              fontFamily: THEME.FONT_PRIMARY,
+              fontWeight: 400,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}
+          >
+            {lesson.title}
+          </div>
+        )}
 
-        {/* Bottom row: Time Range + Duration */}
+        {/* Bottom row: Time Range + Duration (editable when isEditing) */}
         <div
           style={{
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center'
+            alignItems: 'center',
+            gap: '4px'
           }}
         >
-          {/* Time Range */}
-          <span
-            style={{
-              fontSize: '1.1vh',
-              color: isSelected ? '#00FF00' : 'rgba(180, 180, 180, 0.8)',
-              fontFamily: THEME.FONT_MONO,
-              transition: 'color 0.15s ease'
-            }}
-          >
-            {formatTime(lesson.startTime)}-{calculateEndTime()}
-          </span>
+          {isEditing ? (
+            <>
+              {/* Editable Start Time */}
+              <input
+                type="text"
+                value={editStartTime}
+                onChange={(e) => setEditStartTime(e.target.value)}
+                onKeyDown={handleEditKeyDown}
+                onClick={(e) => e.stopPropagation()}
+                placeholder="0900"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: `1px solid ${THEME.AMBER}`,
+                  fontSize: '1.1vh',
+                  color: THEME.GREEN_BRIGHT,
+                  fontFamily: THEME.FONT_MONO,
+                  outline: 'none',
+                  width: '35px',
+                  padding: '0',
+                  textAlign: 'center'
+                }}
+              />
+              <span style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM }}>-</span>
+              {/* Editable Duration */}
+              <input
+                type="text"
+                value={editDuration}
+                onChange={(e) => setEditDuration(e.target.value)}
+                onKeyDown={handleEditKeyDown}
+                onClick={(e) => e.stopPropagation()}
+                placeholder="60"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: `1px solid ${THEME.AMBER}`,
+                  fontSize: '1.1vh',
+                  color: THEME.GREEN_BRIGHT,
+                  fontFamily: THEME.FONT_MONO,
+                  outline: 'none',
+                  width: '30px',
+                  padding: '0',
+                  textAlign: 'center'
+                }}
+              />
+              <span style={{ fontSize: '1.1vh', color: THEME.TEXT_DIM }}>m</span>
+            </>
+          ) : (
+            <>
+              {/* Time Range */}
+              <span
+                style={{
+                  fontSize: '1.1vh',
+                  color: isSelected ? '#00FF00' : 'rgba(180, 180, 180, 0.8)',
+                  fontFamily: THEME.FONT_MONO,
+                  transition: 'color 0.15s ease'
+                }}
+              >
+                {formatTime(lesson.startTime)}-{calculateEndTime()}
+              </span>
 
-          {/* Duration */}
-          <span
-            style={{
-              fontSize: '1.1vh',
-              color: isSelected ? '#00FF00' : 'rgba(180, 180, 180, 0.8)',
-              fontFamily: THEME.FONT_MONO,
-              transition: 'color 0.15s ease'
-            }}
-          >
-            {lesson.duration}mins
-          </span>
+              {/* Duration */}
+              <span
+                style={{
+                  fontSize: '1.1vh',
+                  color: isSelected ? '#00FF00' : 'rgba(180, 180, 180, 0.8)',
+                  fontFamily: THEME.FONT_MONO,
+                  transition: 'color 0.15s ease'
+                }}
+              >
+                {lesson.duration}mins
+              </span>
+            </>
+          )}
         </div>
       </div>
 

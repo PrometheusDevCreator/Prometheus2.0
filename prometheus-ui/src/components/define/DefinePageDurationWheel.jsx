@@ -63,8 +63,8 @@ function DefinePageDurationWheel({
   const [isDragging, setIsDragging] = useState(false)
   const [rotation, setRotation] = useState(0) // Local rotation state for smooth dragging
   const wheelRef = useRef(null)
-  const startAngle = useRef(0)
-  const startRotation = useRef(0)
+  const prevAngle = useRef(0) // Track previous angle for incremental rotation
+  const lastValue = useRef(null) // Track last value to avoid unnecessary onChange calls
 
   // Get current category config and value
   const categoryConfig = DURATION_CATEGORIES[selectedCategory]
@@ -81,8 +81,9 @@ function DefinePageDurationWheel({
   useEffect(() => {
     if (!isDragging) {
       setRotation(getRotation())
+      lastValue.current = currentValue // Keep lastValue in sync
     }
-  }, [selectedCategory, values, isDragging])
+  }, [selectedCategory, values, isDragging, currentValue])
 
   // Calculate angle from center of wheel
   const getAngleFromCenter = useCallback((clientX, clientY) => {
@@ -95,26 +96,28 @@ function DefinePageDurationWheel({
     return angle * (180 / Math.PI)
   }, [])
 
-  // Handle rotational drag - cumulative approach (same as CONTENT wheel)
+  // Handle rotational drag - INCREMENTAL approach (fixes 6 o'clock crossover)
   const handleMouseDown = useCallback((e) => {
     e.preventDefault()
     setIsDragging(true)
-    startAngle.current = getAngleFromCenter(e.clientX, e.clientY)
-    startRotation.current = rotation
-  }, [rotation, getAngleFromCenter])
+    prevAngle.current = getAngleFromCenter(e.clientX, e.clientY)
+  }, [getAngleFromCenter])
 
   const handleMouseMove = useCallback((e) => {
     if (!isDragging) return
 
     const currentAngle = getAngleFromCenter(e.clientX, e.clientY)
-    let deltaAngle = currentAngle - startAngle.current
+    let deltaAngle = currentAngle - prevAngle.current
 
     // Normalize delta to -180 to 180 range (handles wrap-around at 6 o'clock)
     if (deltaAngle > 180) deltaAngle -= 360
     if (deltaAngle < -180) deltaAngle += 360
 
-    // Apply delta from original start position (cumulative)
-    let newRotation = startRotation.current + deltaAngle
+    // Update previous angle for next move
+    prevAngle.current = currentAngle
+
+    // Apply delta incrementally to current rotation
+    let newRotation = rotation + deltaAngle
 
     // Clamp to valid range (0 to 330 degrees)
     newRotation = Math.max(0, Math.min(330, newRotation))
@@ -122,12 +125,13 @@ function DefinePageDurationWheel({
     // Update local rotation state for smooth visual feedback
     setRotation(newRotation)
 
-    // Convert to value and notify
+    // Convert to value and only notify if changed (use ref to avoid dependency on currentValue)
     const newValue = rotationToValue(newRotation, categoryConfig.min, categoryConfig.max)
-    if (newValue !== currentValue) {
+    if (newValue !== lastValue.current) {
+      lastValue.current = newValue
       onChange?.(selectedCategory, newValue)
     }
-  }, [isDragging, currentValue, selectedCategory, categoryConfig, onChange, getAngleFromCenter])
+  }, [isDragging, rotation, selectedCategory, categoryConfig, onChange, getAngleFromCenter])
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false)
@@ -275,23 +279,46 @@ function DefinePageDurationWheel({
 
         </svg>
 
-        {/* Draggable handle (orange circle) */}
+        {/* Draggable handle (orange circle with metallic bezel) */}
         <div
           style={{
             position: 'absolute',
-            left: handleX - 12,
-            top: handleY - 12,
-            width: 24,
-            height: 24,
+            left: handleX - 14,
+            top: handleY - 14,
+            width: 28,
+            height: 28,
             borderRadius: '50%',
-            background: THEME.AMBER,
-            boxShadow: isActive
-              ? `0 0 20px ${THEME.AMBER}, 0 0 40px ${THEME.AMBER}60`
-              : `0 0 10px ${THEME.AMBER}80`,
+            // Metallic silver bezel - 3D textured effect
+            background: `
+              radial-gradient(ellipse at 30% 30%, #ffffff 0%, #c0c0c0 25%, #808080 50%, #606060 75%, #404040 100%)
+            `,
+            boxShadow: `
+              inset 0 2px 4px rgba(255, 255, 255, 0.4),
+              inset 0 -2px 4px rgba(0, 0, 0, 0.3),
+              0 2px 6px rgba(0, 0, 0, 0.5),
+              ${isActive ? `0 0 20px ${THEME.AMBER}, 0 0 40px ${THEME.AMBER}60` : `0 0 10px ${THEME.AMBER}80`}
+            `,
             cursor: 'grab',
-            transition: isDragging ? 'none' : 'box-shadow 0.2s ease'
+            transition: isDragging ? 'none' : 'box-shadow 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}
-        />
+        >
+          {/* Inner gradient button */}
+          <div
+            style={{
+              width: 20,
+              height: 20,
+              borderRadius: '50%',
+              background: `linear-gradient(135deg, ${THEME.AMBER} 0%, ${THEME.AMBER_DARK} 50%, ${THEME.AMBER_DARKEST} 100%)`,
+              boxShadow: `
+                inset 0 2px 3px rgba(255, 200, 100, 0.5),
+                inset 0 -2px 3px rgba(0, 0, 0, 0.3)
+              `
+            }}
+          />
+        </div>
 
         {/* Inner circle with value */}
         <div

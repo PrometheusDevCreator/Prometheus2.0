@@ -56,7 +56,7 @@ const BLOOMS_CATEGORIES = [
 // Flat list of all Bloom's verbs for validation
 const BLOOMS_VERBS = BLOOMS_CATEGORIES.flatMap(cat => cat.verbs)
 
-function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, courseState, onSaveCountIncrement, exitPending }) {
+function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, courseState, onSaveCountIncrement, exitPending, timetableData, lessonEditorOpen, onLessonEditorToggle }) {
   const [isPKEActive, setIsPKEActive] = useState(false)
   const [focusedField, setFocusedField] = useState(null)
   const [hoveredField, setHoveredField] = useState(null)
@@ -507,7 +507,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
           {/* Title - nudged up 5px */}
           <div style={{ marginTop: '-5px' }}>
             <label style={labelStyle(isFieldActive('title'))}>Title</label>
-            <GradientBorder isActive={isFieldActive('title')}>
+            <GradientBorder isActive={isFieldActive('title')} hasValue={formData.title?.length > 0}>
               <input
                 type="text"
                 value={formData.title}
@@ -525,7 +525,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
           {/* Thematic */}
           <div>
             <label style={labelStyle(isFieldActive('thematic'))}>Thematic</label>
-            <GradientBorder isActive={isFieldActive('thematic')}>
+            <GradientBorder isActive={isFieldActive('thematic')} hasValue={formData.thematic?.length > 0}>
               <select
                 value={formData.thematic}
                 onChange={(e) => updateField('thematic', e.target.value)}
@@ -546,7 +546,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
           {/* Code */}
           <div>
             <label style={labelStyle(isFieldActive('code'))}>Code</label>
-            <GradientBorder isActive={isFieldActive('code')}>
+            <GradientBorder isActive={isFieldActive('code')} hasValue={formData.code?.length > 0}>
               <input
                 type="text"
                 value={formData.code}
@@ -674,7 +674,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
 
           {/* Description textarea - aligned with Title input in left column */}
           <div style={{ marginTop: '25px', width: '100%' }}>
-            <GradientBorder isActive={isFieldActive('description')}>
+            <GradientBorder isActive={isFieldActive('description')} hasValue={formData.description?.length > 0}>
               <textarea
                 value={formData.description}
                 onChange={(e) => updateField('description', e.target.value)}
@@ -685,7 +685,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                 style={{
                   ...inputStyle,
                   minHeight: '120px',
-                  resize: 'vertical'
+                  resize: 'none'
                 }}
                 placeholder="Enter course description..."
               />
@@ -800,6 +800,7 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
                       isActive={isFieldActive(`lo-${idx}`)}
                       pulseRed={isPulsing}
                       isInvalid={isValid === false}
+                      hasValue={lo?.length > 0}
                     >
                       <input
                         ref={el => loInputRefs.current[idx] = el}
@@ -1004,6 +1005,12 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
         hasUnsavedChanges={hasUnsavedChanges}
         // Exit workflow
         exitPending={exitPending}
+        // Status Circle props
+        courseData={courseData}
+        timetableData={timetableData}
+        // Lesson Editor props
+        lessonEditorOpen={lessonEditorOpen}
+        onLessonEditorToggle={onLessonEditorToggle}
       />
     </div>
   )

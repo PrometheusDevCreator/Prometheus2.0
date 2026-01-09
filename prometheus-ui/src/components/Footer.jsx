@@ -19,9 +19,6 @@ import PKEInterface from './PKEInterface'
 import silverButtonImage from '../assets/Silver_Button.png'
 import ConfirmableButton from './shared/ConfirmableButton'
 
-// Navigation order for < > arrows
-const NAV_ORDER = ['navigate', 'define', 'design', 'build', 'format', 'generate']
-
 function Footer({
   currentSection = 'define',
   onNavigate,
@@ -43,12 +40,21 @@ function Footer({
   onDeleteKeep = null,
   onDeleteConfirm = null,
   onDeleteCancel = null,
+  // Item 13: Lesson delete warning props
+  lessonDeleteWarning = null,
+  onLessonDeleteConfirm = null,
   // PKE visibility (hidden on Navigation Hub)
   hidePKE = false,
   // Navigation arrow props (grey until SAVE pressed, revert on changes)
   hasUnsavedChanges = true,
   // Exit workflow - when true, SAVE button pulses green
-  exitPending = false
+  exitPending = false,
+  // Status Circle props (for duration/slides tracking)
+  courseData = {},
+  timetableData = { lessons: [] },
+  // Lesson Editor props
+  lessonEditorOpen = false,
+  onLessonEditorToggle
 }) {
   // Realtime clock state
   const [currentTime, setCurrentTime] = useState(new Date())
@@ -93,24 +99,6 @@ function Footer({
     onNavigate?.(section)
   }, [onNavigate])
 
-  // Navigation arrow handlers (prev/next page) - permanently active
-  const [prevHovered, setPrevHovered] = useState(false)
-  const [nextHovered, setNextHovered] = useState(false)
-
-  const handlePrevPage = useCallback(() => {
-    const currentIndex = NAV_ORDER.indexOf(currentSection)
-    if (currentIndex > 0) {
-      onNavigate?.(NAV_ORDER[currentIndex - 1])
-    }
-  }, [currentSection, onNavigate])
-
-  const handleNextPage = useCallback(() => {
-    const currentIndex = NAV_ORDER.indexOf(currentSection)
-    if (currentIndex < NAV_ORDER.length - 1) {
-      onNavigate?.(NAV_ORDER[currentIndex + 1])
-    }
-  }, [currentSection, onNavigate])
-
   return (
     <div
       style={{
@@ -127,12 +115,19 @@ function Footer({
       <div style={{
         position: 'absolute',
         left: '8.99vw',
-        bottom: '9.47vh',
+        bottom: '10vh',           /* Raised 5px to align with STATUS circle top */
         transform: 'translate(-50%, 50%)',
         zIndex: 100
       }}>
         <AnalyticsRing />
       </div>
+
+      {/* Lesson Editor Button - positioned to right of ANALYTICS */}
+      <LessonEditorButton
+        isActive={currentSection !== 'navigate'}
+        onClick={() => onLessonEditorToggle?.(!lessonEditorOpen)}
+        isOpen={lessonEditorOpen}
+      />
 
       {/* Controls Row - positioned so PKE bottom is at Y=710 (just above line at Y=715) */}
       <div
@@ -143,7 +138,8 @@ function Footer({
         }}
       >
 
-        {/* Center Section: < + > and PKE Interface - hidden on Navigation Hub */}
+        {/* Center Section: PKE Interface only - hidden on Navigation Hub */}
+        {/* Navigation arrows and Lesson Editor moved to Header */}
         {!hidePKE && (
           <div
             style={{
@@ -156,37 +152,6 @@ function Footer({
               alignItems: 'center'
             }}
           >
-            {/* Navigation arrows - permanently active, burnt orange on hover */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1.48vh', marginBottom: '0.46vh', marginLeft: '1.04vw' }}>
-              <button
-                onClick={handlePrevPage}
-                onMouseEnter={() => setPrevHovered(true)}
-                onMouseLeave={() => setPrevHovered(false)}
-                style={{
-                  ...navArrowStyle,
-                  color: prevHovered ? THEME.AMBER : THEME.WHITE,
-                  cursor: 'pointer',
-                  opacity: 1
-                }}
-              >
-                &lt;
-              </button>
-              <span style={{ color: THEME.TEXT_DIM, fontSize: '1.67vh' }}>+</span>
-              <button
-                onClick={handleNextPage}
-                onMouseEnter={() => setNextHovered(true)}
-                onMouseLeave={() => setNextHovered(false)}
-                style={{
-                  ...navArrowStyle,
-                  color: nextHovered ? THEME.AMBER : THEME.WHITE,
-                  cursor: 'pointer',
-                  opacity: 1
-                }}
-              >
-                &gt;
-              </button>
-            </div>
-
             {/* PKE Interface - click inside to activate, click outside to deactivate */}
             <PKEInterface
               isActive={isPKEActive}
@@ -197,6 +162,8 @@ function Footer({
               onKeep={onDeleteKeep}
               onDelete={onDeleteConfirm}
               onCancel={onDeleteCancel}
+              lessonDeleteWarning={lessonDeleteWarning}
+              onLessonDeleteConfirm={onLessonDeleteConfirm}
             />
           </div>
         )}
@@ -301,9 +268,9 @@ function Footer({
             position: 'absolute',
             left: '50%',
             transform: 'translateX(-50%)',
-            color: THEME.AMBER,          /* Burnt Orange #d4730c */
+            color: THEME.GREEN_BRIGHT,   /* Luminous Green #00FF00 */
             fontFamily: "'Rajdhani', 'Candara', sans-serif",
-            fontSize: '1.70vh',          /* 18.4px @ 1080 (+15% from 16px) */
+            fontSize: '1.96vh',          /* 21.2px @ 1080 (+15% from 18.4px) */
             letterSpacing: '0.09vh'      /* 1px @ 1080 */
           }}
         >
@@ -337,7 +304,7 @@ function HomeButton({ onNavigate }) {
       style={{
         position: 'absolute',
         left: '3.70vw',
-        bottom: '9.47vh',
+        bottom: '10vh',           /* Raised 5px to align with STATUS circle top */
         transform: 'translate(-50%, 50%)',
         display: 'flex',
         flexDirection: 'column',
@@ -531,6 +498,59 @@ function AnalyticsRing() {
       >
         ANALYTICS
       </span>
+    </div>
+  )
+}
+
+/**
+ * LessonEditorButton - Button to open Lesson Editor modal
+ *
+ * Positioned to right of ANALYTICS button, same size as DELETE button.
+ * Inactive on Navigation Hub: no fill, dark grey border and text
+ * Active on DEFINE, DESIGN, BUILD: orange fill, white text, green border on hover
+ */
+function LessonEditorButton({ isActive, onClick, isOpen }) {
+  const [isHovered, setIsHovered] = useState(false)
+
+  // Active state: orange fill, white text, green border on hover
+  // Inactive state: no fill, dark grey border and text
+  const buttonStyle = isActive
+    ? {
+        background: THEME.GRADIENT_BUTTON,
+        border: `0.09vh solid ${isHovered ? THEME.GREEN_BRIGHT : THEME.AMBER}`,
+        color: THEME.WHITE,
+        boxShadow: isHovered ? `0 0 8px ${THEME.GREEN_BRIGHT}60` : 'none'
+      }
+    : {
+        background: 'transparent',
+        border: `0.09vh solid ${THEME.TEXT_DIM}`,
+        color: THEME.TEXT_DIM
+      }
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: '14.28vw',  // Position to right of ANALYTICS
+        bottom: '10vh',
+        transform: 'translate(-50%, 50%)',
+        zIndex: 100
+      }}
+    >
+      <button
+        onClick={isActive ? onClick : undefined}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        style={{
+          ...actionButtonStyle,
+          ...buttonStyle,
+          cursor: isActive ? 'pointer' : 'default',
+          opacity: isActive ? 1 : 0.6,
+          transition: 'all 0.2s ease'
+        }}
+      >
+        LESSON EDITOR
+      </button>
     </div>
   )
 }

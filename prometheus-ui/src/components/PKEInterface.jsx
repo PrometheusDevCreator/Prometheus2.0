@@ -25,7 +25,10 @@ function PKEInterface({
   deleteStep = null, // 'confirm' | 'keep-confirm' | 'delete-confirm'
   onKeep = null, // Handler for KEEP selection
   onDelete = null, // Handler for DELETE selection
-  onCancel = null // Handler for cancel (click away)
+  onCancel = null, // Handler for cancel (click away)
+  // Item 13: Lesson delete warning props
+  lessonDeleteWarning = null, // { lessonTitle: string } when showing lesson delete warning
+  onLessonDeleteConfirm = null // Handler for ENTER to confirm lesson delete
 }) {
   const containerRef = useRef(null)
 
@@ -58,6 +61,24 @@ function PKEInterface({
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [isActive, onToggle, onCancel])
+
+  // Item 13: Handle ENTER key for lesson delete confirmation
+  useEffect(() => {
+    if (!lessonDeleteWarning) return
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        onLessonDeleteConfirm?.()
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        onCancel?.()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [lessonDeleteWarning, onLessonDeleteConfirm, onCancel])
   // A7: New gradient style - lightest at center, darker toward ends
   const defaultGradient = 'linear-gradient(to right, #3b3838, #767171 25%, #ffffff 50%, #767171 75%, #3b3838)'
 
@@ -117,25 +138,42 @@ function PKEInterface({
     return null
   }
 
+  // Render lesson delete warning content (Item 13)
+  const renderLessonDeleteContent = () => {
+    if (!lessonDeleteWarning) return null
+    return (
+      <div className="flex items-center justify-center" style={{ padding: '0 1.48vh' }}>
+        <span className="font-prometheus tracking-wide text-center" style={{ color: '#ff3333', fontSize: '1.3vh' }}>
+          WARNING - YOU ARE ABOUT TO DELETE THIS LESSON. PRESS ENTER TO CONTINUE
+        </span>
+      </div>
+    )
+  }
+
   // Check if in delete workflow
   const isDeleteWorkflow = deleteStep !== null && deleteLoNumber !== null
+  const isLessonDeleteMode = lessonDeleteWarning !== null
 
   return (
     <div
       ref={containerRef}
       onClick={handleClick}
-      className={`flex items-center justify-center transition-all duration-300 ${isActive ? 'pke-glow-pulse' : ''}`}
+      className={`flex items-center justify-center transition-all duration-300 ${isActive && !isLessonDeleteMode ? 'pke-glow-pulse' : ''} ${isLessonDeleteMode ? 'pke-glow-red' : ''}`}
       style={{
         width: 'var(--pke-w)',            /* 908px @ 1920 */
         height: 'var(--pke-h)',           /* 76px @ 1080 */
         borderRadius: 'var(--pke-r)',     /* 38px @ 1080 - half height for lozenge */
         padding: '0.09vh',                /* 1px @ 1080 */
-        background: isActive
-          ? '#FF6600' // Burnt orange when active
-          : defaultGradient, // A7: New gradient when inactive
-        boxShadow: isActive
-          ? '0 0 1.11vh 0.37vh rgba(255, 102, 0, 0.6)' /* 12px 4px @ 1080 */
-          : 'none',
+        background: isLessonDeleteMode
+          ? '#ff3333' // Red when lesson delete warning
+          : isActive
+            ? '#FF6600' // Burnt orange when active
+            : defaultGradient, // A7: New gradient when inactive
+        boxShadow: isLessonDeleteMode
+          ? '0 0 1.67vh 0.56vh rgba(255, 51, 51, 0.8)' /* Red glow for lesson delete */
+          : isActive
+            ? '0 0 1.11vh 0.37vh rgba(255, 102, 0, 0.6)' /* 12px 4px @ 1080 */
+            : 'none',
         marginLeft: '1.82vw',             /* 35px @ 1920 */
         cursor: isActive ? 'default' : 'pointer'
       }}
@@ -147,7 +185,9 @@ function PKEInterface({
           borderRadius: 'calc(var(--pke-r) - 0.09vh)'  /* 37px @ 1080 - slightly smaller for inner content */
         }}
       >
-        {isDeleteWorkflow ? (
+        {isLessonDeleteMode ? (
+          renderLessonDeleteContent()
+        ) : isDeleteWorkflow ? (
           renderDeleteContent()
         ) : isActive ? (
           <span className="font-prometheus tracking-wide text-center" style={{ color: '#BF9000', fontSize: '1.39vh', padding: '0 1.48vh' }}>
@@ -172,6 +212,17 @@ function PKEInterface({
         }
         .pke-glow-pulse {
           animation: pke-glow-pulse 3s ease-in-out infinite;
+        }
+        @keyframes pke-glow-red-pulse {
+          0%, 100% {
+            box-shadow: 0 0 1.67vh 0.56vh rgba(255, 51, 51, 0.7);
+          }
+          50% {
+            box-shadow: 0 0 2.2vh 0.74vh rgba(255, 51, 51, 1);
+          }
+        }
+        .pke-glow-red {
+          animation: pke-glow-red-pulse 1.5s ease-in-out infinite;
         }
       `}</style>
     </div>

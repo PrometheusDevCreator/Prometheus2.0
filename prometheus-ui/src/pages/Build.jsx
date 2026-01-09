@@ -28,7 +28,7 @@ import BuildProgressBar from '../components/build/BuildProgressBar'
 /**
  * Build page inner content (must be inside DesignProvider)
  */
-function BuildContent({ onNavigate, user, courseState, exitPending }) {
+function BuildContent({ onNavigate, user, courseState, exitPending, courseData, timetableData, lessonEditorOpen, onLessonEditorToggle }) {
   const { lessons, buildSelection, calculateLessonProgress } = useDesign()
 
   const handleNavigate = useCallback((section) => {
@@ -95,6 +95,10 @@ function BuildContent({ onNavigate, user, courseState, exitPending }) {
         courseState={courseState || { startDate: null, saveCount: 0 }}
         progress={progress}
         exitPending={exitPending}
+        courseData={courseData}
+        timetableData={timetableData}
+        lessonEditorOpen={lessonEditorOpen}
+        onLessonEditorToggle={onLessonEditorToggle}
       />
     </div>
   )
@@ -103,7 +107,7 @@ function BuildContent({ onNavigate, user, courseState, exitPending }) {
 /**
  * Build Page - Wrapped with DesignProvider for shared state
  */
-function Build({ onNavigate, courseData, setCourseData, timetableData, setTimetableData, courseLoaded, user, courseState, exitPending }) {
+function Build({ onNavigate, courseData, setCourseData, timetableData, setTimetableData, courseLoaded, user, courseState, exitPending, lessonEditorOpen, onLessonEditorToggle }) {
   return (
     <DesignProvider
       courseData={courseData}
@@ -116,6 +120,10 @@ function Build({ onNavigate, courseData, setCourseData, timetableData, setTimeta
         user={user}
         courseState={courseState}
         exitPending={exitPending}
+        courseData={courseData}
+        timetableData={timetableData}
+        lessonEditorOpen={lessonEditorOpen}
+        onLessonEditorToggle={onLessonEditorToggle}
       />
     </DesignProvider>
   )

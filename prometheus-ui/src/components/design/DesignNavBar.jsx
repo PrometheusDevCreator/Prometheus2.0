@@ -102,7 +102,7 @@ function DesignNavBar() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
           <span
             style={{
-              fontSize: '1.7vh',
+              fontSize: '2.04vh',  // 20% increase from 1.7vh
               letterSpacing: '0.1vw',
               color: THEME.TEXT_PRIMARY,
               fontFamily: THEME.FONT_PRIMARY,
@@ -113,7 +113,7 @@ function DesignNavBar() {
           </span>
           <span
             style={{
-              fontSize: '1.7vh',
+              fontSize: '2.04vh',  // 20% increase from 1.7vh
               letterSpacing: '0.1vw',
               color: THEME.AMBER,
               fontFamily: THEME.FONT_PRIMARY,

@@ -48,6 +48,7 @@ import Generate from './pages/Generate'
 // Components
 import Header from './components/Header'
 import DebugGridController from './components/DevTools'
+import LessonEditorModal from './components/LessonEditorModal'
 
 // REFACTOR Phase 1: useScaleToFit hook removed
 // Original hook calculated scale = Math.min(vw/1920, vh/1080)
@@ -120,6 +121,72 @@ function App() {
   // First click on logo: exitPending = true (SAVE button pulses green)
   // Second click: returns to login page, resets all state
   const [exitPending, setExitPending] = useState(false)
+
+  // Lesson Editor modal state (global - accessible from all pages)
+  const [lessonEditorOpen, setLessonEditorOpen] = useState(false)
+  const [editingLessonId, setEditingLessonId] = useState(null)
+
+  // Track currently selected lesson from Design page (for pre-populating Lesson Editor)
+  const [selectedLessonId, setSelectedLessonId] = useState(null)
+
+  // Get the currently selected/editing lesson for the modal
+  const selectedLessonForEditor = editingLessonId
+    ? timetableData.lessons.find(l => l.id === editingLessonId)
+    : null
+
+  // Handle opening Lesson Editor - with optional lessonId parameter
+  const handleLessonEditorToggle = useCallback((open, lessonId = null) => {
+    if (open) {
+      // If a lesson ID is provided, set it for editing
+      if (lessonId) {
+        setEditingLessonId(lessonId)
+      }
+      // Otherwise keep the current editingLessonId (might be set from elsewhere)
+    } else {
+      setEditingLessonId(null) // Clear editing lesson when closing
+    }
+    setLessonEditorOpen(open)
+  }, [])
+
+  // Handle opening Lesson Editor with a specific lesson
+  const handleEditLessonInModal = useCallback((lessonId) => {
+    setEditingLessonId(lessonId)
+    setLessonEditorOpen(true)
+  }, [])
+
+  // Handle lesson creation from Lesson Editor modal
+  const handleCreateLesson = useCallback((lessonData) => {
+    const newLesson = {
+      id: `lesson-${Date.now()}`,
+      title: lessonData.title || 'NEW LESSON',
+      type: lessonData.type || 'instructor-led',
+      duration: lessonData.duration || 60,
+      startTime: lessonData.startTime || null,
+      day: lessonData.day || null,
+      week: lessonData.week || 1,
+      module: lessonData.module || 1,
+      topics: lessonData.topics || [],
+      learningObjectives: lessonData.learningObjectives || [],
+      scheduled: lessonData.scheduled || false,
+      saved: false,
+      slides: []
+    }
+    setTimetableData(prev => ({
+      ...prev,
+      lessons: [...prev.lessons, newLesson]
+    }))
+    return newLesson.id
+  }, [])
+
+  // Handle lesson update from Lesson Editor modal
+  const handleUpdateLesson = useCallback((lessonId, updates) => {
+    setTimetableData(prev => ({
+      ...prev,
+      lessons: prev.lessons.map(lesson =>
+        lesson.id === lessonId ? { ...lesson, ...updates } : lesson
+      )
+    }))
+  }, [])
 
   // Handle save count increment (updates status in Footer)
   const handleSaveCountIncrement = useCallback(() => {
@@ -356,6 +423,9 @@ function App() {
             courseState={courseState}
             onSaveCountIncrement={handleSaveCountIncrement}
             exitPending={exitPending}
+            timetableData={timetableData}
+            lessonEditorOpen={lessonEditorOpen}
+            onLessonEditorToggle={setLessonEditorOpen}
           />
         )
       case 'design':
@@ -371,6 +441,9 @@ function App() {
             user={userData}
             courseState={courseState}
             exitPending={exitPending}
+            lessonEditorOpen={lessonEditorOpen}
+            onLessonEditorToggle={handleLessonEditorToggle}
+            onSelectedLessonChange={setSelectedLessonId}
           />
         )
       case 'build':
@@ -385,26 +458,36 @@ function App() {
             user={userData}
             courseState={courseState}
             exitPending={exitPending}
+            lessonEditorOpen={lessonEditorOpen}
+            onLessonEditorToggle={setLessonEditorOpen}
           />
         )
       case 'format':
         return (
           <Format
             onNavigate={handleNavigate}
+            courseData={courseData}
+            timetableData={timetableData}
             courseLoaded={courseLoaded}
             user={userData}
             courseState={courseState}
             exitPending={exitPending}
+            lessonEditorOpen={lessonEditorOpen}
+            onLessonEditorToggle={setLessonEditorOpen}
           />
         )
       case 'generate':
         return (
           <Generate
             onNavigate={handleNavigate}
+            courseData={courseData}
+            timetableData={timetableData}
             courseLoaded={courseLoaded}
             user={userData}
             courseState={courseState}
             exitPending={exitPending}
+            lessonEditorOpen={lessonEditorOpen}
+            onLessonEditorToggle={setLessonEditorOpen}
           />
         )
       default:
@@ -450,11 +533,11 @@ function App() {
           })
         }}
       >
-        {/* Header - includes horizontal line and page title */}
+        {/* Header - includes horizontal line, page title, and Lesson Editor lozenge */}
         <Header
           pageTitle={
             currentPage === 'define' ? '' :  /* COURSE INFORMATION removed per founder request */
-            currentPage === 'design' ? 'COURSE PLANNER' :
+            currentPage === 'design' ? '' :  /* COURSE PLANNER removed - Lesson Editor in header */
             currentPage === 'build' ? '' :  /* Removed - burnt orange label only */
             currentPage === 'format' ? '' :  /* Removed - burnt orange label only */
             currentPage === 'generate' ? 'GENERATE' :
@@ -472,6 +555,11 @@ function App() {
           courseData={courseData}
           onExitClick={handleExitClick}
           exitPending={exitPending}
+          lessonEditorOpen={lessonEditorOpen}
+          onLessonEditorToggle={handleLessonEditorToggle}
+          selectedLessonId={selectedLessonId}
+          currentSection={currentPage}
+          onNavigate={handleNavigate}
         />
 
         {/* Page Content */}
@@ -481,6 +569,20 @@ function App() {
 
         {/* Design Sub-navigation moved to internal DesignNavBar component */}
       </div>
+
+      {/* Lesson Editor Modal - renders on top of all content when open */}
+      {lessonEditorOpen && (
+        <LessonEditorModal
+          isOpen={lessonEditorOpen}
+          onClose={() => handleLessonEditorToggle(false)}
+          onCreateLesson={handleCreateLesson}
+          onUpdateLesson={handleUpdateLesson}
+          courseData={courseData}
+          timetableData={timetableData}
+          selectedLesson={selectedLessonForEditor}
+        />
+      )}
+
       <DebugGridController isVisible={showDebugGrid} onEscapeWhenNoPins={handleEscapeNavigation} />
     </div>
   )

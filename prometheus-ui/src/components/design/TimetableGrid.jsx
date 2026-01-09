@@ -26,7 +26,7 @@ import LessonBlock from './LessonBlock'
 const DAY_LABEL_WIDTH = 35      // Width of day number column
 const DAY_HEIGHT = 60           // Height of each day row (+20% from 50)
 const HEADER_HEIGHT = 25        // Height of time header
-const NUM_DAYS = 5              // Number of day rows to show
+const DEFAULT_NUM_DAYS = 5      // Default number of day rows (used when no duration set)
 const ROW_GAP = 8               // Gap between day rows
 const ROW_BORDER_RADIUS = 30    // Pill-shaped rounded corners
 const DAY_BAR_WIDTH = 'calc(75% - 150px)' // Day bar width (reduced by 75px from each side)
@@ -42,7 +42,8 @@ function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
     scheduleLesson,
     selection,
     selectedLesson,
-    overviewBlocks
+    overviewBlocks,
+    courseData        // For duration-based day count
   } = useDesign()
 
   // Track which day has a hovered lesson
@@ -81,11 +82,28 @@ function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
     clearSelection()
   }, [clearSelection])
 
-  // Always show 5 day rows per mockup spec
+  // Calculate number of days based on courseData duration setting
+  const numDays = useMemo(() => {
+    // Use days from courseData if set
+    if (courseData?.days && courseData.days > 0) {
+      return courseData.days
+    }
+    // Derive from weeks (5 days per week)
+    if (courseData?.weeks && courseData.weeks > 0) {
+      return courseData.weeks * 5
+    }
+    // Derive from hours (8-hour day)
+    if (courseData?.hours && courseData.hours > 0) {
+      return Math.ceil(courseData.hours / 8)
+    }
+    // Default to 5 days
+    return DEFAULT_NUM_DAYS
+  }, [courseData?.days, courseData?.weeks, courseData?.hours])
+
+  // Generate day rows based on calculated duration
   const daysToShow = useMemo(() => {
-    // Always show 5 days in week view format per mockup
-    return Array.from({ length: NUM_DAYS }, (_, i) => i + 1)
-  }, [])
+    return Array.from({ length: numDays }, (_, i) => i + 1)
+  }, [numDays])
 
   // Get OVERVIEW blocks that relate to a specific day
   // Matches DAY blocks with matching title (e.g., "Day 1" or just "1")
