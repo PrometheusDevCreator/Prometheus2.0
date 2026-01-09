@@ -1,0 +1,176 @@
+# Phase 1: Foundation - Test Log
+
+**Date:** 2025-01-10
+**Branch:** `feature/design-calm-wheel`
+**Phase:** 1 - Foundation (Canonical Store Consolidation)
+
+---
+
+## Test Summary
+
+| Test Type | Count | Status |
+|-----------|-------|--------|
+| Minor Tests (MTs) - Hierarchy Numbering | 19 | PASS |
+| Minor Tests (MTs) - Data Relationships | 28 | PASS |
+| Build Verification | 1 | PASS |
+| **Total** | **48** | **ALL PASS** |
+
+---
+
+## Minor Tests (MTs) - Hierarchy Numbering
+
+All 19 tests in `src/contexts/__tests__/hierarchyNumbering.test.js` pass:
+
+### computeTopicSerial
+- linked topic returns {loOrder}.{topicOrder}
+- unlinked topic returns x.{order}
+- null topic returns ?.?
+- topic with missing LO returns ?.{order}
+- serial is deterministic based on position not stored order
+
+### computeSubtopicSerial
+- subtopic of linked topic returns {loOrder}.{topicOrder}.{subtopicOrder}
+- subtopic of unlinked topic returns x.{topicOrder}.{subtopicOrder}
+- null subtopic returns ?.?.?
+- subtopic with missing parent topic returns ?.?.{order}
+
+### recalculateCanonicalGroupOrders
+- recalculates orders for linked topics in LO
+- recalculates orders for unlinked topics
+- handles empty group gracefully
+
+### Link/Unlink Scenarios
+- linking topic to LO updates serial correctly
+- unlinking topic from LO updates serial correctly
+- moving topic between LOs updates serials for both groups
+
+### Edge Cases
+- empty topics map returns valid serial for unlinked topic
+- single topic in LO gets serial 1
+- topics with same order are handled deterministically
+- deeply nested subtopic serial is correct
+
+---
+
+## Minor Tests (MTs) - Data Relationships
+
+All 28 tests in `src/test/data-relationships.test.js` pass:
+
+### Course Data Structure
+- should create valid default course data
+- should have valid duration units
+- should have valid level values
+- should handle module titles array correctly
+- should handle learning objectives array correctly
+
+### Timetable Data Structure
+- should create valid default timetable data
+- should have valid default lesson
+- should support multiple lesson types
+
+### Lesson Data Integrity
+- should generate unique lesson IDs
+- should preserve lesson data on update
+- should handle empty topics array
+- should handle topics with subtopics
+
+### Course State Management
+- should have null start date initially
+- should have zero save count initially
+- should format date correctly on first save
+- should increment save count
+
+### Learning Objectives Relationships
+- should link topics to learning objectives
+- should handle unlinked topics
+- should compute topic serial for linked topic
+- should compute topic serial for unlinked topic
+
+### System Clear Functionality
+- should reset course data to defaults
+- should reset timetable data to defaults
+- should reset course state to defaults
+
+### Navigation State
+- should have valid page identifiers
+- should default to navigate page after login
+- should map section IDs to pages correctly
+
+### Exit Workflow State
+- should track exit pending state
+- should reset all state on exit
+
+---
+
+## Build Verification
+
+```
+vite v7.2.6 building client environment for production...
+✓ 92 modules transformed.
+✓ built in 47.17s
+
+Output:
+- index.html: 0.47 kB
+- index.css: 27.14 kB (gzip: 6.18 kB)
+- index.js: 465.23 kB (gzip: 128.46 kB)
+```
+
+**Status:** BUILD SUCCESSFUL
+
+---
+
+## Phase 1 Changes Verified
+
+### Files Created
+1. `prometheus-ui/src/utils/canonicalAdapter.js` - Adapter functions for canonical store
+2. `docs/COURSE_DATA_CONTRACT.md` - Canonical data model contract
+3. `docs/briefs/DESIGN_CALM_WHEEL_SURVEY.md` - Survey report
+
+### Files Modified
+1. `prometheus-ui/src/contexts/DesignContext.jsx` - Canonical store integration
+
+### Key Changes
+1. **Canonical adapter** with serial computation, derivation, and write operations
+2. **Feature flags** for controlled rollout (`CANONICAL_FLAGS`)
+3. **Derived scalarData** computed from canonical store
+4. **Write operations** now write to canonical first, with legacy fallback
+5. **Context value** exposes `effectiveScalarData` for reads
+
+---
+
+## Transition Status
+
+| Flag | Value | Meaning |
+|------|-------|---------|
+| `WRITE_TO_CANONICAL` | `true` | All writes go to canonical |
+| `READ_FROM_CANONICAL` | `true` | Prefer canonical reads |
+| `DERIVE_LEGACY` | `true` | Derive legacy from canonical |
+| `LEGACY_STORE_REMOVED` | `false` | Legacy store still present |
+
+---
+
+## Pending Implementation Tests (ITs)
+
+The following ITs are recommended before Phase 2:
+
+1. **IT-1:** Add topic via LessonEditor → appears in Scalar with correct serial
+2. **IT-2:** SHIFT+click link → topic moves between LOs correctly
+3. **IT-3:** Navigate Define → Design → Build → data persists
+4. **IT-4:** Add/delete LO → renumbering cascades correctly
+
+---
+
+## Approval Request
+
+Phase 1 Foundation is complete with:
+- All MTs passing (47/47)
+- Build successful
+- Canonical adapter functional
+- Legacy compatibility maintained
+
+**Ready for Phase 2 approval.**
+
+---
+
+*Test log generated by Claude Code (CC)*
+*Report date: 2025-01-10*

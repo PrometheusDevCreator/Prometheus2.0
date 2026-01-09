@@ -20,6 +20,22 @@
 
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react'
 
+// Canonical data adapter - Phase 1 Foundation
+import {
+  CANONICAL_FLAGS,
+  canonicalLog,
+  deriveScalarDataFromCanonical,
+  migrateToCanonical,
+  canonicalAddLO,
+  canonicalAddTopic,
+  canonicalAddSubtopic,
+  canonicalUpdate,
+  canonicalDelete,
+  canonicalMoveTopic,
+  computeTopicSerial as adapterComputeTopicSerial,
+  computeSubtopicSerial as adapterComputeSubtopicSerial
+} from '../utils/canonicalAdapter'
+
 // ============================================
 // DEBUG INSTRUMENTATION - Hierarchy Linking & Numbering
 // ============================================
@@ -440,6 +456,48 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     }
   }, []) // Run once on mount
 
+  // --------------------------------------------
+  // PHASE 1: DERIVE LEGACY scalarData FROM CANONICAL
+  // This provides backward compatibility during transition
+  // When CANONICAL_FLAGS.DERIVE_LEGACY is true, scalarData is computed
+  // --------------------------------------------
+  const derivedScalarData = useMemo(() => {
+    if (!CANONICAL_FLAGS.DERIVE_LEGACY) return null
+
+    // Only derive if canonical has data
+    if (Object.keys(canonicalData.los).length === 0 &&
+        Object.keys(canonicalData.topics).length === 0) {
+      return null
+    }
+
+    // Get modules from existing scalarData (modules are not in canonical yet)
+    const modules = scalarData.modules.map(m => ({
+      id: m.id,
+      name: m.name,
+      order: m.order,
+      expanded: m.expanded
+    }))
+
+    const derived = deriveScalarDataFromCanonical(
+      canonicalData,
+      modules,
+      scalarData.performanceCriteria || []
+    )
+
+    if (derived) {
+      canonicalLog('DERIVED_SCALAR_DATA', {
+        moduleCount: derived.modules?.length,
+        loCount: Object.keys(canonicalData.los).length,
+        topicCount: Object.keys(canonicalData.topics).length
+      })
+    }
+
+    return derived
+  }, [canonicalData, scalarData.modules, scalarData.performanceCriteria])
+
+  // Use derived data if available, otherwise fall back to legacy
+  const effectiveScalarData = derivedScalarData || scalarData
+
   // Computed: Get topic serial from canonical store
   const getCanonicalTopicSerial = useCallback((topicId) => {
     const topic = canonicalData.topics[topicId]
@@ -760,75 +818,77 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       return { ...prev, topics: newTopics }
     })
 
-    // Also update legacy scalarData for backward compatibility
-    setScalarData(prev => {
-      const newData = { ...prev }
-      let topicToMove = null
-      let sourceLoId = null
-      let wasUnlinked = false
-      let sourceLoOrder = null
+    // Legacy write - kept for backward compatibility during transition
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
+        const newData = { ...prev }
+        let topicToMove = null
+        let sourceLoId = null
+        let wasUnlinked = false
+        let sourceLoOrder = null
 
-      // First, find and remove the topic from its current location
-      // Check in unlinked topics
-      const unlinkedIdx = (prev.unlinkedTopics || []).findIndex(t => t.id === topicId)
-      if (unlinkedIdx !== -1) {
-        topicToMove = { ...(prev.unlinkedTopics || [])[unlinkedIdx] }
-        newData.unlinkedTopics = (prev.unlinkedTopics || []).filter(t => t.id !== topicId)
-        wasUnlinked = true
-      }
+        // First, find and remove the topic from its current location
+        // Check in unlinked topics
+        const unlinkedIdx = (prev.unlinkedTopics || []).findIndex(t => t.id === topicId)
+        if (unlinkedIdx !== -1) {
+          topicToMove = { ...(prev.unlinkedTopics || [])[unlinkedIdx] }
+          newData.unlinkedTopics = (prev.unlinkedTopics || []).filter(t => t.id !== topicId)
+          wasUnlinked = true
+        }
 
-      // Check in LO topics
-      if (!topicToMove) {
-        newData.modules = prev.modules.map(module => ({
-          ...module,
-          learningObjectives: module.learningObjectives.map(lo => {
-            const topicIdx = (lo.topics || []).findIndex(t => t.id === topicId)
-            if (topicIdx !== -1) {
-              topicToMove = { ...lo.topics[topicIdx] }
-              sourceLoId = lo.id
-              sourceLoOrder = lo.order
+        // Check in LO topics
+        if (!topicToMove) {
+          newData.modules = prev.modules.map(module => ({
+            ...module,
+            learningObjectives: module.learningObjectives.map(lo => {
+              const topicIdx = (lo.topics || []).findIndex(t => t.id === topicId)
+              if (topicIdx !== -1) {
+                topicToMove = { ...lo.topics[topicIdx] }
+                sourceLoId = lo.id
+                sourceLoOrder = lo.order
+                return {
+                  ...lo,
+                  topics: lo.topics.filter(t => t.id !== topicId).map((t, idx) => ({ ...t, order: idx + 1 }))
+                }
+              }
+              return lo
+            })
+          }))
+        }
+
+        if (!topicToMove) {
+          return prev
+        }
+
+        // Determine action: if currently linked to targetLoId, unlink; otherwise link to targetLoId
+        if (sourceLoId === targetLoId) {
+          // Currently linked to this LO - unlink (move to unlinkedTopics)
+          topicToMove.loId = null
+          topicToMove.order = (newData.unlinkedTopics || []).length + 1
+          newData.unlinkedTopics = [...(newData.unlinkedTopics || []), topicToMove]
+        } else {
+          // Link to targetLoId
+          topicToMove.loId = targetLoId
+          newData.modules = newData.modules.map(module => ({
+            ...module,
+            learningObjectives: module.learningObjectives.map(lo => {
+              if (lo.id !== targetLoId) return lo
+              const newOrder = (lo.topics || []).length + 1
+              topicToMove.order = newOrder
               return {
                 ...lo,
-                topics: lo.topics.filter(t => t.id !== topicId).map((t, idx) => ({ ...t, order: idx + 1 }))
+                topics: [...(lo.topics || []), topicToMove]
               }
-            }
-            return lo
-          })
-        }))
-      }
+            })
+          }))
+        }
 
-      if (!topicToMove) {
-        return prev
-      }
+        // Recalculate orders for unlinked topics
+        newData.unlinkedTopics = (newData.unlinkedTopics || []).map((t, idx) => ({ ...t, order: idx + 1 }))
 
-      // Determine action: if currently linked to targetLoId, unlink; otherwise link to targetLoId
-      if (sourceLoId === targetLoId) {
-        // Currently linked to this LO - unlink (move to unlinkedTopics)
-        topicToMove.loId = null
-        topicToMove.order = (newData.unlinkedTopics || []).length + 1
-        newData.unlinkedTopics = [...(newData.unlinkedTopics || []), topicToMove]
-      } else {
-        // Link to targetLoId
-        topicToMove.loId = targetLoId
-        newData.modules = newData.modules.map(module => ({
-          ...module,
-          learningObjectives: module.learningObjectives.map(lo => {
-            if (lo.id !== targetLoId) return lo
-            const newOrder = (lo.topics || []).length + 1
-            topicToMove.order = newOrder
-            return {
-              ...lo,
-              topics: [...(lo.topics || []), topicToMove]
-            }
-          })
-        }))
-      }
-
-      // Recalculate orders for unlinked topics
-      newData.unlinkedTopics = (newData.unlinkedTopics || []).map((t, idx) => ({ ...t, order: idx + 1 }))
-
-      return newData
-    })
+        return newData
+      })
+    }
   }, [])
 
   // Unlink topic from its LO (move to unlinked group)
@@ -1737,48 +1797,38 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
   const addLearningObjective = useCallback((moduleId) => {
     const loId = `lo-${Date.now()}`
 
-    setScalarData(prev => {
-      const newData = { ...prev, modules: [...prev.modules] }
-      const moduleIndex = newData.modules.findIndex(m => m.id === moduleId)
-      if (moduleIndex === -1) return prev
+    // PHASE 1: Write to canonical store FIRST (source of truth)
+    setCanonicalData(prev => canonicalAddLO(prev, {
+      id: loId,
+      moduleId: moduleId,
+      verb: 'IDENTIFY',
+      description: 'new learning objective'
+    }))
 
-      const module = { ...newData.modules[moduleIndex] }
-      newData.modules[moduleIndex] = module
-      module.learningObjectives = [...module.learningObjectives]
+    // Legacy write - kept for backward compatibility during transition
+    // Will be removed when CANONICAL_FLAGS.LEGACY_STORE_REMOVED = true
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
+        const newData = { ...prev, modules: [...prev.modules] }
+        const moduleIndex = newData.modules.findIndex(m => m.id === moduleId)
+        if (moduleIndex === -1) return prev
 
-      const newLO = {
-        id: loId,
-        verb: 'IDENTIFY',
-        description: 'new learning objective',
-        order: module.learningObjectives.length + 1,
-        expanded: true,
-        topics: []
-      }
-      module.learningObjectives.push(newLO)
-      return newData
-    })
+        const module = { ...newData.modules[moduleIndex] }
+        newData.modules[moduleIndex] = module
+        module.learningObjectives = [...module.learningObjectives]
 
-    // Also update canonical store
-    setCanonicalData(prev => {
-      const existingLOs = Object.values(prev.los)
-      const newOrder = existingLOs.length + 1
-
-      debugLog('ADD_LO_CANONICAL', { loId, order: newOrder })
-
-      return {
-        ...prev,
-        los: {
-          ...prev.los,
-          [loId]: {
-            id: loId,
-            moduleId: moduleId,
-            verb: 'IDENTIFY',
-            description: 'new learning objective',
-            order: newOrder
-          }
+        const newLO = {
+          id: loId,
+          verb: 'IDENTIFY',
+          description: 'new learning objective',
+          order: module.learningObjectives.length + 1,
+          expanded: true,
+          topics: []
         }
-      }
-    })
+        module.learningObjectives.push(newLO)
+        return newData
+      })
+    }
   }, [])
 
   // Add new Topic to an LO (or unlinked if loId is null)
@@ -1786,118 +1836,78 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     const topicId = `topic-${Date.now()}`
     debugLog('ADD_TOPIC_START', { loId, topicId, action: 'Creating new topic' })
 
-    // Update canonical store FIRST
-    setCanonicalData(prev => {
-      // Count existing topics in this group
-      const groupTopics = Object.values(prev.topics).filter(t => t.loId === loId)
-      const newOrder = groupTopics.length + 1
+    // PHASE 1: Write to canonical store FIRST (source of truth)
+    setCanonicalData(prev => canonicalAddTopic(prev, {
+      id: topicId,
+      loId: loId,
+      title: 'New Topic'
+    }))
 
-      const newTopic = {
-        id: topicId,
-        loId: loId,
-        title: 'New Topic',
-        order: newOrder,
-        expanded: false
-      }
+    // Legacy write - kept for backward compatibility during transition
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
+        const newData = { ...prev, modules: [...prev.modules] }
 
-      const lo = loId ? prev.los[loId] : null
-      debugLog('ADD_TOPIC_CANONICAL', {
-        topicId,
-        loId,
-        loOrder: lo?.order,
-        newOrder,
-        computedSerial: computeTopicSerial(newTopic, prev.los, { ...prev.topics, [topicId]: newTopic }),
-        existingInGroup: groupTopics.length
-      })
-
-      return {
-        ...prev,
-        topics: { ...prev.topics, [topicId]: newTopic }
-      }
-    })
-
-    // Also update legacy scalarData for backward compatibility
-    setScalarData(prev => {
-      const newData = { ...prev, modules: [...prev.modules] }
-
-      // If no loId provided, add to unlinkedTopics
-      if (!loId) {
-        const newTopic = {
-          id: topicId,
-          title: 'New Topic',
-          order: (prev.unlinkedTopics || []).length + 1,
-          loId: null,
-          expanded: false,
-          subtopics: []
-        }
-        return {
-          ...newData,
-          unlinkedTopics: [...(prev.unlinkedTopics || []), newTopic]
-        }
-      }
-
-      // Otherwise add to the specified LO
-      for (let m = 0; m < newData.modules.length; m++) {
-        const module = { ...newData.modules[m] }
-        newData.modules[m] = module
-        module.learningObjectives = [...module.learningObjectives]
-
-        for (let l = 0; l < module.learningObjectives.length; l++) {
-          const lo = { ...module.learningObjectives[l] }
-          module.learningObjectives[l] = lo
-
-          if (lo.id === loId) {
-            lo.topics = [...lo.topics]
-            const newTopic = {
-              id: topicId,
-              title: 'New Topic',
-              order: lo.topics.length + 1,
-              loId: lo.id,
-              expanded: false,
-              subtopics: []
-            }
-            lo.topics.push(newTopic)
-            return newData
+        // If no loId provided, add to unlinkedTopics
+        if (!loId) {
+          const newTopic = {
+            id: topicId,
+            title: 'New Topic',
+            order: (prev.unlinkedTopics || []).length + 1,
+            loId: null,
+            expanded: false,
+            subtopics: []
+          }
+          return {
+            ...newData,
+            unlinkedTopics: [...(prev.unlinkedTopics || []), newTopic]
           }
         }
-      }
-      return prev
-    })
+
+        // Otherwise add to the specified LO
+        for (let m = 0; m < newData.modules.length; m++) {
+          const module = { ...newData.modules[m] }
+          newData.modules[m] = module
+          module.learningObjectives = [...module.learningObjectives]
+
+          for (let l = 0; l < module.learningObjectives.length; l++) {
+            const lo = { ...module.learningObjectives[l] }
+            module.learningObjectives[l] = lo
+
+            if (lo.id === loId) {
+              lo.topics = [...lo.topics]
+              const newTopic = {
+                id: topicId,
+                title: 'New Topic',
+                order: lo.topics.length + 1,
+                loId: lo.id,
+                expanded: false,
+                subtopics: []
+              }
+              lo.topics.push(newTopic)
+              return newData
+            }
+          }
+        }
+        return prev
+      })
+    }
   }, [])
 
   // Add new Subtopic to a Topic
   const addSubtopic = useCallback((topicId) => {
     const subtopicId = `subtopic-${Date.now()}`
 
-    // Update canonical store FIRST
-    setCanonicalData(prev => {
-      // Count existing subtopics for this topic
-      const siblingSubtopics = Object.values(prev.subtopics).filter(s => s.topicId === topicId)
-      const newOrder = siblingSubtopics.length + 1
+    // PHASE 1: Write to canonical store FIRST (source of truth)
+    setCanonicalData(prev => canonicalAddSubtopic(prev, {
+      id: subtopicId,
+      topicId: topicId,
+      title: 'New Subtopic'
+    }))
 
-      const newSubtopic = {
-        id: subtopicId,
-        topicId: topicId,
-        title: 'New Subtopic',
-        order: newOrder
-      }
-
-      debugLog('ADD_SUBTOPIC_CANONICAL', {
-        subtopicId,
-        topicId,
-        newOrder,
-        computedSerial: computeSubtopicSerial(newSubtopic, prev.topics, prev.los, { ...prev.subtopics, [subtopicId]: newSubtopic }),
-        existingSiblings: siblingSubtopics.length
-      })
-
-      return {
-        ...prev,
-        subtopics: { ...prev.subtopics, [subtopicId]: newSubtopic }
-      }
-    })
-
-    // Also update legacy scalarData for backward compatibility
-    setScalarData(prev => {
+    // Legacy write - kept for backward compatibility during transition
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
       const newData = { ...prev, modules: [...prev.modules] }
 
       // Check unlinked topics first
@@ -1945,13 +1955,18 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
         }
       }
       return prev
-    })
+      })
+    }
   }, [])
 
   // Update scalar node (LO, Topic, or Subtopic) with cross-app syncing
   const updateScalarNode = useCallback((nodeType, nodeId, updates) => {
-    // Update scalarData
-    setScalarData(prev => {
+    // PHASE 1: Write to canonical store FIRST (source of truth)
+    setCanonicalData(prev => canonicalUpdate(prev, nodeType, nodeId, updates))
+
+    // Legacy write - kept for backward compatibility during transition
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
       const newData = { ...prev, modules: [...prev.modules] }
 
       // Also check unlinked topics
@@ -2001,14 +2016,15 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
           }
         }
       }
-      return prev
-    })
+        return prev
+      })
+    }
 
     // CROSS-APP SYNC: Sync LO updates to courseData.learningObjectives
     if (nodeType === 'lo' && (updates.verb || updates.description)) {
       // Find the LO in scalarData to get its current data
       let targetLO = null
-      for (const module of scalarData.modules) {
+      for (const module of effectiveScalarData.modules) {
         const found = module.learningObjectives.find(lo => lo.id === nodeId)
         if (found) {
           targetLO = found
@@ -2069,67 +2085,73 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
 
   // Delete scalar node
   const deleteScalarNode = useCallback((nodeType, nodeId) => {
-    setScalarData(prev => {
-      const newData = { ...prev, modules: [...prev.modules] }
+    // PHASE 1: Write to canonical store FIRST (source of truth)
+    setCanonicalData(prev => canonicalDelete(prev, nodeType, nodeId))
 
-      // Check for unlinked topic first
-      if (nodeType === 'topic') {
-        const unlinkedIdx = (prev.unlinkedTopics || []).findIndex(t => t.id === nodeId)
-        if (unlinkedIdx !== -1) {
-          newData.unlinkedTopics = (prev.unlinkedTopics || [])
-            .filter(t => t.id !== nodeId)
-            .map((t, idx) => ({ ...t, order: idx + 1 }))
-          return newData
-        }
-      }
+    // Legacy write - kept for backward compatibility during transition
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
+        const newData = { ...prev, modules: [...prev.modules] }
 
-      for (let m = 0; m < newData.modules.length; m++) {
-        const module = { ...newData.modules[m] }
-        newData.modules[m] = module
-        module.learningObjectives = [...module.learningObjectives]
-
-        if (nodeType === 'lo') {
-          const loIndex = module.learningObjectives.findIndex(lo => lo.id === nodeId)
-          if (loIndex !== -1) {
-            module.learningObjectives.splice(loIndex, 1)
-            // Renumber
-            module.learningObjectives.forEach((lo, idx) => lo.order = idx + 1)
+        // Check for unlinked topic first
+        if (nodeType === 'topic') {
+          const unlinkedIdx = (prev.unlinkedTopics || []).findIndex(t => t.id === nodeId)
+          if (unlinkedIdx !== -1) {
+            newData.unlinkedTopics = (prev.unlinkedTopics || [])
+              .filter(t => t.id !== nodeId)
+              .map((t, idx) => ({ ...t, order: idx + 1 }))
             return newData
           }
         }
 
-        for (let l = 0; l < module.learningObjectives.length; l++) {
-          const lo = { ...module.learningObjectives[l] }
-          module.learningObjectives[l] = lo
-          lo.topics = [...lo.topics]
+        for (let m = 0; m < newData.modules.length; m++) {
+          const module = { ...newData.modules[m] }
+          newData.modules[m] = module
+          module.learningObjectives = [...module.learningObjectives]
 
-          if (nodeType === 'topic') {
-            const topicIndex = lo.topics.findIndex(t => t.id === nodeId)
-            if (topicIndex !== -1) {
-              lo.topics.splice(topicIndex, 1)
-              lo.topics.forEach((t, idx) => t.order = idx + 1)
+          if (nodeType === 'lo') {
+            const loIndex = module.learningObjectives.findIndex(lo => lo.id === nodeId)
+            if (loIndex !== -1) {
+              module.learningObjectives.splice(loIndex, 1)
+              // Renumber
+              module.learningObjectives.forEach((lo, idx) => lo.order = idx + 1)
               return newData
             }
           }
 
-          for (let t = 0; t < lo.topics.length; t++) {
-            const topic = { ...lo.topics[t] }
-            lo.topics[t] = topic
-            topic.subtopics = [...(topic.subtopics || [])]
+          for (let l = 0; l < module.learningObjectives.length; l++) {
+            const lo = { ...module.learningObjectives[l] }
+            module.learningObjectives[l] = lo
+            lo.topics = [...lo.topics]
 
-            if (nodeType === 'subtopic') {
-              const subIndex = topic.subtopics.findIndex(s => s.id === nodeId)
-              if (subIndex !== -1) {
-                topic.subtopics.splice(subIndex, 1)
-                topic.subtopics.forEach((s, idx) => s.order = idx + 1)
+            if (nodeType === 'topic') {
+              const topicIndex = lo.topics.findIndex(t => t.id === nodeId)
+              if (topicIndex !== -1) {
+                lo.topics.splice(topicIndex, 1)
+                lo.topics.forEach((t, idx) => t.order = idx + 1)
                 return newData
+              }
+            }
+
+            for (let t = 0; t < lo.topics.length; t++) {
+              const topic = { ...lo.topics[t] }
+              lo.topics[t] = topic
+              topic.subtopics = [...(topic.subtopics || [])]
+
+              if (nodeType === 'subtopic') {
+                const subIndex = topic.subtopics.findIndex(s => s.id === nodeId)
+                if (subIndex !== -1) {
+                  topic.subtopics.splice(subIndex, 1)
+                  topic.subtopics.forEach((s, idx) => s.order = idx + 1)
+                  return newData
+                }
               }
             }
           }
         }
-      }
-      return prev
-    })
+        return prev
+      })
+    }
   }, [])
 
   // --------------------------------------------
@@ -2641,8 +2663,8 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     removeSubtopicFromLessonTopic,
     updateLessonSubtopic,
 
-    // Scalar
-    scalarData,
+    // Scalar (effectiveScalarData provides derived data from canonical when available)
+    scalarData: effectiveScalarData,
     setScalarData,
     selectedScalarItem,
     toggleScalarExpand,
@@ -2759,7 +2781,7 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     addTopicToLesson, removeTopicFromLesson, updateLessonTopic,
     addSubtopicToLessonTopic, removeSubtopicFromLessonTopic, updateLessonSubtopic,
     moveLesson, resizeLesson, checkCollision, findAvailableSlot,
-    scalarData, selectedScalarItem, toggleScalarExpand,
+    effectiveScalarData, selectedScalarItem, toggleScalarExpand,
     addLearningObjective, addTopic, addSubtopic, updateScalarNode, deleteScalarNode,
     createLessonFromScalar,
     // Canonical data store
