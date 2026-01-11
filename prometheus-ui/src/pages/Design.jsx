@@ -1,15 +1,18 @@
 /**
  * Design.jsx - Main DESIGN Section Container
  *
+ * Phase 4: Calm Wheel Integration
+ *
  * Structure:
  * ┌─────────────────────────────────────────────────────────────┐
  * │ NAVIGATION BAR (DesignNavBar)                               │
- * ├─────────────────────────────────────────────────────────────┤
- * │ WORKSPACE                                                   │
- * │ - OverviewWorkspace                                         │
- * │ - TimetableWorkspace                                        │
- * │ - ScalarWorkspace                                           │
- * ├─────────────────────────────────────────────────────────────┤
+ * ├────────────┬────────────────────────────────────────────────┤
+ * │            │  WORKSPACE                                     │
+ * │  WHEELNAV  │  - OverviewWorkspace                           │
+ * │   (LEFT)   │  - TimetableWorkspace / WorkDock               │
+ * │  20-25%    │  - ScalarDock (replaces ScalarWorkspace)       │
+ * │ collapsible│                                                │
+ * ├────────────┴────────────────────────────────────────────────┤
  * │ FOOTER (with global Lesson Editor modal access)             │
  * └─────────────────────────────────────────────────────────────┘
  *
@@ -17,13 +20,17 @@
  * on all pages, not a page-specific component.
  */
 
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { THEME } from '../constants/theme'
 import { DesignProvider, useDesign } from '../contexts/DesignContext'
+import { CANONICAL_FLAGS } from '../utils/canonicalAdapter'
 import DesignNavBar from '../components/design/DesignNavBar'
 import OverviewWorkspace from '../components/design/overview/OverviewWorkspace'
 import TimetableWorkspace from '../components/design/TimetableWorkspace'
 import ScalarWorkspace from '../components/design/ScalarWorkspace'
+import ScalarDock from '../components/design/ScalarDock'
+import WorkDock from '../components/design/WorkDock'
+import WheelNav, { HIERARCHY_LEVELS } from '../components/WheelNav'
 import Footer from '../components/Footer'
 
 // ============================================
@@ -71,7 +78,26 @@ function Design({
 // ============================================
 
 function DesignPageContent({ onNavigate, courseLoaded, user, courseState, courseData, timetableData, lessonEditorOpen, onLessonEditorToggle, onSelectedLessonChange }) {
-  const { activeTab, courseData: contextCourseData, selection } = useDesign()
+  const {
+    activeTab,
+    courseData: contextCourseData,
+    selection,
+    // Hierarchy navigation (Phase 4)
+    hierarchyNav,
+    navigateDown,
+    navigateUp,
+    navigateToLevel,
+    wheelNavCollapsed,
+    toggleWheelNav,
+    select,
+    // Canonical data for WheelNav items
+    canonicalData,
+    scalarData,
+    currentModule,
+    lessons,
+    getCanonicalTopicSerial,
+    getCanonicalSubtopicSerial
+  } = useDesign()
 
   // Report selected lesson changes to parent (App.jsx)
   useEffect(() => {
@@ -86,6 +112,96 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState, course
   const handleNavigate = useCallback((section) => {
     onNavigate?.(section)
   }, [onNavigate])
+
+  // Build WheelNav items based on current hierarchy level
+  const wheelNavItems = useMemo(() => {
+    const { currentLevel, filterId } = hierarchyNav
+    const { los, topics, subtopics } = canonicalData
+
+    switch (currentLevel) {
+      case 0: // Module level
+        return [{ id: 'module-1', label: 'Module 1', serial: '1', hasChildren: true }]
+
+      case 1: // LO level
+        return Object.values(los)
+          .sort((a, b) => (a.order || 0) - (b.order || 0))
+          .map(lo => ({
+            id: lo.id,
+            label: lo.description || lo.text || `LO ${lo.order}`,
+            serial: String(lo.order),
+            hasChildren: Object.values(topics).some(t => t.loId === lo.id)
+          }))
+
+      case 2: // Topic level
+        return Object.values(topics)
+          .filter(t => !filterId || t.loId === filterId || !t.loId)
+          .sort((a, b) => (a.order || 0) - (b.order || 0))
+          .map(topic => ({
+            id: topic.id,
+            label: topic.title || 'Untitled Topic',
+            serial: getCanonicalTopicSerial(topic.id),
+            hasChildren: Object.values(subtopics).some(s => s.topicId === topic.id)
+          }))
+
+      case 3: // Subtopic level
+        return Object.values(subtopics)
+          .filter(s => !filterId || s.topicId === filterId)
+          .sort((a, b) => (a.order || 0) - (b.order || 0))
+          .map(subtopic => ({
+            id: subtopic.id,
+            label: subtopic.title || 'Untitled Subtopic',
+            serial: getCanonicalSubtopicSerial(subtopic.id),
+            hasChildren: false // Lessons don't nest further
+          }))
+
+      case 4: // Lesson level
+        return lessons
+          .filter(l => !filterId || l.topics?.some(t => t.subtopics?.some(s => s.id === filterId)))
+          .map(lesson => ({
+            id: lesson.id,
+            label: lesson.title || 'Untitled Lesson',
+            serial: null,
+            hasChildren: false
+          }))
+
+      default:
+        return []
+    }
+  }, [hierarchyNav, canonicalData, lessons, getCanonicalTopicSerial, getCanonicalSubtopicSerial])
+
+  // Selected item in WheelNav
+  const wheelNavSelectedId = useMemo(() => {
+    // Map selection type to hierarchy level and check if it matches
+    const levelMap = { module: 0, lo: 1, topic: 2, subtopic: 3, lesson: 4 }
+    const selectionLevel = levelMap[selection.type]
+
+    if (selectionLevel === hierarchyNav.currentLevel) {
+      return selection.id
+    }
+    return null
+  }, [selection, hierarchyNav.currentLevel])
+
+  // WheelNav handlers
+  const handleWheelSelect = useCallback((id) => {
+    const levelTypes = ['module', 'lo', 'topic', 'subtopic', 'lesson']
+    const type = levelTypes[hierarchyNav.currentLevel]
+    select(type, id)
+  }, [hierarchyNav.currentLevel, select])
+
+  const handleWheelNavigateDown = useCallback((id) => {
+    navigateDown(id)
+  }, [navigateDown])
+
+  const handleWheelNavigateUp = useCallback(() => {
+    navigateUp()
+  }, [navigateUp])
+
+  const handleBreadcrumbClick = useCallback((index) => {
+    navigateToLevel(index)
+  }, [navigateToLevel])
+
+  // Width calculations
+  const wheelNavWidth = wheelNavCollapsed ? 40 : '22%'
 
   return (
     <div
@@ -111,6 +227,67 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState, course
           position: 'relative'
         }}
       >
+        {/* WheelNav - Left Panel (Phase 4) */}
+        {CANONICAL_FLAGS.WHEEL_NAV_ENABLED && (
+          <div
+            style={{
+              width: wheelNavWidth,
+              minWidth: wheelNavCollapsed ? 40 : 200,
+              maxWidth: wheelNavCollapsed ? 40 : 400,
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              background: THEME.BG_PANEL,
+              borderRight: `1px solid ${THEME.BORDER}`,
+              transition: 'width 0.2s ease',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Collapse Toggle */}
+            <button
+              onClick={toggleWheelNav}
+              style={{
+                position: 'absolute',
+                top: '50%',
+                right: wheelNavCollapsed ? -12 : -12,
+                transform: 'translateY(-50%)',
+                zIndex: 10,
+                width: 24,
+                height: 48,
+                background: THEME.BG_PANEL,
+                border: `1px solid ${THEME.BORDER}`,
+                borderRadius: '0 4px 4px 0',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: THEME.TEXT_DIM
+              }}
+              title={wheelNavCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            >
+              {wheelNavCollapsed ? '▶' : '◀'}
+            </button>
+
+            {!wheelNavCollapsed && (
+              <WheelNav
+                currentLevel={hierarchyNav.currentLevel}
+                currentPath={hierarchyNav.path}
+                items={wheelNavItems}
+                selectedItemId={wheelNavSelectedId}
+                onSelectItem={handleWheelSelect}
+                onNavigateUp={handleWheelNavigateUp}
+                onNavigateDown={handleWheelNavigateDown}
+                onNavigateToLevel={navigateToLevel}
+                onBreadcrumbClick={handleBreadcrumbClick}
+                showBreadcrumbs={true}
+                showLevelIndicator={true}
+                showItemCount={true}
+                compact={false}
+              />
+            )}
+          </div>
+        )}
+
         {/* Workspace Area (fills remaining space) */}
         <div
           style={{
@@ -125,11 +302,22 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState, course
           {activeTab === 'overview' && (
             <OverviewWorkspace courseData={courseData} />
           )}
+
           {activeTab === 'timetable' && (
-            <TimetableWorkspace />
+            <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+              <TimetableWorkspace />
+              {/* WorkDock - Progressive replacement (Phase 4) */}
+              {CANONICAL_FLAGS.WORK_DOCK_ENABLED && CANONICAL_FLAGS.WORK_DOCK_PROGRESSIVE && (
+                <WorkDock width="30%" />
+              )}
+            </div>
           )}
+
           {activeTab === 'scalar' && (
-            <ScalarWorkspace />
+            // ScalarDock replaces ScalarWorkspace when enabled (Phase 4)
+            CANONICAL_FLAGS.SCALAR_DOCK_ENABLED
+              ? <ScalarDock />
+              : <ScalarWorkspace />
           )}
         </div>
       </div>

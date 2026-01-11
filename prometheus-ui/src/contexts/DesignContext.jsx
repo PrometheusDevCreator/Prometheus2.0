@@ -617,6 +617,17 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
   })
 
   // --------------------------------------------
+  // HIERARCHY NAVIGATION STATE (Phase 4: Calm Wheel)
+  // --------------------------------------------
+  const [hierarchyNav, setHierarchyNav] = useState({
+    currentLevel: 0,      // 0=module, 1=lo, 2=topic, 3=subtopic, 4=lesson
+    path: [],             // Breadcrumb: [{ level, id, label, serial }]
+    filterId: null        // ID of item filtering lower levels
+  })
+
+  const [wheelNavCollapsed, setWheelNavCollapsed] = useState(false)
+
+  // --------------------------------------------
   // EDITOR PANEL STATE
   // --------------------------------------------
   const [editorCollapsed, setEditorCollapsed] = useState(true)
@@ -2595,6 +2606,86 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
   }, [])
 
   // --------------------------------------------
+  // HIERARCHY NAVIGATION (Phase 4: Calm Wheel)
+  // --------------------------------------------
+
+  // Get item info for hierarchy level
+  const getHierarchyItem = useCallback((level, itemId) => {
+    const { los, topics, subtopics } = canonicalData
+
+    switch (level) {
+      case 0: // Module
+        return { id: itemId, label: 'Module 1', serial: '1' }
+      case 1: // LO
+        const lo = los[itemId]
+        return lo ? { id: itemId, label: lo.description, serial: String(lo.order) } : null
+      case 2: // Topic
+        const topic = topics[itemId]
+        if (!topic) return null
+        const topicSerial = getCanonicalTopicSerial(itemId)
+        return { id: itemId, label: topic.title, serial: topicSerial }
+      case 3: // Subtopic
+        const subtopic = subtopics[itemId]
+        if (!subtopic) return null
+        const subtopicSerial = getCanonicalSubtopicSerial(itemId)
+        return { id: itemId, label: subtopic.title, serial: subtopicSerial }
+      case 4: // Lesson
+        const lesson = lessons.find(l => l.id === itemId)
+        return lesson ? { id: itemId, label: lesson.title, serial: null } : null
+      default:
+        return null
+    }
+  }, [canonicalData, lessons, getCanonicalTopicSerial, getCanonicalSubtopicSerial])
+
+  // Navigate hierarchy down (drill into selected item)
+  const navigateDown = useCallback((itemId) => {
+    const { currentLevel, path } = hierarchyNav
+    if (currentLevel >= 4) return // Can't go deeper than lessons
+
+    const item = getHierarchyItem(currentLevel, itemId)
+    if (!item) return
+
+    setHierarchyNav({
+      currentLevel: currentLevel + 1,
+      path: [...path, { level: currentLevel, id: itemId, label: item.label, serial: item.serial }],
+      filterId: itemId
+    })
+  }, [hierarchyNav, getHierarchyItem])
+
+  // Navigate hierarchy up (go to parent level)
+  const navigateUp = useCallback(() => {
+    const { currentLevel, path } = hierarchyNav
+    if (currentLevel === 0) return
+
+    const newPath = path.slice(0, -1)
+    const parentItem = newPath[newPath.length - 1]
+
+    setHierarchyNav({
+      currentLevel: currentLevel - 1,
+      path: newPath,
+      filterId: parentItem?.id || null
+    })
+  }, [hierarchyNav])
+
+  // Navigate to specific level (breadcrumb click)
+  const navigateToLevel = useCallback((level) => {
+    const { path } = hierarchyNav
+    const newPath = path.slice(0, level)
+    const targetItem = newPath[newPath.length - 1]
+
+    setHierarchyNav({
+      currentLevel: level,
+      path: newPath,
+      filterId: targetItem?.id || null
+    })
+  }, [hierarchyNav])
+
+  // Toggle WheelNav collapse
+  const toggleWheelNav = useCallback(() => {
+    setWheelNavCollapsed(prev => !prev)
+  }, [])
+
+  // --------------------------------------------
   // COMPUTED VALUES
   // --------------------------------------------
 
@@ -2637,6 +2728,14 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     setCurrentWeek,
     currentDay,
     setCurrentDay,
+
+    // Hierarchy Navigation (Phase 4: Calm Wheel)
+    hierarchyNav,
+    navigateDown,
+    navigateUp,
+    navigateToLevel,
+    wheelNavCollapsed,
+    toggleWheelNav,
 
     // Overview
     overviewBlocks,
@@ -2775,6 +2874,8 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     PC_COLORS
   }), [
     activeTab, viewMode, currentModule, currentWeek, currentDay, overviewBlocks,
+    // Hierarchy navigation (Phase 4)
+    hierarchyNav, navigateDown, navigateUp, navigateToLevel, wheelNavCollapsed, toggleWheelNav,
     lessons, selectedLesson, scheduledLessons, unscheduledLessons, savedLessons,
     updateLesson, createLesson, deleteLesson, duplicateLesson,
     scheduleLesson, unscheduleLesson, saveToLibrary, toggleLessonLO,

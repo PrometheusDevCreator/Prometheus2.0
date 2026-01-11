@@ -18,11 +18,18 @@
 // FEATURE FLAGS
 // ============================================
 export const CANONICAL_FLAGS = {
+  // Phase 1-3: Canonical migration
   WRITE_TO_CANONICAL: true,      // Phase M1: All writes go to canonical
   READ_FROM_CANONICAL: true,     // Phase M2: Prefer canonical reads
   DERIVE_LEGACY: true,           // Phase M3: Derive legacy from canonical
   LEGACY_STORE_REMOVED: false,   // Phase M4: Legacy store deleted (not yet)
-  DEBUG_LOGGING: true            // Enable detailed logging during transition
+  DEBUG_LOGGING: true,           // Enable detailed logging during transition
+
+  // Phase 4-5: Calm Wheel Integration
+  WHEEL_NAV_ENABLED: true,       // Enable WheelNav component
+  SCALAR_DOCK_ENABLED: true,     // Enable ScalarDock (replaces SCALAR tab)
+  WORK_DOCK_ENABLED: true,       // Enable WorkDock (Phase 5: enabled)
+  WORK_DOCK_PROGRESSIVE: true    // Show WorkDock alongside TimetableWorkspace
 }
 
 // ============================================
