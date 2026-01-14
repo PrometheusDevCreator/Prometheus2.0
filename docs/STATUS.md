@@ -5,17 +5,18 @@
 > This is the **single source of truth** for Prometheus project status.
 > AI assistants should update this file at the end of each significant session.
 
-**Last Updated:** 2025-12-30
+**Last Updated:** 2025-01-14
 **Last Session By:** Claude Code (CC)
 
 ---
 
 ## Quick Summary
 
-- **UI:** Stable and complete for current pages (Login, Navigate, Define, Design, BUILD)
+- **UI:** Stable and complete for current pages (Login, Navigate, Define, Design, BUILD, FORMAT)
+- **SCALAR Tab:** Bidirectional sync implemented - Topics/Subtopics sync between LessonEditor and SCALAR
+- **OVERVIEW Tab:** New planning canvas with Timeline and NoteBlock components
 - **Backend:** Scaffolded only - API structure exists but not connected
 - **PKE Engine:** Placeholder - not yet implemented
-- **Documentation:** Overhauled 2025-12-21 - now properly structured
 
 ---
 
@@ -23,15 +24,15 @@
 
 | Component | State | Last Change | Notes |
 |-----------|-------|-------------|-------|
-| **prometheus-ui** | STABLE | 2025-12-30 | React frontend functional |
+| **prometheus-ui** | STABLE | 2025-01-14 | React frontend functional |
 | **Login page** | COMPLETE | 2025-12-15 | Click-to-login implemented |
-| **Navigate page** | COMPLETE | 2025-12-15 | NavWheel navigation working |
-| **Define page** | UPDATED | 2025-12-30 | Wheel layout refined, Module Name removed |
-| **Design - Overview** | ENHANCED | 2025-12-30 | Hierarchical blocks with nesting, duration snapping, smooth drag |
-| **Design - Timetable** | ENHANCED | 2025-12-30 | BREAK lessons exempt from LO requirements, data persistence |
-| **Design - Scalar** | FUNCTIONAL | 2025-12-15 | Manager/Viewer tabs, 3-column hierarchy |
-| **Build page** | ENHANCED | 2025-12-30 | Slide authoring, bidirectional sync, shared timetable data |
-| **Format page** | COMPLETE | 2025-12-30 | All 6 phases complete: TemplateContext, hub UI, mapping editors |
+| **Navigate page** | COMPLETE | 2025-01-14 | NavWheel navigation working, tooltip refinements |
+| **Define page** | STABLE | 2025-12-30 | Wheel layout refined, Module Name removed |
+| **Design - Overview** | ENHANCED | 2025-01-14 | New PlanningCanvas, Timeline, NoteBlock components |
+| **Design - Timetable** | ENHANCED | 2025-01-14 | TimeControls, TimetableGrid refinements |
+| **Design - Scalar** | ENHANCED | 2025-01-14 | **Bidirectional sync with LessonEditor** |
+| **Build page** | STABLE | 2025-12-30 | Slide authoring, bidirectional sync |
+| **Format page** | COMPLETE | 2025-12-30 | All 6 phases complete |
 | **Generate page** | PLACEHOLDER | - | Not implemented |
 | **core/api** | SCAFFOLDED | - | FastAPI structure, not connected |
 | **core/pke** | PLACEHOLDER | - | Not implemented |
@@ -56,11 +57,28 @@
 
 | Date | Session | Key Changes |
 |------|---------|-------------|
-| 2025-12-30 | CC | FORMAT page: TemplateContext, IndexedDB, TemplateHub, ProfileSelector, OutputConfigPanel, ReformatToolPanel (Phases 1-3,6 complete) |
-| 2025-12-30 | CC | OVERVIEW hierarchical blocks: duration snapping, nesting, smooth drag; Timetable persistence; BREAK lesson fixes; LO dropdown improvements |
-| 2025-12-30 | CC | BUILD page implementation with slide authoring, bidirectional sync |
-| 2025-12-30 | CC | Define page wheel refinements, Design page Overview enhancements |
-| 2025-12-29 | CC | Rotational wheels, resizable OVERVIEW blocks, TIMETABLE reference bars |
+| 2025-01-14 | CC | **SCALAR Bidirectional Sync**: 6 functions modified in DesignContext.jsx for Topic/Subtopic sync |
+| 2025-01-14 | CC | **OVERVIEW Planning Tools**: PlanningCanvas, Timeline, NoteBlock, ColorPalette, CourseElementBar |
+| 2025-01-11 | CC | Phase 6 System Testing: 180 tests passed, all Calm Wheel phases complete |
+| 2025-01-11 | CC | Phase 2-6 Integration: Canonical store, LessonCardPrimitive, WheelNav, ScalarDock, WorkDock |
+| 2025-01-09 | CC | Comprehensive status report, testing framework operational |
+
+---
+
+## Latest Commit
+
+```
+commit 675d12f (feature/design-calm-wheel)
+Date: 2025-01-14
+
+feat(SCALAR): Bidirectional sync and OVERVIEW planning tools
+
+- Implement bidirectional sync between LessonEditor and SCALAR
+- Topics/Subtopics added in LessonEditor now appear in SCALAR
+- Changes in SCALAR propagate back to lesson data
+- Add PlanningCanvas, Timeline, NoteBlock for OVERVIEW
+- 21 files changed, +4,441 / -1,450 lines
+```
 
 ---
 
@@ -74,10 +92,10 @@ None currently.
 
 | Item | Location | Priority |
 |------|----------|----------|
-| Deprecated files retained | `src/deprecated/` | LOW |
 | Backend not connected | `core/api/` | HIGH |
 | PKE not implemented | `core/pke/` | HIGH |
-| Content Type storage missing | `Define.jsx` | MEDIUM |
+| Consumer migration (LessonBlock) | `src/components/design/` | LOW |
+| Deprecated files retained | `src/deprecated/` | LOW |
 
 ---
 
@@ -85,43 +103,37 @@ None currently.
 
 *Important context for the next session:*
 
-### OVERVIEW Block Behavior (Implemented)
-- Block-type-specific duration increments: TERM=weeks, WEEK=days, DAY=hours, LESSON=15min, MODULE=days
-- Hierarchical nesting with NESTING_RULES validation
-- Auto-scaling when blocks nested into parents
-- Progressive border colors based on nesting depth
-- Smooth drag with global window event listeners (fixes "stuck" dragging)
-- Child blocks move with parent during drag operations
+### SCALAR Bidirectional Sync (Implemented 2025-01-14)
 
-### Timetable Data Persistence (Implemented)
-- `timetableData` state lifted to App.jsx (contains lessons + overviewBlocks)
-- DesignContext uses wrapper functions to sync changes back to App.jsx
-- Data persists when navigating between DESIGN, BUILD, and other pages
+**Root cause fixed:** Data store mismatch between LessonEditor and ScalarDock
+- LessonEditor was writing to `lesson.topics` and `scalarData`
+- ScalarDock was reading from `canonicalData.topics`
+- Now synchronized via 6 modified functions in DesignContext.jsx
 
-### BREAK Lesson Handling (Implemented)
-- BREAK lessons exempt from LO/Topic/Subtopic requirements
-- No red border warning for missing LO on BREAK cards
-- LO/Topic/Subtopic fields hidden in LessonEditor for BREAK type
+**Functions modified:**
+1. `addTopicToLesson` - Now writes to canonicalData
+2. `addSubtopicToLessonTopic` - Now writes to canonicalData
+3. `updateLessonTopic` - Syncs to canonical
+4. `updateLessonSubtopic` - Syncs to canonical
+5. `updateScalarNode` - Propagates back to lessons
+6. `deleteScalarNode` - Propagates deletes to lessons
 
-### LO Dropdown Improvements (Implemented)
-- Removed italicised "Select LO" placeholder text
-- Dropdown closes after selection (allows multiple selections via reopening)
+### New OVERVIEW Components
 
-### BUILD Page State
-- Slides belong to lessons; bidirectional sync between BUILD and DESIGN pages
-- Explicit "+ New Slide" button required (no auto-creation on navigation)
-- Progress counts only 3 primary columns + instructor notes per slide
+| Component | Purpose |
+|-----------|---------|
+| `PlanningCanvas.jsx` | Infinite-pan canvas for course planning |
+| `Timeline.jsx` | Unit-based timeline with duration bars |
+| `NoteBlock.jsx` | Free-form planning notes |
+| `ColorPalette.jsx` | Color label management |
+| `CourseElementBar.jsx` | Element management toolbar |
+| `TabSelector.jsx` | OVERVIEW/TIMETABLE switching |
 
-### FORMAT Page State (COMPLETE)
-- **All 6 Phases Complete:** TemplateContext, IndexedDB, TemplateHub, ProfileSelector, MappingPanel, PPTXMappingEditor, XLSXMappingEditor, ReformatToolPanel
-- **7 Controller Corrections Applied:** See `docs/briefs/SARAH_BRIEF_format-page-implementation_2025-12-30.md`
-- Profile management: NEW/RENAME/DUPLICATE/DELETE with IndexedDB persistence
-- Output selection: 4 primary outputs with status indicators (none/loaded/mapped)
-- PPTXMappingEditor: Slide type mapping, placeholder mapping, running order rules
-- XLSXMappingEditor: Sheet selection, anchor configuration (positional only per Correction #5)
-- Reformat Tool: Always launchable (Correction #4)
-- "More Outputs": Display-only placeholders (Correction #7)
-- Navigation: FORMAT accessible via Navigation Hub only (excluded from footer arrows)
+### Testing Status
+
+- Automated Playwright tests: PASSING
+- Manual testing recommended for full CRUD validation
+- Test files: `prometheus-ui/test_bidirectional_sync.py`, `test_scalar.py`
 
 ---
 
@@ -132,6 +144,7 @@ None currently.
 - [../CLAUDE.md](../CLAUDE.md) - AI entry point and project context
 - [../UI_DOCTRINE.md](../UI_DOCTRINE.md) - Immutable UI frame definitions
 - [../CLAUDE_PROTOCOL.md](../CLAUDE_PROTOCOL.md) - Task execution protocol
+- [briefs/SARAH_BRIEF_scalar-bidirectional-sync_2025-01-14.md](briefs/SARAH_BRIEF_scalar-bidirectional-sync_2025-01-14.md) - Latest session brief
 
 ---
 
