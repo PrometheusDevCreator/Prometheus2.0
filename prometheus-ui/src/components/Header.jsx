@@ -151,9 +151,8 @@ function Header({
         PROMETHEUS COURSE GENERATION SYSTEM 2.0
       </h1>
 
-      {/* Section Name (Nav Wheel keyword) - centered, below title, above line */}
-      {/* For Navigation Hub, the page title displays here instead */}
-      {(sectionName || isNavigationHub) && (
+      {/* Section Name - Only for Navigation Hub (other pages show title in nav row) */}
+      {isNavigationHub && (
         <h2
           style={{
             position: 'absolute',
@@ -168,7 +167,7 @@ function Header({
             margin: 0
           }}
         >
-          {isNavigationHub ? pageTitle : sectionName}
+          {pageTitle}
         </h2>
       )}
 
@@ -209,6 +208,107 @@ function Header({
         </div>
       </div>
 
+      {/* Page Navigation Row - ABOVE horizontal line, format: Back < TITLE > Next */}
+      {/* Navigation Hub title is shown above the line separately, so hide nav here */}
+      {!isNavigationHub && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(5.56vh - 12px)',  /* Moved up 12px total from original 60px @ 1080 */
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '1vw',
+            zIndex: 20
+          }}
+        >
+          {/* Back label */}
+          <span
+            style={{
+              fontFamily: THEME.FONT_PRIMARY,
+              fontSize: '1.4vh',
+              color: prevHovered ? THEME.AMBER : THEME.TEXT_SECONDARY,
+              transition: 'color 0.2s ease',
+              cursor: 'pointer'
+            }}
+            onClick={handlePrevPage}
+            onMouseEnter={() => setPrevHovered(true)}
+            onMouseLeave={() => setPrevHovered(false)}
+          >
+            Back
+          </span>
+
+          {/* < arrow - grey default, burnt orange on hover */}
+          <button
+            onClick={handlePrevPage}
+            onMouseEnter={() => setPrevHovered(true)}
+            onMouseLeave={() => setPrevHovered(false)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: prevHovered ? THEME.AMBER : THEME.TEXT_SECONDARY,
+              fontSize: '2.5vh',   /* 25% larger than 2vh */
+              cursor: 'pointer',
+              padding: '0.2vh 0.3vw',
+              transition: 'color 0.2s ease'
+            }}
+          >
+            &lt;
+          </button>
+
+          {/* Page Title - centered between arrows, burnt orange */}
+          <h2
+            style={{
+              fontFamily: THEME.FONT_PRIMARY,
+              fontSize: '2vh',   /* 20% larger than 1.67vh (was 18px @ 1080) */
+              fontWeight: 500,
+              color: THEME.AMBER,   /* Burnt orange - matching original page title color */
+              letterSpacing: '0.42vh',  /* 4.5px @ 1080 - matching original */
+              margin: '0 1vw',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {pageTitle}
+          </h2>
+
+          {/* > arrow - grey default, burnt orange on hover */}
+          <button
+            onClick={handleNextPage}
+            onMouseEnter={() => setNextHovered(true)}
+            onMouseLeave={() => setNextHovered(false)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: nextHovered ? THEME.AMBER : THEME.TEXT_SECONDARY,
+              fontSize: '2.5vh',   /* 25% larger than 2vh */
+              cursor: 'pointer',
+              padding: '0.2vh 0.3vw',
+              transition: 'color 0.2s ease'
+            }}
+          >
+            &gt;
+          </button>
+
+          {/* Next label */}
+          <span
+            style={{
+              fontFamily: THEME.FONT_PRIMARY,
+              fontSize: '1.4vh',
+              color: nextHovered ? THEME.AMBER : THEME.TEXT_SECONDARY,
+              transition: 'color 0.2s ease',
+              cursor: 'pointer'
+            }}
+            onClick={handleNextPage}
+            onMouseEnter={() => setNextHovered(true)}
+            onMouseLeave={() => setNextHovered(false)}
+          >
+            Next
+          </span>
+        </div>
+      )}
+
       {/* Horizontal Line at Y=85 */}
       <div
         style={{
@@ -220,112 +320,6 @@ function Header({
           background: 'linear-gradient(to right, transparent 0%, #444 10%, #444 90%, transparent 100%)'
         }}
       />
-
-      {/* Page Title - centered, Y=102 (moved down 10px), font 21px (15% larger) */}
-      {/* Navigation Hub title is shown above the line, so hide it here */}
-      {!isNavigationHub && (
-        <>
-          <h2
-            style={{
-              position: 'absolute',
-              top: '9.44vh',        /* 102px @ 1080 */
-              left: '50%',
-              transform: 'translateX(-50%)',
-              fontFamily: THEME.FONT_PRIMARY,
-              fontSize: '1.94vh',   /* 21px @ 1080 */
-              fontWeight: 500,
-              color: '#f0f0f0',
-              letterSpacing: '0.1em',
-              margin: 0
-            }}
-          >
-            {pageTitle}
-          </h2>
-
-          {/* Page Navigation Arrows - 100px apart (50px each side of centerline) */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '8.5vh',         /* Positioned ~10px below horizontal line */
-              left: '50%',
-              transform: 'translateX(-50%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '100px',  /* 100px between arrows (50px each side of center) */
-              zIndex: 20
-            }}
-          >
-            {/* Go Back section */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
-              <span
-                style={{
-                  fontFamily: THEME.FONT_PRIMARY,
-                  fontSize: '1.4vh',
-                  color: prevHovered ? THEME.AMBER : THEME.TEXT_SECONDARY,
-                  transition: 'color 0.2s ease',
-                  cursor: 'pointer'
-                }}
-                onClick={handlePrevPage}
-                onMouseEnter={() => setPrevHovered(true)}
-                onMouseLeave={() => setPrevHovered(false)}
-              >
-                Go Back
-              </span>
-              <button
-                onClick={handlePrevPage}
-                onMouseEnter={() => setPrevHovered(true)}
-                onMouseLeave={() => setPrevHovered(false)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: prevHovered ? THEME.GREEN_BRIGHT : THEME.WHITE,
-                  fontSize: '2vh',
-                  cursor: 'pointer',
-                  padding: '0.4vh 0.5vw',
-                  transition: 'color 0.2s ease'
-                }}
-              >
-                &lt;
-              </button>
-            </div>
-
-            {/* Next Page section */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
-              <button
-                onClick={handleNextPage}
-                onMouseEnter={() => setNextHovered(true)}
-                onMouseLeave={() => setNextHovered(false)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: nextHovered ? THEME.GREEN_BRIGHT : THEME.WHITE,
-                  fontSize: '2vh',
-                  cursor: 'pointer',
-                  padding: '0.4vh 0.5vw',
-                  transition: 'color 0.2s ease'
-                }}
-              >
-                &gt;
-              </button>
-              <span
-                style={{
-                  fontFamily: THEME.FONT_PRIMARY,
-                  fontSize: '1.4vh',
-                  color: nextHovered ? THEME.AMBER : THEME.TEXT_SECONDARY,
-                  transition: 'color 0.2s ease',
-                  cursor: 'pointer'
-                }}
-                onClick={handleNextPage}
-                onMouseEnter={() => setNextHovered(true)}
-                onMouseLeave={() => setNextHovered(false)}
-              >
-                Next Page
-              </span>
-            </div>
-          </div>
-        </>
-      )}
     </header>
   )
 }

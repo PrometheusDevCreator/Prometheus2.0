@@ -531,8 +531,8 @@ function LessonEditorButton({ isActive, onClick, isOpen }) {
     <div
       style={{
         position: 'absolute',
-        left: '14.28vw',  // Position to right of ANALYTICS
-        bottom: '10vh',
+        left: '18vw',  // Position to right of ANALYTICS (moved right ~40% of button width)
+        bottom: 'calc(10vh - 10px)',  // Moved down 10px total
         transform: 'translate(-50%, 50%)',
         zIndex: 100
       }}

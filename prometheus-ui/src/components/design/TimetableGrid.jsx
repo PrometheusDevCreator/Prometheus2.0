@@ -29,7 +29,7 @@ const HEADER_HEIGHT = 25        // Height of time header
 const DEFAULT_NUM_DAYS = 5      // Default number of day rows (used when no duration set)
 const ROW_GAP = 8               // Gap between day rows
 const ROW_BORDER_RADIUS = 30    // Pill-shaped rounded corners
-const DAY_BAR_WIDTH = 'calc(75% - 150px)' // Day bar width (reduced by 75px from each side)
+const DAY_BAR_WIDTH = 'calc(90% - 75px)' // Day bar width (Phase 2-6: 50% wider, time labels reposition)
 
 function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
   const {
@@ -82,8 +82,8 @@ function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
     clearSelection()
   }, [clearSelection])
 
-  // Calculate number of days based on courseData duration setting
-  const numDays = useMemo(() => {
+  // Calculate total number of days based on courseData duration setting
+  const totalDays = useMemo(() => {
     // Use days from courseData if set
     if (courseData?.days && courseData.days > 0) {
       return courseData.days
@@ -100,10 +100,20 @@ function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
     return DEFAULT_NUM_DAYS
   }, [courseData?.days, courseData?.weeks, courseData?.hours])
 
-  // Generate day rows based on calculated duration
+  // Generate day rows for current week only (5 days per week)
   const daysToShow = useMemo(() => {
-    return Array.from({ length: numDays }, (_, i) => i + 1)
-  }, [numDays])
+    const startDay = (currentWeek - 1) * 5 + 1
+    const endDay = Math.min(startDay + 4, totalDays)
+    const days = []
+    for (let day = startDay; day <= endDay; day++) {
+      days.push(day)
+    }
+    // Always show 5 rows (even if empty for last week)
+    while (days.length < 5) {
+      days.push(days[days.length - 1] + 1)
+    }
+    return days
+  }, [currentWeek, totalDays])
 
   // Get OVERVIEW blocks that relate to a specific day
   // Matches DAY blocks with matching title (e.g., "Day 1" or just "1")

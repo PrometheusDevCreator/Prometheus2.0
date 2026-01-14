@@ -12,7 +12,7 @@
 import { useState, useCallback } from 'react'
 import { THEME } from '../../constants/theme'
 import { useDesign } from '../../contexts/DesignContext'
-import TimeControls from './TimeControls'
+import TimeControls, { WeekNavigator } from './TimeControls'
 import TimetableGrid from './TimetableGrid'
 import UnallocatedLessonsPanel from './UnallocatedLessonsPanel'
 
@@ -24,7 +24,10 @@ function TimetableWorkspace() {
     unscheduledLessons,
     select,
     scheduleLesson,
-    unscheduleLesson
+    unscheduleLesson,
+    currentWeek,
+    setCurrentWeek,
+    courseData
   } = useDesign()
 
   // Time range state (shared with TimeControls and TimetableGrid)
@@ -34,19 +37,92 @@ function TimetableWorkspace() {
   // Pending lesson state - appears above PKE when type is clicked
   const [pendingLesson, setPendingLesson] = useState(null)
 
-  // Handle clicking a lesson type - creates pending lesson above PKE
+  // Helper: Convert minutes from midnight to "HHMM" string format
+  const minutesToTimeString = (minutes) => {
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    return `${hours.toString().padStart(2, '0')}${mins.toString().padStart(2, '0')}`
+  }
+
+  // Helper: Parse "HHMM" string to minutes from midnight
+  const timeStringToMinutes = (timeStr) => {
+    if (!timeStr) return 0
+    const hour = parseInt(timeStr.slice(0, 2)) || 0
+    const min = parseInt(timeStr.slice(2, 4)) || 0
+    return hour * 60 + min
+  }
+
+  // Handle clicking a lesson type - AUTO-SNAP to grid (Phase 2-6)
   const handleTypeClick = useCallback((typeId) => {
     const type = LESSON_TYPES.find(t => t.id === typeId) || LESSON_TYPES[0]
-    // BREAK type defaults to "BREAK" title and 30 minutes
     const isBreak = typeId === 'break'
-    setPendingLesson({
-      id: `pending-${Date.now()}`,
-      title: isBreak ? 'BREAK' : 'New Lesson',
-      type: typeId,
-      duration: isBreak ? 30 : 60,
-      color: type.color
-    })
-  }, [LESSON_TYPES])
+    const defaultDuration = isBreak ? 30 : 60
+
+    // Find where to place the new lesson (auto-snap logic)
+    let targetDay = 1
+    let targetStartMinutes = startHour * 60 // Convert to minutes from midnight
+
+    // Get lessons for each day and find first available slot
+    for (let day = 1; day <= 5; day++) {
+      const dayLessons = scheduledLessons
+        .filter(l => l.day === day && l.week === 1)
+        .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime))
+
+      // Find end time of last lesson on this day
+      let dayEndMinutes = startHour * 60 // Start of day in minutes
+      dayLessons.forEach(lesson => {
+        const lessonStartMins = timeStringToMinutes(lesson.startTime)
+        const lessonEnd = lessonStartMins + lesson.duration
+        if (lessonEnd > dayEndMinutes) {
+          dayEndMinutes = lessonEnd
+        }
+      })
+
+      // Calculate remaining time on this day
+      const endOfDayMinutes = endHour * 60
+      const remainingTime = endOfDayMinutes - dayEndMinutes
+
+      if (remainingTime >= defaultDuration) {
+        // Enough room for full lesson
+        targetDay = day
+        targetStartMinutes = dayEndMinutes
+        break
+      } else if (remainingTime > 0 && remainingTime < defaultDuration) {
+        // Partial room - adjust duration to fill remaining day
+        targetDay = day
+        targetStartMinutes = dayEndMinutes
+        break
+      }
+      // Day is full, try next day
+    }
+
+    // Calculate actual duration (may be reduced to fit day)
+    const endOfDayMinutes = endHour * 60
+    const availableTime = endOfDayMinutes - targetStartMinutes
+    const actualDuration = Math.min(defaultDuration, availableTime)
+
+    if (actualDuration > 0) {
+      // Create and schedule the lesson directly with "HHMM" format
+      createLesson({
+        title: isBreak ? 'BREAK' : 'New Lesson',
+        type: typeId,
+        duration: actualDuration,
+        startTime: minutesToTimeString(targetStartMinutes),
+        day: targetDay,
+        week: 1,
+        scheduled: true
+      })
+    } else {
+      // No room - create as pending (fallback to drag behavior)
+      setPendingLesson({
+        id: `pending-${Date.now()}`,
+        title: isBreak ? 'BREAK' : 'New Lesson',
+        type: typeId,
+        duration: defaultDuration,
+        color: type.color
+      })
+    }
+  }, [LESSON_TYPES, scheduledLessons, startHour, endHour, createLesson])
 
   // Handle scheduling the pending lesson (drag to grid or confirm)
   const handleSchedulePending = useCallback((day, startTime) => {
@@ -84,6 +160,30 @@ function TimetableWorkspace() {
     ? LESSON_TYPES.find(t => t.id === pendingLesson.type) || LESSON_TYPES[0]
     : LESSON_TYPES[0]
 
+  // Calculate max weeks based on course duration
+  const maxWeeks = (() => {
+    if (courseData?.weeks && courseData.weeks > 0) {
+      return courseData.weeks
+    }
+    if (courseData?.days && courseData.days > 0) {
+      return Math.ceil(courseData.days / 5)
+    }
+    return 1
+  })()
+
+  // Week navigation handlers
+  const handlePrevWeek = useCallback(() => {
+    if (currentWeek > 1) {
+      setCurrentWeek(currentWeek - 1)
+    }
+  }, [currentWeek, setCurrentWeek])
+
+  const handleNextWeek = useCallback(() => {
+    if (currentWeek < maxWeeks) {
+      setCurrentWeek(currentWeek + 1)
+    }
+  }, [currentWeek, maxWeeks, setCurrentWeek])
+
   return (
     <div
       style={{
@@ -95,12 +195,14 @@ function TimetableWorkspace() {
         position: 'relative'
       }}
     >
-      {/* Time Controls Row */}
+      {/* Time Controls Row - includes lesson type circles and week navigation */}
       <TimeControls
         startHour={startHour}
         endHour={endHour}
         onStartChange={setStartHour}
         onEndChange={setEndHour}
+        lessonTypes={LESSON_TYPES}
+        onTypeSelect={handleTypeClick}
       />
 
       {/* Timetable Grid */}
@@ -109,6 +211,23 @@ function TimetableWorkspace() {
           startHour={Math.floor(startHour)}
           endHour={Math.floor(endHour)}
           onSchedulePending={handleSchedulePending}
+        />
+      </div>
+
+      {/* Week Navigator - positioned below Day 5 bar, same spacing as between day bars */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          padding: '1vh 0',
+          marginTop: '-0.5vh' // Adjust to match day bar spacing
+        }}
+      >
+        <WeekNavigator
+          week={currentWeek}
+          maxWeeks={maxWeeks}
+          onPrev={handlePrevWeek}
+          onNext={handleNextWeek}
         />
       </div>
 
@@ -132,13 +251,7 @@ function TimetableWorkspace() {
         </div>
       )}
 
-      {/* Lesson Type Control Zone - positioned at bottom center */}
-      <ControlZone
-        lessonTypes={LESSON_TYPES}
-        currentType={currentType}
-        onTypeSelect={handleTypeClick}
-        hasPendingLesson={!!pendingLesson}
-      />
+      {/* Note: Lesson Type circles moved to TimeControls row */}
 
       {/* Unallocated Lessons Panel - positioned at bottom-right */}
       <div
@@ -243,114 +356,6 @@ function PendingLessonCard({ lesson, type, onDragStart, onCancel }) {
   )
 }
 
-// ============================================
-// CONTROL ZONE COMPONENT
-// ============================================
-
-function ControlZone({ lessonTypes, currentType, onTypeSelect, hasPendingLesson }) {
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        bottom: '10px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        padding: '0.8vh 1.5vw',
-        background: THEME.BG_DARK,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 50,
-        borderRadius: '1.5vh',
-        border: `1px solid ${THEME.BORDER}`
-      }}
-    >
-      {/* Lesson Type Palette - centered */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5vh' }}>
-        <span
-          style={{
-            fontSize: '1.2vh',
-            fontFamily: THEME.FONT_PRIMARY,
-            letterSpacing: '0.1em',
-            color: THEME.WHITE,
-            textAlign: 'center'
-          }}
-        >
-          Select Lesson Type
-        </span>
-        <div style={{ display: 'flex', gap: '0.4vw', flexWrap: 'nowrap' }}>
-          {lessonTypes.map(type => (
-            <LessonTypeButton
-              key={type.id}
-              type={type}
-              onClick={() => onTypeSelect(type.id)}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ============================================
-// LESSON TYPE BUTTON
-// ============================================
-
-function LessonTypeButton({ type, onClick }) {
-  const [hovered, setHovered] = useState(false)
-
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        width: '6vw',  // Increased from 4.7vw for text visibility
-        minWidth: '85px',  // Increased from 64px
-        height: '3.5vh',  // Increased from 3vh
-        minHeight: '34px',  // Increased from 28px
-        background: THEME.BG_PANEL,
-        border: `1px solid ${hovered ? type.color : 'rgba(255, 255, 255, 0.3)'}`,
-        borderRadius: '1.5vh',  // Match action button style
-        cursor: 'pointer',
-        display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-        padding: '0 0.6vw',
-        gap: '0.4vw',
-        position: 'relative',
-        overflow: 'hidden',
-        transition: 'border-color 0.2s ease, background 0.2s ease'
-      }}
-    >
-      {/* Left accent bar */}
-      <div
-        style={{
-          width: '4px',
-          height: '60%',
-          background: type.color,
-          borderRadius: '2px',
-          flexShrink: 0
-        }}
-      />
-      {/* Label */}
-      <span
-        style={{
-          fontSize: '1.19vh',  // Increased from 0.95vh (+25%)
-          color: THEME.TEXT_PRIMARY,
-          fontFamily: THEME.FONT_PRIMARY,
-          textAlign: 'left',
-          lineHeight: 1.2,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis'
-        }}
-      >
-        {type.name}
-      </span>
-    </button>
-  )
-}
+// Note: ControlZone and LessonTypeButton moved to TimeControls.jsx (Phase 2-6)
 
 export default TimetableWorkspace

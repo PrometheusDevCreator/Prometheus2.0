@@ -1,22 +1,15 @@
 /**
- * TimeControls.jsx - Pill-shaped Time Adjusters and Day Indicator
+ * TimeControls.jsx - Unified Control Row for TIMETABLE
  *
- * REVISED IMPLEMENTATION - Per DESIGN_Page Mockup
+ * Phase 2-6 Redesign: Streamlined layout
  *
- * Layout: Left | Center | Right
+ * Layout: -08:00+ O O O O O O -14:00+
  *
- * Left — Start time adjuster:
- * - "- 08:00 +" pill-shaped button
- * - Range: 06:00-12:00
- * - Increments: 30 minutes
+ * - Start time adjuster: "- 08:00 +" pill-shaped button
+ * - Lesson type rings (6 types, 1px stroke, no fill)
+ * - End time adjuster: "- 14:00 +" pill-shaped button
  *
- * Centre — Day indicator:
- * - "Day: 1" (number in orange)
- *
- * Right — End time adjuster:
- * - "- 14:00 +" pill-shaped button
- * - Range: 12:00-20:00
- * - Increments: 30 minutes
+ * Week navigation moved to TimetableWorkspace (below Day 5 bar)
  */
 
 import { useState, useCallback } from 'react'
@@ -27,9 +20,11 @@ function TimeControls({
   startHour: propStartHour,
   endHour: propEndHour,
   onStartChange,
-  onEndChange
+  onEndChange,
+  lessonTypes = [],
+  onTypeSelect
 }) {
-  const { currentDay } = useDesign()
+  const { currentDay, currentWeek, setCurrentWeek, courseData } = useDesign()
 
   // Use props if provided, otherwise use local state
   const [localStartHour, setLocalStartHour] = useState(8)
@@ -86,60 +81,72 @@ function TimeControls({
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
   }
 
+  // Calculate max weeks based on course duration
+  const maxWeeks = (() => {
+    if (courseData?.weeks && courseData.weeks > 0) {
+      return courseData.weeks
+    }
+    if (courseData?.days && courseData.days > 0) {
+      return Math.ceil(courseData.days / 5)
+    }
+    return 1
+  })()
+
+  // Week navigation handlers
+  const handlePrevWeek = useCallback(() => {
+    if (currentWeek > 1) {
+      setCurrentWeek(currentWeek - 1)
+    }
+  }, [currentWeek, setCurrentWeek])
+
+  const handleNextWeek = useCallback(() => {
+    if (currentWeek < maxWeeks) {
+      setCurrentWeek(currentWeek + 1)
+    }
+  }, [currentWeek, maxWeeks, setCurrentWeek])
+
   return (
     <div
       style={{
         display: 'flex',
         justifyContent: 'center',
-        padding: '0.8vh 0',
-        marginTop: '15px',
+        padding: '0.5vh 0',
+        paddingTop: 'calc(0.5vh + 30px)', // Moved down 30px
         background: 'transparent'
       }}
     >
-      {/* Container aligned with day bars (reduced width) */}
+      {/* Container matches day bar width for proper alignment */}
       <div
         style={{
-          width: 'calc(75% - 150px)',
+          width: 'calc(90% - 75px)', // Match TimetableGrid day bar width
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between'
         }}
       >
-        {/* LEFT: Start Time Adjuster - aligned with left edge of timetable content */}
-        <div style={{ marginLeft: '-5px' }}>
-          <TimeAdjusterPill
-            time={formatHourDisplay(startHour)}
-            onDecrement={decrementStart}
-            onIncrement={incrementStart}
-            canDecrement={startHour > 6}
-            canIncrement={startHour < 12 && startHour < endHour - 1}
-          />
-        </div>
+        {/* LEFT: Start Time Adjuster (aligned with left edge of day bars) */}
+        <TimeAdjusterPill
+          time={formatHourDisplay(startHour)}
+          onDecrement={decrementStart}
+          onIncrement={incrementStart}
+          canDecrement={startHour > 6}
+          canIncrement={startHour < 12 && startHour < endHour - 1}
+        />
 
-        {/* CENTER: Day Indicator */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4vw' }}>
-          <span
-            style={{
-              fontSize: '1.5vh',
-              color: THEME.TEXT_PRIMARY,
-              fontFamily: THEME.FONT_PRIMARY
-            }}
-          >
-            Day:
-          </span>
-          <span
-            style={{
-              fontSize: '1.5vh',
-              color: THEME.AMBER,
-              fontFamily: THEME.FONT_MONO,
-              fontWeight: 500
-            }}
-          >
-            {currentDay}
-          </span>
-        </div>
+        {/* CENTER: Lesson Type Rings (centered above Day 1 bar) */}
+        {lessonTypes.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.275vw' }}>
+            {lessonTypes.map(type => (
+              <LessonTypeRing
+                key={type.id}
+                type={type}
+                onClick={() => onTypeSelect?.(type.id)}
+              />
+            ))}
+          </div>
+        )}
 
-        {/* RIGHT: End Time Adjuster - aligned with right edge of timetable */}
+        {/* RIGHT: End Time Adjuster (aligned with right edge of day bars) */}
         <TimeAdjusterPill
           time={formatHourDisplay(endHour)}
           onDecrement={decrementEnd}
@@ -148,6 +155,143 @@ function TimeControls({
           canIncrement={endHour < 20}
         />
       </div>
+    </div>
+  )
+}
+
+// ============================================
+// LESSON TYPE RING (1px stroke, no fill)
+// ============================================
+
+function LessonTypeRing({ type, onClick }) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={onClick}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        title={type.name}
+        style={{
+          width: '3vh',
+          height: '3vh',
+          minWidth: '28px',
+          minHeight: '28px',
+          background: 'transparent',
+          border: `1px solid ${type.color}`,
+          borderRadius: '50%',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.2s ease',
+          boxShadow: hovered ? `0 0 12px ${type.color}` : 'none',
+          transform: hovered ? 'scale(1.1)' : 'scale(1)'
+        }}
+      />
+      {/* Label tooltip on hover */}
+      {hovered && (
+        <span
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            marginTop: '0.5vh',
+            fontSize: '1.1vh',
+            color: THEME.WHITE,
+            fontFamily: THEME.FONT_PRIMARY,
+            whiteSpace: 'nowrap',
+            background: 'rgba(0, 0, 0, 0.8)',
+            padding: '0.3vh 0.6vw',
+            borderRadius: '0.5vh',
+            zIndex: 100
+          }}
+        >
+          {type.name}
+        </span>
+      )}
+    </div>
+  )
+}
+
+// ============================================
+// WEEK NAVIGATOR - < Week X >
+// ============================================
+
+function WeekNavigator({ week, maxWeeks, onPrev, onNext }) {
+  const [prevHovered, setPrevHovered] = useState(false)
+  const [nextHovered, setNextHovered] = useState(false)
+
+  const canPrev = week > 1
+  const canNext = week < maxWeeks
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5vw',
+        padding: '0.5vh 1vw',
+        background: THEME.AMBER,
+        borderRadius: '2vh',
+        minWidth: '100px'
+      }}
+    >
+      {/* Previous Arrow */}
+      <button
+        onClick={onPrev}
+        disabled={!canPrev}
+        onMouseEnter={() => setPrevHovered(true)}
+        onMouseLeave={() => setPrevHovered(false)}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: canPrev ? (prevHovered ? THEME.BG_DARK : THEME.WHITE) : 'rgba(255,255,255,0.4)',
+          fontSize: '1.4vh',
+          cursor: canPrev ? 'pointer' : 'default',
+          padding: '0 0.2vw',
+          fontWeight: 'bold',
+          transition: 'color 0.15s ease'
+        }}
+      >
+        &lt;
+      </button>
+
+      {/* Week Label */}
+      <span
+        style={{
+          fontSize: '1.3vh',
+          color: THEME.WHITE,
+          fontFamily: THEME.FONT_PRIMARY,
+          fontWeight: 500,
+          textAlign: 'center',
+          flex: 1
+        }}
+      >
+        Week {week}
+      </span>
+
+      {/* Next Arrow */}
+      <button
+        onClick={onNext}
+        disabled={!canNext}
+        onMouseEnter={() => setNextHovered(true)}
+        onMouseLeave={() => setNextHovered(false)}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: canNext ? (nextHovered ? THEME.BG_DARK : THEME.WHITE) : 'rgba(255,255,255,0.4)',
+          fontSize: '1.4vh',
+          cursor: canNext ? 'pointer' : 'default',
+          padding: '0 0.2vw',
+          fontWeight: 'bold',
+          transition: 'color 0.15s ease'
+        }}
+      >
+        &gt;
+      </button>
     </div>
   )
 }
@@ -238,3 +382,4 @@ function TimeAdjusterPill({ time, onDecrement, onIncrement, canDecrement, canInc
 }
 
 export default TimeControls
+export { WeekNavigator }

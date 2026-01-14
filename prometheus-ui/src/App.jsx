@@ -130,9 +130,12 @@ function App() {
   const [selectedLessonId, setSelectedLessonId] = useState(null)
 
   // Get the currently selected/editing lesson for the modal
+  // Priority: editingLessonId (explicit edit) > selectedLessonId (timetable selection)
   const selectedLessonForEditor = editingLessonId
     ? timetableData.lessons.find(l => l.id === editingLessonId)
-    : null
+    : selectedLessonId
+      ? timetableData.lessons.find(l => l.id === selectedLessonId)
+      : null
 
   // Handle opening Lesson Editor - with optional lessonId parameter
   const handleLessonEditorToggle = useCallback((open, lessonId = null) => {
@@ -536,22 +539,15 @@ function App() {
         {/* Header - includes horizontal line, page title, and Lesson Editor lozenge */}
         <Header
           pageTitle={
-            currentPage === 'define' ? '' :  /* COURSE INFORMATION removed per founder request */
-            currentPage === 'design' ? '' :  /* COURSE PLANNER removed - Lesson Editor in header */
-            currentPage === 'build' ? '' :  /* Removed - burnt orange label only */
-            currentPage === 'format' ? '' :  /* Removed - burnt orange label only */
-            currentPage === 'generate' ? 'GENERATE' :
-            currentPage === 'navigate' ? 'NAVIGATION' :
-            currentPage.toUpperCase()
-          }
-          sectionName={
             currentPage === 'define' ? 'DEFINE' :
             currentPage === 'design' ? 'DESIGN' :
             currentPage === 'build' ? 'BUILD' :
             currentPage === 'format' ? 'FORMAT' :
             currentPage === 'generate' ? 'GENERATE' :
-            null
+            currentPage === 'navigate' ? 'NAVIGATION HUB' :
+            currentPage.toUpperCase()
           }
+          sectionName={null}  /* sectionName no longer used - page title shown in nav row */
           courseData={courseData}
           onExitClick={handleExitClick}
           exitPending={exitPending}

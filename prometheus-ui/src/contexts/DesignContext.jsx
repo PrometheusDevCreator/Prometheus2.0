@@ -234,21 +234,16 @@ const createDefaultSlide = () => ({
 })
 
 // ============================================
-// LESSON TYPES - 10 types per DESIGN_Page mockup
+// LESSON TYPES - 6 types per Phase 2-6 redesign
 // ============================================
 export const LESSON_TYPES = [
-  // Row 1
-  { id: 'instructor-led', name: 'Instructor Led', label: 'Instructor Led', color: '#FF6600' },
-  { id: 'group-discussion', name: 'Group Discussion', label: 'Group Discussion', color: '#00FF00' },
-  { id: 'practical', name: 'Practical', label: 'Practical', color: '#00BFFF' },
-  { id: 'assessment', name: 'Assessment', label: 'Assessment', color: '#FF4444' },
-  { id: 'break', name: 'Break', label: 'Break', color: '#FFD700' },
-  // Row 2
-  { id: 'student-led', name: 'Student Led', label: 'Student Led', color: '#FFFFFF' },
-  { id: 'research', name: 'Research', label: 'Research', color: '#00FF00' },
-  { id: 'external-lecturer', name: 'External Lecturer', label: 'External Lecturer', color: '#FF6600' },
-  { id: 'admin', name: 'Admin', label: 'Admin', color: '#FFD700' },
-  { id: 'user-defined', name: 'User Defined', label: 'User Defined', color: '#FF00FF' }
+  // Phase 2-6 Redesign: Reduced to 6 types, displayed as colored circles
+  { id: 'instructor-led', name: 'Instructor Led', label: 'Instructor Led', color: '#FF6600' },  // Orange/Red
+  { id: 'group', name: 'Group', label: 'Group', color: '#00BFFF' },                             // Blue
+  { id: 'student-led', name: 'Student Led', label: 'Student Led', color: '#00FF00' },          // Green
+  { id: 'assessment', name: 'Assessment', label: 'Assessment', color: '#9C27B0' },             // Purple
+  { id: 'admin', name: 'Admin', label: 'Admin', color: '#FFFFFF' },                            // White
+  { id: 'break', name: 'Break', label: 'Break', color: '#FFD700' }                             // Yellow
 ]
 
 // ============================================
@@ -277,7 +272,7 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
   // --------------------------------------------
   // NAVIGATION STATE
   // --------------------------------------------
-  const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'timetable' | 'scalar'
+  const [activeTab, setActiveTab] = useState('timetable') // 'overview' | 'timetable' | 'scalar' - TIMETABLE is default
   const [viewMode, setViewMode] = useState('week') // 'day' | 'week' | 'module'
   const [currentModule, setCurrentModule] = useState(1)
   const [currentWeek, setCurrentWeek] = useState(1)
@@ -303,6 +298,100 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     setTimetableData(prev => ({
       ...prev,
       overviewBlocks: typeof updater === 'function' ? updater(prev.overviewBlocks || []) : updater
+    }))
+  }, [setTimetableData])
+
+  // --------------------------------------------
+  // OVERVIEW PLANNING STATE (Phase 2-6 Redesign)
+  // Timelines and NoteBlocks for visual course planning
+  // --------------------------------------------
+  const overviewPlanningState = timetableData?.overviewPlanningState || {
+    timelines: [],
+    notes: [],
+    colorLabels: {}
+  }
+
+  // Add a new timeline
+  const addPlanningTimeline = useCallback((timeline) => {
+    setTimetableData(prev => ({
+      ...prev,
+      overviewPlanningState: {
+        ...(prev.overviewPlanningState || { timelines: [], notes: [], colorLabels: {} }),
+        timelines: [...(prev.overviewPlanningState?.timelines || []), timeline]
+      }
+    }))
+  }, [setTimetableData])
+
+  // Remove a timeline
+  const removePlanningTimeline = useCallback((timelineId) => {
+    setTimetableData(prev => ({
+      ...prev,
+      overviewPlanningState: {
+        ...(prev.overviewPlanningState || { timelines: [], notes: [], colorLabels: {} }),
+        timelines: (prev.overviewPlanningState?.timelines || []).filter(t => t.id !== timelineId)
+      }
+    }))
+  }, [setTimetableData])
+
+  // Update a timeline
+  const updatePlanningTimeline = useCallback((timelineId, updates) => {
+    setTimetableData(prev => ({
+      ...prev,
+      overviewPlanningState: {
+        ...(prev.overviewPlanningState || { timelines: [], notes: [], colorLabels: {} }),
+        timelines: (prev.overviewPlanningState?.timelines || []).map(t =>
+          t.id === timelineId ? { ...t, ...updates } : t
+        )
+      }
+    }))
+  }, [setTimetableData])
+
+  // Add a new note
+  const addPlanningNote = useCallback((note) => {
+    setTimetableData(prev => ({
+      ...prev,
+      overviewPlanningState: {
+        ...(prev.overviewPlanningState || { timelines: [], notes: [], colorLabels: {} }),
+        notes: [...(prev.overviewPlanningState?.notes || []), note]
+      }
+    }))
+  }, [setTimetableData])
+
+  // Remove a note
+  const removePlanningNote = useCallback((noteId) => {
+    setTimetableData(prev => ({
+      ...prev,
+      overviewPlanningState: {
+        ...(prev.overviewPlanningState || { timelines: [], notes: [], colorLabels: {} }),
+        notes: (prev.overviewPlanningState?.notes || []).filter(n => n.id !== noteId)
+      }
+    }))
+  }, [setTimetableData])
+
+  // Update a note
+  const updatePlanningNote = useCallback((noteId, updates) => {
+    setTimetableData(prev => ({
+      ...prev,
+      overviewPlanningState: {
+        ...(prev.overviewPlanningState || { timelines: [], notes: [], colorLabels: {} }),
+        notes: (prev.overviewPlanningState?.notes || []).map(n =>
+          n.id === noteId ? { ...n, ...updates } : n
+        )
+      }
+    }))
+  }, [setTimetableData])
+
+  // Update a color label
+  const updatePlanningColorLabel = useCallback((colorIndex, label) => {
+    setTimetableData(prev => ({
+      ...prev,
+      overviewPlanningState: {
+        ...(prev.overviewPlanningState || { timelines: [], notes: [], colorLabels: {} }),
+        colorLabels: {
+          ...(prev.overviewPlanningState?.colorLabels || {}),
+          [colorIndex]: label
+        }
+      }
     }))
   }, [setTimetableData])
 
@@ -455,6 +544,51 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       setCanonicalData(prev => ({ ...prev, los, topics, subtopics }))
     }
   }, []) // Run once on mount
+
+  // Sync canonicalData when scalarData.modules changes (handles courseData updates)
+  useEffect(() => {
+    const los = {}
+    const topics = {}
+    const subtopics = {}
+
+    // Re-sync from scalarData structure
+    scalarData.modules.forEach(module => {
+      ;(module.learningObjectives || []).forEach(lo => {
+        los[lo.id] = {
+          id: lo.id,
+          moduleId: module.id,
+          verb: lo.verb,
+          description: lo.description,
+          title: lo.title || `${lo.verb} ${lo.description}`,
+          order: lo.order
+        }
+
+        ;(lo.topics || []).forEach((topic, tIdx) => {
+          topics[topic.id] = {
+            id: topic.id,
+            loId: lo.id,
+            title: topic.title,
+            order: topic.order || tIdx + 1,
+            expanded: topic.expanded || false
+          }
+
+          ;(topic.subtopics || []).forEach((sub, sIdx) => {
+            subtopics[sub.id] = {
+              id: sub.id,
+              topicId: topic.id,
+              title: sub.title,
+              order: sub.order || sIdx + 1
+            }
+          })
+        })
+      })
+    })
+
+    // Update canonical store if there are LOs
+    if (Object.keys(los).length > 0) {
+      setCanonicalData(prev => ({ ...prev, los, topics, subtopics }))
+    }
+  }, [scalarData.modules]) // Re-run when modules change
 
   // --------------------------------------------
   // PHASE 1: DERIVE LEGACY scalarData FROM CANONICAL
@@ -1182,7 +1316,15 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       )
     })
 
-    // Sync to Scalar separately (only if LO is assigned)
+    // PHASE 1: Sync to canonical data store (ScalarDock reads from here)
+    // Always add to canonical, whether LO is assigned or not
+    setCanonicalData(prev => canonicalAddTopic(prev, {
+      id: scalarTopicId,
+      loId: primaryLOId, // null if no LO assigned - will show as orphan
+      title: topicTitle
+    }))
+
+    // Legacy sync to Scalar (for backward compatibility)
     if (loOrder && primaryLOId) {
       setScalarData(prev => {
         const newData = { ...prev, modules: [...prev.modules] }
@@ -1234,7 +1376,12 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       const topic = (lesson.topics || []).find(t => t.id === topicId)
       const scalarTopicId = topic?.scalarTopicId
 
-      // If there's a linked scalar topic and title is being updated, sync to scalar
+      // PHASE 1: Sync to canonical data store
+      if (scalarTopicId && updates.title) {
+        setCanonicalData(prevCanonical => canonicalUpdate(prevCanonical, 'topic', scalarTopicId, { title: updates.title }))
+      }
+
+      // Legacy: If there's a linked scalar topic and title is being updated, sync to scalar
       if (scalarTopicId && updates.title) {
         setScalarData(prevScalar => {
           const newData = { ...prevScalar, modules: [...prevScalar.modules] }
@@ -1303,7 +1450,17 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
         scalarSubtopicId: !isUnallocated && scalarTopicId ? scalarSubtopicId : null // Link to scalar only if allocated
       }
 
-      // Auto-sync: Add subtopic to scalar if parent topic has a scalar link
+      // PHASE 1: Sync to canonical data store (ScalarDock reads from here)
+      // Use scalarTopicId as the topicId in canonical store
+      if (scalarTopicId) {
+        setCanonicalData(prev => canonicalAddSubtopic(prev, {
+          id: scalarSubtopicId,
+          topicId: scalarTopicId,
+          title: subtopicTitle
+        }))
+      }
+
+      // Legacy sync: Add subtopic to scalar if parent topic has a scalar link
       if (scalarTopicId) {
         setScalarData(prevScalar => {
           const newData = { ...prevScalar, modules: [...prevScalar.modules] }
@@ -1382,7 +1539,12 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       const subtopic = (topic.subtopics || []).find(s => s.id === subtopicId)
       const scalarSubtopicId = subtopic?.scalarSubtopicId
 
-      // If there's a linked scalar subtopic and title is being updated, sync to scalar
+      // PHASE 1: Sync to canonical data store
+      if (scalarSubtopicId && updates.title) {
+        setCanonicalData(prevCanonical => canonicalUpdate(prevCanonical, 'subtopic', scalarSubtopicId, { title: updates.title }))
+      }
+
+      // Legacy: If there's a linked scalar subtopic and title is being updated, sync to scalar
       if (scalarSubtopicId && updates.title) {
         setScalarData(prevScalar => {
           const newData = { ...prevScalar, modules: [...prevScalar.modules] }
@@ -1975,6 +2137,27 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     // PHASE 1: Write to canonical store FIRST (source of truth)
     setCanonicalData(prev => canonicalUpdate(prev, nodeType, nodeId, updates))
 
+    // BIDIRECTIONAL SYNC: Update lessons that have linked topics/subtopics
+    if (nodeType === 'topic' && updates.title) {
+      setLessons(prev => prev.map(lesson => ({
+        ...lesson,
+        topics: (lesson.topics || []).map(t =>
+          t.scalarTopicId === nodeId ? { ...t, title: updates.title } : t
+        )
+      })))
+    }
+    if (nodeType === 'subtopic' && updates.title) {
+      setLessons(prev => prev.map(lesson => ({
+        ...lesson,
+        topics: (lesson.topics || []).map(topic => ({
+          ...topic,
+          subtopics: (topic.subtopics || []).map(s =>
+            s.scalarSubtopicId === nodeId ? { ...s, title: updates.title } : s
+          )
+        }))
+      })))
+    }
+
     // Legacy write - kept for backward compatibility during transition
     if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
       setScalarData(prev => {
@@ -2099,6 +2282,23 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     // PHASE 1: Write to canonical store FIRST (source of truth)
     setCanonicalData(prev => canonicalDelete(prev, nodeType, nodeId))
 
+    // BIDIRECTIONAL SYNC: Remove from lessons that have linked topics/subtopics
+    if (nodeType === 'topic') {
+      setLessons(prev => prev.map(lesson => ({
+        ...lesson,
+        topics: (lesson.topics || []).filter(t => t.scalarTopicId !== nodeId && t.id !== nodeId)
+      })))
+    }
+    if (nodeType === 'subtopic') {
+      setLessons(prev => prev.map(lesson => ({
+        ...lesson,
+        topics: (lesson.topics || []).map(topic => ({
+          ...topic,
+          subtopics: (topic.subtopics || []).filter(s => s.scalarSubtopicId !== nodeId && s.id !== nodeId)
+        }))
+      })))
+    }
+
     // Legacy write - kept for backward compatibility during transition
     if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
       setScalarData(prev => {
@@ -2161,6 +2361,107 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
           }
         }
         return prev
+      })
+    }
+  }, [])
+
+  // Reorder topic within its parent LO or move to a different LO
+  const reorderTopic = useCallback((topicId, targetLoId, newOrder) => {
+    setCanonicalData(prev => {
+      const topic = prev.topics[topicId]
+      if (!topic) return prev
+
+      const newTopics = { ...prev.topics }
+
+      // If moving to a different LO
+      if (topic.loId !== targetLoId) {
+        // Update topic's loId
+        newTopics[topicId] = { ...topic, loId: targetLoId, order: newOrder }
+      } else {
+        // Reorder within same LO
+        const siblingTopics = Object.values(prev.topics)
+          .filter(t => t.loId === topic.loId && t.id !== topicId)
+          .sort((a, b) => (a.order || 0) - (b.order || 0))
+
+        // Insert at new position and renumber
+        siblingTopics.splice(newOrder - 1, 0, { ...topic })
+        siblingTopics.forEach((t, idx) => {
+          newTopics[t.id] = { ...newTopics[t.id], order: idx + 1 }
+        })
+      }
+
+      return { ...prev, topics: newTopics }
+    })
+
+    // Legacy update for backward compatibility
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
+        // Simplified - just trigger a re-render
+        return { ...prev }
+      })
+    }
+  }, [])
+
+  // Reorder subtopic within its parent topic or move to a different topic
+  const reorderSubtopic = useCallback((subtopicId, targetTopicId, newOrder) => {
+    setCanonicalData(prev => {
+      const subtopic = prev.subtopics[subtopicId]
+      if (!subtopic) return prev
+
+      const newSubtopics = { ...prev.subtopics }
+
+      // If moving to a different topic
+      if (subtopic.topicId !== targetTopicId) {
+        newSubtopics[subtopicId] = { ...subtopic, topicId: targetTopicId, order: newOrder }
+      } else {
+        // Reorder within same topic
+        const siblingSubtopics = Object.values(prev.subtopics)
+          .filter(s => s.topicId === subtopic.topicId && s.id !== subtopicId)
+          .sort((a, b) => (a.order || 0) - (b.order || 0))
+
+        siblingSubtopics.splice(newOrder - 1, 0, { ...subtopic })
+        siblingSubtopics.forEach((s, idx) => {
+          newSubtopics[s.id] = { ...newSubtopics[s.id], order: idx + 1 }
+        })
+      }
+
+      return { ...prev, subtopics: newSubtopics }
+    })
+
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => ({ ...prev }))
+    }
+  }, [])
+
+  // Reorder LO within module
+  const reorderLO = useCallback((loId, newOrder) => {
+    setCanonicalData(prev => {
+      const lo = prev.los[loId]
+      if (!lo) return prev
+
+      const newLOs = { ...prev.los }
+      const siblingLOs = Object.values(prev.los)
+        .filter(l => l.moduleId === lo.moduleId && l.id !== loId)
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+
+      siblingLOs.splice(newOrder - 1, 0, { ...lo })
+      siblingLOs.forEach((l, idx) => {
+        newLOs[l.id] = { ...newLOs[l.id], order: idx + 1 }
+      })
+
+      return { ...prev, los: newLOs }
+    })
+
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
+        const newData = { ...prev, modules: [...prev.modules] }
+        for (let m = 0; m < newData.modules.length; m++) {
+          const module = { ...newData.modules[m] }
+          newData.modules[m] = module
+          module.learningObjectives = [...module.learningObjectives]
+            .sort((a, b) => (a.order || 0) - (b.order || 0))
+        }
+        return newData
       })
     }
   }, [])
@@ -2741,6 +3042,16 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     overviewBlocks,
     setOverviewBlocks,
 
+    // Overview Planning (Phase 2-6 Redesign)
+    overviewPlanningState,
+    addPlanningTimeline,
+    removePlanningTimeline,
+    updatePlanningTimeline,
+    addPlanningNote,
+    removePlanningNote,
+    updatePlanningNote,
+    updatePlanningColorLabel,
+
     // Lessons
     lessons,
     selectedLesson,
@@ -2825,6 +3136,9 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     isItemHighlighted,
     updateScalarNode,
     deleteScalarNode,
+    reorderTopic,
+    reorderSubtopic,
+    reorderLO,
 
     // Selection
     selection,
@@ -2874,6 +3188,9 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     PC_COLORS
   }), [
     activeTab, viewMode, currentModule, currentWeek, currentDay, overviewBlocks,
+    // Overview Planning (Phase 2-6)
+    overviewPlanningState, addPlanningTimeline, removePlanningTimeline, updatePlanningTimeline,
+    addPlanningNote, removePlanningNote, updatePlanningNote, updatePlanningColorLabel,
     // Hierarchy navigation (Phase 4)
     hierarchyNav, navigateDown, navigateUp, navigateToLevel, wheelNavCollapsed, toggleWheelNav,
     lessons, selectedLesson, scheduledLessons, unscheduledLessons, savedLessons,
@@ -2884,7 +3201,7 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     moveLesson, resizeLesson, checkCollision, findAvailableSlot,
     effectiveScalarData, selectedScalarItem, toggleScalarExpand,
     addLearningObjective, addTopic, addSubtopic, updateScalarNode, deleteScalarNode,
-    createLessonFromScalar,
+    reorderTopic, reorderSubtopic, reorderLO, createLessonFromScalar,
     // Canonical data store
     canonicalData, getCanonicalTopicSerial, getCanonicalSubtopicSerial,
     toggleTopicLOLink, unlinkTopic, linkTopicToLO, recalculateGroupOrders,

@@ -7,11 +7,12 @@
  *
  * Features:
  * - Collapsible panel
+ * - FLOATABLE: Drag header to move window anywhere
  * - Drag-and-drop support (drop scheduled lessons to unschedule)
  * - Consistent styling across OVERVIEW and TIMETABLE
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { THEME } from '../../constants/theme'
 
 function UnallocatedLessonsPanel({
@@ -22,6 +23,71 @@ function UnallocatedLessonsPanel({
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
+
+  // Floating window position state
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [isDraggingWindow, setIsDraggingWindow] = useState(false)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const panelRef = useRef(null)
+
+  // Handle window drag start - use FIXED positioning relative to viewport
+  const handleWindowDragStart = useCallback((e) => {
+    // Prevent if clicking on collapse toggle area
+    if (e.target.closest('[data-collapse-toggle]')) return
+
+    e.preventDefault()
+
+    const rect = panelRef.current?.getBoundingClientRect()
+    if (rect) {
+      // Store drag offset within the panel
+      setDragOffset({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      })
+
+      // Initialize position from current viewport position (first drag)
+      if (position.x === 0 && position.y === 0) {
+        setPosition({
+          x: rect.left,
+          y: rect.top
+        })
+      }
+
+      setIsDraggingWindow(true)
+    }
+  }, [position.x, position.y])
+
+  // Handle window drag move - use viewport coordinates directly
+  useEffect(() => {
+    if (!isDraggingWindow) return
+
+    const handleMouseMove = (e) => {
+      // Calculate new position in viewport coordinates
+      const newX = e.clientX - dragOffset.x
+      const newY = e.clientY - dragOffset.y
+
+      // Clamp to viewport bounds (with some padding)
+      const maxX = window.innerWidth - 290 // Panel width + padding
+      const maxY = window.innerHeight - 150 // Panel max height + padding
+
+      setPosition({
+        x: Math.max(10, Math.min(newX, maxX)),
+        y: Math.max(10, Math.min(newY, maxY))
+      })
+    }
+
+    const handleMouseUp = () => {
+      setIsDraggingWindow(false)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDraggingWindow, dragOffset])
 
   // Handle drag start for unallocated lesson
   const handleDragStart = useCallback((e, lesson) => {
@@ -63,32 +129,44 @@ function UnallocatedLessonsPanel({
     return type?.color || '#FF6600'
   }
 
+  // Determine if we're using custom position (user has dragged the window)
+  const hasCustomPosition = position.x !== 0 || position.y !== 0
+
   return (
     <div
+      ref={panelRef}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       style={{
         background: isDragOver ? 'rgba(255, 102, 0, 0.2)' : 'rgba(20, 20, 20, 0.95)',
-        border: `2px solid ${isDragOver ? '#00FF00' : THEME.AMBER}`,
+        border: `2px solid ${isDragOver ? '#00FF00' : isDraggingWindow ? THEME.GREEN_BRIGHT : THEME.AMBER}`,
         borderRadius: '12px',
         // Item 20: Match width of DELETE + CLEAR + SAVE (approximately 280px)
         width: '280px',
         maxHeight: collapsed ? '36px' : '140px',
         overflow: 'hidden',
-        transition: 'all 0.2s ease'
+        transition: isDraggingWindow ? 'none' : 'all 0.2s ease',
+        // Floating position (if dragged) - use FIXED for viewport-relative positioning
+        ...(hasCustomPosition && {
+          position: 'fixed',
+          left: `${position.x}px`,
+          top: `${position.y}px`,
+          zIndex: 1000 // Ensure it floats above other elements
+        }),
+        boxShadow: isDraggingWindow ? '0 8px 24px rgba(0, 0, 0, 0.4)' : '0 4px 12px rgba(0, 0, 0, 0.2)'
       }}
     >
-      {/* Header */}
+      {/* Header - Draggable for window movement */}
       <div
-        onClick={() => setCollapsed(!collapsed)}
+        onMouseDown={handleWindowDragStart}
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '0.6vh 0.8vw',
           borderBottom: collapsed ? 'none' : `1px solid ${THEME.AMBER}40`,
-          cursor: 'pointer'
+          cursor: isDraggingWindow ? 'grabbing' : 'grab'
         }}
       >
         <span
@@ -103,7 +181,19 @@ function UnallocatedLessonsPanel({
         >
           Unallocated ({lessons.length})
         </span>
-        <span style={{ fontSize: '1.2vh', color: THEME.AMBER }}>
+        <span
+          data-collapse-toggle="true"
+          onClick={(e) => {
+            e.stopPropagation()
+            setCollapsed(!collapsed)
+          }}
+          style={{
+            fontSize: '1.2vh',
+            color: THEME.AMBER,
+            cursor: 'pointer',
+            padding: '0.2vh 0.4vw'
+          }}
+        >
           {collapsed ? '▶' : '▼'}
         </span>
       </div>
