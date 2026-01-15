@@ -16,7 +16,7 @@ import TimeControls, { WeekNavigator } from './TimeControls'
 import TimetableGrid from './TimetableGrid'
 import UnallocatedLessonsPanel from './UnallocatedLessonsPanel'
 
-function TimetableWorkspace() {
+function TimetableWorkspace({ onOpenLessonEditor }) {
   const {
     LESSON_TYPES,
     createLesson,
@@ -211,6 +211,7 @@ function TimetableWorkspace() {
           startHour={Math.floor(startHour)}
           endHour={Math.floor(endHour)}
           onSchedulePending={handleSchedulePending}
+          onOpenLessonEditor={onOpenLessonEditor}
         />
       </div>
 

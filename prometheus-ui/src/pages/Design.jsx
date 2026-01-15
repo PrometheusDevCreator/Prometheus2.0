@@ -79,8 +79,15 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState, course
   const {
     activeTab,
     selection,
+    select,
     clearDesignState
   } = useDesign()
+
+  // Handle opening Lesson Editor for a specific lesson
+  const handleOpenLessonEditor = useCallback((lessonId) => {
+    select('lesson', lessonId)
+    onLessonEditorToggle?.()
+  }, [select, onLessonEditorToggle])
 
   // Report selected lesson changes to parent (App.jsx)
   useEffect(() => {
@@ -127,7 +134,7 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState, course
         )}
 
         {activeTab === 'timetable' && (
-          <TimetableWorkspace />
+          <TimetableWorkspace onOpenLessonEditor={handleOpenLessonEditor} />
         )}
 
         {activeTab === 'scalar' && (

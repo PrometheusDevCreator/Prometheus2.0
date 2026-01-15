@@ -18,6 +18,9 @@ import UnallocatedLessonsPanel from '../UnallocatedLessonsPanel'
 // Default pixels per unit for note sizing
 const DEFAULT_PIXELS_PER_UNIT = 100
 
+// Flag to track if initial elements have been created
+let initialElementsCreated = false
+
 function PlanningCanvas({
   courseData = {},
   timelines = [],
@@ -120,6 +123,35 @@ function PlanningCanvas({
     ? 1000 / Math.max(1, timelines[0].endUnit - timelines[0].startUnit)
     : DEFAULT_PIXELS_PER_UNIT
 
+  // Auto-create initial 5-day timeline and note block when canvas first opens
+  useEffect(() => {
+    if (!initialElementsCreated && timelines.length === 0 && notes.length === 0) {
+      initialElementsCreated = true
+
+      // Add default 5-day timeline centered horizontally, positioned in upper area
+      onAddTimeline?.({
+        id: `timeline-${Date.now()}`,
+        x: 500,  // Center of canvas area
+        y: 100,  // Upper portion
+        startUnit: 0,
+        endUnit: 5,  // 5 days
+        unitType: 'day'
+      })
+
+      // Add default note block below timeline
+      setTimeout(() => {
+        onAddNote?.({
+          id: `note-${Date.now()}`,
+          x: 500,
+          y: 180,  // Below timeline
+          widthUnits: 2,
+          text: '',
+          colorIndex: 0
+        })
+      }, 50)
+    }
+  }, [timelines.length, notes.length, onAddTimeline, onAddNote])
+
   return (
     <div
       ref={canvasRef}
@@ -132,46 +164,44 @@ function PlanningCanvas({
         cursor: isPanning ? 'grabbing' : 'default'
       }}
     >
-      {/* Control Bar - Add Timeline / Add Note */}
+      {/* 12-Column Day Grid Background */}
       <div
         style={{
           position: 'absolute',
-          top: '1vh',
-          left: '50%',
-          transform: 'translateX(-50%)',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          display: 'flex',
+          pointerEvents: 'none',
+          zIndex: 1
+        }}
+      >
+        {Array.from({ length: 12 }, (_, i) => (
+          <div
+            key={`col-${i}`}
+            style={{
+              flex: 1,
+              borderRight: i < 11 ? `1px solid ${THEME.BORDER}20` : 'none',
+              height: '100%'
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Control Bar - Add Timeline / Add Note - positioned left */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '2vh',
+          left: '2vw',
           display: 'flex',
           gap: '1vw',
-          zIndex: 50,
-          background: 'rgba(20, 20, 20, 0.9)',
-          padding: '0.8vh 1.5vw',
-          borderRadius: '2vh',
-          border: `1px solid ${THEME.BORDER}`
+          zIndex: 50
         }}
       >
         <button
           onClick={handleAddTimeline}
-          style={{
-            padding: '0.6vh 1vw',
-            fontSize: '1.2vh',
-            fontFamily: THEME.FONT_PRIMARY,
-            color: THEME.GREEN_BRIGHT,
-            background: 'transparent',
-            border: `1px solid ${THEME.GREEN_BRIGHT}`,
-            borderRadius: '1.5vh',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = `${THEME.GREEN_BRIGHT}20`
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent'
-          }}
-        >
-          + TIMELINE
-        </button>
-        <button
-          onClick={handleAddNote}
           style={{
             padding: '0.6vh 1vw',
             fontSize: '1.2vh',
@@ -185,6 +215,28 @@ function PlanningCanvas({
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = `${THEME.AMBER}20`
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent'
+          }}
+        >
+          + TIMELINE
+        </button>
+        <button
+          onClick={handleAddNote}
+          style={{
+            padding: '0.6vh 1vw',
+            fontSize: '1.2vh',
+            fontFamily: THEME.FONT_PRIMARY,
+            color: THEME.TEXT_DIM,
+            background: 'transparent',
+            border: `1px solid ${THEME.TEXT_DIM}`,
+            borderRadius: '1.5vh',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = `${THEME.TEXT_DIM}20`
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'transparent'
@@ -242,35 +294,7 @@ function PlanningCanvas({
         ))}
       </div>
 
-      {/* Empty State - Show when no elements */}
-      {timelines.length === 0 && notes.length === 0 && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            textAlign: 'center',
-            color: THEME.TEXT_DIM,
-            fontFamily: THEME.FONT_PRIMARY,
-            fontSize: '1.5vh',
-            pointerEvents: 'none'
-          }}
-        >
-          <p style={{ margin: '0 0 1vh 0', color: THEME.GREEN_BRIGHT }}>
-            COURSE PLANNING CANVAS
-          </p>
-          <p style={{ margin: 0 }}>
-            Click "+ TIMELINE" to add a course timeline
-          </p>
-          <p style={{ margin: '0.5vh 0 0 0' }}>
-            Click "+ NOTE" to add planning notes
-          </p>
-          <p style={{ margin: '1vh 0 0 0', fontSize: '1.2vh' }}>
-            Shift+drag or middle-mouse to pan
-          </p>
-        </div>
-      )}
+      {/* Empty state notices removed per design spec */}
 
       {/* Unallocated Lessons Panel */}
       <div

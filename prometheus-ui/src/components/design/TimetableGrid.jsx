@@ -31,7 +31,7 @@ const ROW_GAP = 8               // Gap between day rows
 const ROW_BORDER_RADIUS = 30    // Pill-shaped rounded corners
 const DAY_BAR_WIDTH = 'calc(90% - 75px)' // Day bar width (Phase 2-6: 50% wider, time labels reposition)
 
-function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
+function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending, onOpenLessonEditor }) {
   const {
     scheduledLessons,
     currentDay,
@@ -237,6 +237,7 @@ function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending }) {
                   onSchedule={(lessonId, newStartTime) => scheduleLesson(lessonId, day, newStartTime)}
                   onSchedulePending={(newStartTime) => onSchedulePending?.(day, newStartTime)}
                   onLessonHover={(isHovered) => setHoveredLessonDay(isHovered ? day : null)}
+                  onOpenLessonEditor={onOpenLessonEditor}
                 />
                 {/* OVERVIEW Reference Line - shows sketch content below day bar */}
                 {overviewBlocksForDay.length > 0 && (
@@ -283,7 +284,8 @@ function DayRow({
   onDrop,
   onSchedule,
   onSchedulePending,
-  onLessonHover
+  onLessonHover,
+  onOpenLessonEditor
 }) {
   const [isDragOver, setIsDragOver] = useState(false)
   const contentRef = useRef(null)
@@ -428,6 +430,7 @@ function DayRow({
               dayHeight={DAY_HEIGHT}
               startHour={startHour}
               useFullWidth={true}
+              onOpenLessonEditor={onOpenLessonEditor}
             />
           </div>
         ))}

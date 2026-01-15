@@ -27,13 +27,21 @@ function OverviewHeader({
   return (
     <div
       style={{
-        padding: '1vh 2vw',
-        borderBottom: `1px solid ${THEME.BORDER}`,
+        position: 'relative',
+        height: '10vh',
         background: THEME.BG_DARK
+        // Grey line removed per design spec
       }}
     >
-      {/* DESCRIPTION Window Only */}
-      <div style={{ width: '25%' }}>
+      {/* DESCRIPTION Window - positioned right side */}
+      <div
+        style={{
+          position: 'absolute',
+          right: '2vw',
+          top: '1vh',
+          width: '20vw'
+        }}
+      >
         <label
           style={{
             fontSize: '1.375vh',
@@ -59,7 +67,7 @@ function OverviewHeader({
               fontFamily: THEME.FONT_PRIMARY,
               fontSize: '1.5vh',
               color: THEME.WHITE,
-              background: THEME.BG_INPUT,
+              background: 'transparent',
               border: `1px solid ${THEME.AMBER}`,
               borderRadius: '1.5vh',
               resize: 'vertical'
@@ -77,11 +85,11 @@ function OverviewHeader({
               color: THEME.TEXT_SECONDARY,
               margin: 0,
               padding: '0.8vh 1vw',
-              background: THEME.BG_INPUT,
+              background: 'transparent',
               borderRadius: '1.5vh',
               minHeight: '6vh',
               cursor: 'text',
-              border: `1px solid transparent`,
+              border: `1px solid ${THEME.BORDER}`,
               transition: 'border-color 0.2s ease'
             }}
           >

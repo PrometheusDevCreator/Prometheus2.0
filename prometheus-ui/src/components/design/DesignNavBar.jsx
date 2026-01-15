@@ -144,8 +144,8 @@ function DesignNavBar() {
           </span>
         </div>
 
-        {/* Total Hours + Overtime */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1vw' }}>
+        {/* Total Hours + Overtime - moved up 20px per design spec */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1vw', position: 'relative', top: '-1.85vh' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
             <span
               style={{

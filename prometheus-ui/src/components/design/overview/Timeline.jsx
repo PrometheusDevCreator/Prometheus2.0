@@ -203,10 +203,10 @@ function Timeline({
         style={{
           width: `${timelineWidth}px`,
           height: '4px',
-          background: THEME.GREEN_BRIGHT,
+          background: THEME.AMBER,
           borderRadius: '2px',
           position: 'relative',
-          boxShadow: `0 0 10px ${THEME.GREEN_BRIGHT}40`
+          /* No glow effect per design spec */
         }}
       >
         {/* Division markers */}
@@ -220,7 +220,7 @@ function Timeline({
                 top: '-3px',
                 width: '2px',
                 height: '10px',
-                background: THEME.GREEN_BRIGHT,
+                background: THEME.AMBER,
                 borderRadius: '1px'
               }}
             />
@@ -237,7 +237,7 @@ function Timeline({
             width: '16px',
             height: '16px',
             background: THEME.BG_DARK,
-            border: `2px solid ${THEME.GREEN_BRIGHT}`,
+            border: `2px solid ${THEME.AMBER}`,
             borderRadius: '50%',
             cursor: 'ew-resize',
             zIndex: 5
@@ -254,7 +254,7 @@ function Timeline({
             width: '16px',
             height: '16px',
             background: THEME.BG_DARK,
-            border: `2px solid ${THEME.GREEN_BRIGHT}`,
+            border: `2px solid ${THEME.AMBER}`,
             borderRadius: '50%',
             cursor: 'ew-resize',
             zIndex: 5

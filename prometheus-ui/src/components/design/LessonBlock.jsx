@@ -34,7 +34,8 @@ function LessonBlock({
   pixelsPerMinute = 2,  // How many pixels per minute of duration
   dayHeight = 50,       // Height of each day row
   startHour = 8,        // Grid start hour for time calculations
-  useFullWidth = false  // When true, fills container width (for percentage-based layout)
+  useFullWidth = false, // When true, fills container width (for percentage-based layout)
+  onOpenLessonEditor    // Callback to open Lesson Editor modal
 }) {
   const {
     selection,
@@ -211,6 +212,12 @@ function LessonBlock({
     deleteLesson(lesson.id)
     closeContextMenu()
   }, [lesson.id, deleteLesson, closeContextMenu])
+
+  // Handle Edit - opens Lesson Editor modal
+  const handleEdit = useCallback(() => {
+    onOpenLessonEditor?.(lesson.id)
+    closeContextMenu()
+  }, [lesson.id, onOpenLessonEditor, closeContextMenu])
 
   // Handle drag start for moving block
   const handleDragStart = useCallback((e) => {
@@ -568,6 +575,7 @@ function LessonBlock({
         x={contextMenu.x}
         y={contextMenu.y}
         lesson={lesson}
+        onEdit={handleEdit}
         onUnschedule={handleUnschedule}
         onSaveToLibrary={handleSaveToLibrary}
         onDuplicate={handleDuplicate}
@@ -583,7 +591,7 @@ function LessonBlock({
 // CONTEXT MENU COMPONENT
 // ============================================
 
-function BlockContextMenu({ x, y, lesson, onUnschedule, onSaveToLibrary, onDuplicate, onDelete, onClose }) {
+function BlockContextMenu({ x, y, lesson, onEdit, onUnschedule, onSaveToLibrary, onDuplicate, onDelete, onClose }) {
   // Prevent menu from going off-screen
   const adjustedX = Math.min(x, window.innerWidth - 180)
   const adjustedY = Math.min(y, window.innerHeight - 180)
@@ -618,11 +626,9 @@ function BlockContextMenu({ x, y, lesson, onUnschedule, onSaveToLibrary, onDupli
           overflow: 'hidden'
         }}
       >
-        <ContextMenuItem label="Edit" hint="Double-click" disabled />
+        <ContextMenuItem label="Edit" onClick={onEdit} />
         <ContextMenuItem label="Unschedule" onClick={onUnschedule} />
-        {!lesson.saved && (
-          <ContextMenuItem label="Save to Library" onClick={onSaveToLibrary} />
-        )}
+        <ContextMenuItem label="Save to Library" onClick={onSaveToLibrary} />
         <ContextMenuItem label="Duplicate" onClick={onDuplicate} />
         <div style={{ height: '1px', background: THEME.BORDER, margin: '0.3vh 0' }} />
         <ContextMenuItem label="Delete" onClick={onDelete} danger />
