@@ -83,14 +83,20 @@ function ScalarItem({
 
   const handleClick = useCallback((e) => {
     e.stopPropagation()
-    onSelect?.(type, item.id)
-  }, [onSelect, type, item.id])
+    // Shift+click enters linking mode
+    if (e.shiftKey) {
+      onToggleLink?.(type, item.id)
+    } else {
+      // Normal click selects
+      onSelect?.(type, item.id)
+    }
+  }, [onSelect, onToggleLink, type, item.id])
 
   const handleDoubleClick = useCallback((e) => {
     e.stopPropagation()
-    // Double-click enters linking mode
-    onToggleLink?.(type, item.id)
-  }, [onToggleLink, type, item.id])
+    // Double-click enters edit mode
+    onEdit?.(type, item.id)
+  }, [onEdit, type, item.id])
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter') {
@@ -136,7 +142,10 @@ function ScalarItem({
   }
 
   const getBorderColor = () => {
-    if (isLinkSource) return THEME.GREEN_BRIGHT
+    // Linking mode: green border on source and linked items
+    if (isLinkSource || isLinked) return THEME.GREEN_BRIGHT
+    // Edit mode: green border (handled by input style)
+    if (isEditing) return THEME.GREEN_BRIGHT
     if (isSelected) return THEME.AMBER
     if (isHovered) return THEME.AMBER
     return 'transparent'
@@ -159,7 +168,7 @@ function ScalarItem({
         padding: '0.4vh 0.5vw',
         marginLeft: `${depth * 12}px`,
         marginBottom: '0.3vh',
-        background: isSelected ? `${THEME.AMBER}15` : 'transparent',
+        background: 'transparent',
         border: `1px solid ${getBorderColor()}`,
         borderRadius: '3px',
         cursor: linkingModeActive ? 'crosshair' : 'grab',
@@ -196,8 +205,8 @@ function ScalarItem({
           style={{
             flex: 1,
             background: THEME.BG_DARK,
-            border: `1px solid ${THEME.AMBER}`,
-            color: THEME.WHITE,
+            border: `1px solid ${THEME.GREEN_BRIGHT}`,
+            color: THEME.GREEN_BRIGHT,
             fontSize: FONT.ITEM,
             fontFamily: THEME.FONT_PRIMARY,
             padding: '0.2vh 0.3vw',
@@ -312,7 +321,7 @@ function LessonItem({
         cursor: 'pointer',
         border: isLinkSource ? `1px solid ${THEME.GREEN_BRIGHT}` : isSelected ? `1px solid ${THEME.AMBER}` : '1px solid transparent',
         borderRadius: '3px',
-        background: isLinkSource ? `${THEME.GREEN_BRIGHT}10` : isSelected ? `${THEME.AMBER}15` : 'transparent',
+        background: isLinkSource ? `${THEME.GREEN_BRIGHT}10` : 'transparent',
         transition: 'all 0.15s ease'
       }}
     >
@@ -363,7 +372,7 @@ function PCItem({
         cursor: 'pointer',
         border: isSelected ? `1px solid ${THEME.AMBER}` : '1px solid transparent',
         borderRadius: '3px',
-        background: isSelected ? `${THEME.AMBER}15` : 'transparent',
+        background: 'transparent',
         transition: 'all 0.15s ease'
       }}
     >
@@ -455,7 +464,8 @@ function LOColumn({
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        scrollSnapAlign: 'start'
       }}
       onDragOver={(e) => {
         e.preventDefault()
@@ -476,7 +486,7 @@ function LOColumn({
           padding: '0.5vh 0.5vw',
           marginBottom: '0.5vh',
           cursor: 'pointer',
-          background: isSelected ? `${THEME.AMBER}15` : 'transparent',
+          background: 'transparent',
           borderRadius: '3px',
           transition: 'all 0.15s ease'
         }}
@@ -677,7 +687,8 @@ function EmptyLOColumn({ loIndex }) {
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        scrollSnapAlign: 'start'
       }}
     >
       {/* Placeholder LO Row */}
@@ -1001,16 +1012,36 @@ function ScalarDock({ width = '100%', height = '100%' }) {
   }, [deleteScalarNode])
 
   const handleAddLO = useCallback(() => {
-    addLearningObjective(module?.id)
-  }, [addLearningObjective, module])
+    const newLoId = addLearningObjective(module?.id)
+    // Auto-expand and select the new LO
+    if (newLoId) {
+      setExpandedLOs(prev => new Set([...prev, newLoId]))
+      select('lo', newLoId)
+    }
+  }, [addLearningObjective, module, select])
 
   const handleAddTopic = useCallback((loId) => {
-    addTopic(loId)
-  }, [addTopic])
+    const newTopicId = addTopic(loId)
+    // Auto-expand parent LO and select the new topic
+    if (loId) {
+      setExpandedLOs(prev => new Set([...prev, loId]))
+    }
+    if (newTopicId) {
+      setExpandedTopics(prev => new Set([...prev, newTopicId]))
+      select('topic', newTopicId)
+    }
+  }, [addTopic, select])
 
   const handleAddSubtopic = useCallback((topicId) => {
-    addSubtopic(topicId)
-  }, [addSubtopic])
+    const newSubtopicId = addSubtopic(topicId)
+    // Auto-expand parent topic and select the new subtopic
+    if (topicId) {
+      setExpandedTopics(prev => new Set([...prev, topicId]))
+    }
+    if (newSubtopicId) {
+      select('subtopic', newSubtopicId)
+    }
+  }, [addSubtopic, select])
 
   // Toggle link handler (double-click enters linking mode)
   const handleToggleLink = useCallback((type, id) => {
@@ -1088,10 +1119,12 @@ function ScalarDock({ width = '100%', height = '100%' }) {
     }
   }, [topics, reorderTopic])
 
-  // Generate 5 LO column slots
+  // Generate LO column slots - show all LOs with minimum 5 placeholders
   const loColumns = useMemo(() => {
     const columns = []
-    for (let i = 0; i < 5; i++) {
+    // Show at least 5 columns, or more if there are more LOs
+    const columnCount = Math.max(5, learningObjectives.length)
+    for (let i = 0; i < columnCount; i++) {
       const lo = learningObjectives[i]
       columns.push({ lo, index: i })
     }
@@ -1159,21 +1192,24 @@ function ScalarDock({ width = '100%', height = '100%' }) {
         </div>
       </div>
 
-      {/* Column Headers Row */}
+      {/* Column Headers Row - scrollable to sync with content */}
       <div
         style={{
           display: 'flex',
           padding: '0 1vw',
-          flexShrink: 0
+          flexShrink: 0,
+          overflowX: 'auto',
+          overflowY: 'hidden'
         }}
       >
-        {/* LEARNING OBJECTIVES header (spans 5 columns conceptually) */}
+        {/* LEARNING OBJECTIVES header (spans all LO columns dynamically) */}
         <div
           style={{
-            width: `calc(5 * ${COLUMN_WIDTH})`,
-            minWidth: 5 * COLUMN_MIN_WIDTH,
+            width: `calc(${loColumns.length} * ${COLUMN_WIDTH})`,
+            minWidth: loColumns.length * COLUMN_MIN_WIDTH,
             padding: '0.5vh 0.5vw',
-            position: 'relative'
+            position: 'relative',
+            flexShrink: 0
           }}
         >
           <span
@@ -1274,14 +1310,16 @@ function ScalarDock({ width = '100%', height = '100%' }) {
         </div>
       </div>
 
-      {/* Column Container - 7 columns */}
+      {/* Column Container - 7 columns with horizontal scroll */}
       <div
         style={{
           flex: 1,
           display: 'flex',
           overflowX: 'auto',
           overflowY: 'hidden',
-          padding: '1vh 1vw'
+          padding: '1vh 1vw',
+          scrollSnapType: 'x mandatory',
+          scrollBehavior: 'smooth'
         }}
       >
         {/* 5 LO Columns (always show 5, with placeholder if empty) */}
