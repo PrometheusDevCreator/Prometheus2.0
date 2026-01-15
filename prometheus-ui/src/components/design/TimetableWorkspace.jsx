@@ -214,13 +214,13 @@ function TimetableWorkspace() {
         />
       </div>
 
-      {/* Week Navigator - positioned below Day 5 bar, same spacing as between day bars */}
+      {/* Week Navigator - positioned below Day 5 bar, moved down 25% */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'center',
           padding: '1vh 0',
-          marginTop: '-0.5vh' // Adjust to match day bar spacing
+          marginTop: '2vh' // Moved down 25%
         }}
       >
         <WeekNavigator

@@ -269,8 +269,17 @@ function LessonEditorModal({
   const selectedLO = courseData.learningObjectives?.find(lo =>
     formData.learningObjectives.includes(lo.id || lo)
   )
-  const selectedTopic = formData.topics[0]
-  const selectedSubtopic = formData.subtopics[0] || (selectedTopic?.subtopics?.[0])
+  // Find selected topic from courseData.topics (now comes as proper objects)
+  const selectedTopic = courseData.topics?.find(t =>
+    formData.topics.some(ft => ft?.id === t.id || ft === t.id)
+  ) || formData.topics[0]
+  // Get subtopics filtered by selected topic
+  const availableSubtopics = selectedTopic?.id
+    ? (courseData.subtopics || []).filter(s => s.topicId === selectedTopic.id)
+    : []
+  const selectedSubtopic = (courseData.subtopics || []).find(s =>
+    formData.subtopics.some(fs => fs?.id === s.id || fs === s.id)
+  ) || formData.subtopics[0]
   const selectedType = LESSON_TYPES.find(t => t.id === formData.lessonType) || LESSON_TYPES[1]
   const selectedPC = formData.performanceCriteria[0]
 
@@ -421,8 +430,11 @@ function LessonEditorModal({
             <DropdownField
               label="LEARNING OBJECTIVES"
               hint="Enter to Assign"
-              value={selectedLO ? `1. ${selectedLO.verb || 'EXPLAIN'} ${selectedLO.description || 'concepts to someone'}` : '1. EXPLAIN concepts to someone'}
-              valueColor={THEME.GREEN_BRIGHT}
+              value={selectedLO
+                ? `${selectedLO.order || 1}. ${selectedLO.verb} ${selectedLO.description}`
+                : 'Select Learning Objective'
+              }
+              valueColor={selectedLO ? THEME.GREEN_BRIGHT : THEME.TEXT_DIM}
               highlightFirst={true}
               isOpen={showLODropdown}
               onToggle={() => setShowLODropdown(!showLODropdown)}
@@ -437,29 +449,38 @@ function LessonEditorModal({
             {/* Topics */}
             <DropdownField
               label="TOPICS"
-              value={selectedTopic?.number || selectedTopic?.title || '1.1'}
+              value={selectedTopic
+                ? `${selectedTopic.serial || selectedTopic.number || ''} ${selectedTopic.title}`
+                : 'Select Topic'
+              }
+              valueColor={selectedTopic ? THEME.TEXT_PRIMARY : THEME.TEXT_DIM}
               isOpen={showTopicDropdown}
               onToggle={() => setShowTopicDropdown(!showTopicDropdown)}
               options={courseData.topics || []}
               onSelect={(topic) => {
                 updateField('topics', [topic])
+                updateField('subtopics', []) // Clear subtopics when topic changes
                 setShowTopicDropdown(false)
               }}
-              renderOption={(t) => `${t.number || ''} ${t.title}`}
+              renderOption={(t) => `${t.serial || t.number || ''} ${t.title}`}
             />
 
             {/* Sub Topics */}
             <DropdownField
               label="SUB TOPICS"
-              value={selectedSubtopic?.number || selectedSubtopic?.title || '1.1.1'}
+              value={selectedSubtopic
+                ? `${selectedSubtopic.serial || selectedSubtopic.number || ''} ${selectedSubtopic.title}`
+                : 'Select Subtopic'
+              }
+              valueColor={selectedSubtopic ? THEME.TEXT_PRIMARY : THEME.TEXT_DIM}
               isOpen={showSubtopicDropdown}
               onToggle={() => setShowSubtopicDropdown(!showSubtopicDropdown)}
-              options={selectedTopic?.subtopics || []}
+              options={availableSubtopics}
               onSelect={(subtopic) => {
                 updateField('subtopics', [subtopic])
                 setShowSubtopicDropdown(false)
               }}
-              renderOption={(s) => `${s.number || ''} ${s.title}`}
+              renderOption={(s) => `${s.serial || s.number || ''} ${s.title}`}
             />
 
             {/* Lesson Type + Times Row */}

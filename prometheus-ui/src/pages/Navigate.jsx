@@ -658,25 +658,41 @@ function NavigateWheel({ onNavigate }) {
       </div>
 
       {/* Tooltip Info Box - appears on hover */}
-      {/* DEFINE, DESIGN, BUILD, FORMAT: 50px below DEFINE label, centered */}
-      {/* GENERATE: 50px above BUILD label, centered */}
+      {/* Positioned individually: DESIGN right, BUILD below, FORMAT left */}
       {tooltipVisible && (
         <div
           style={{
             position: 'absolute',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            // GENERATE tooltip: moved UP 2px
-            // Other tooltips: moved UP another 5px
-            ...(tooltipVisible === 'generate'
-              ? { top: 'calc(50% + 78px)' }  // Previous 80px - 2px = 78px
-              : { top: 'calc(50% - 170px)' }  // Previous -165px - 5px = -170px
-            ),
+            // Individual positioning per tooltip
+            ...(tooltipVisible === 'define' && {
+              left: '50%',
+              top: 'calc(50% - 170px)',
+              transform: 'translateX(-50%)'
+            }),
+            ...(tooltipVisible === 'design' && {
+              left: 'calc(50% + 400px)',
+              top: '50%',
+              transform: 'translateX(-50%)'
+            }),
+            ...(tooltipVisible === 'build' && {
+              left: '50%',
+              top: 'calc(50% + 250px)',
+              transform: 'translateX(-50%)'
+            }),
+            ...(tooltipVisible === 'format' && {
+              left: 'calc(50% - 400px)',
+              top: '50%',
+              transform: 'translateX(-50%)'
+            }),
+            ...(tooltipVisible === 'generate' && {
+              left: '50%',
+              top: 'calc(50% + 78px)',
+              transform: 'translateX(-50%)'
+            }),
             width: '200px',
             height: '100px',
-            background: THEME.BG_DARK,
+            background: 'transparent',
             border: 'none',
-            borderRadius: '8px',
             padding: '12px 16px',
             display: 'flex',
             alignItems: 'center',
@@ -684,8 +700,7 @@ function NavigateWheel({ onNavigate }) {
             zIndex: 100,
             pointerEvents: 'none',
             opacity: tooltipVisible ? 1 : 0,
-            transition: 'opacity 1s ease-in-out',  // 1 second fade
-            boxShadow: `0 0 15px rgba(212, 115, 12, 0.3)`
+            transition: 'opacity 1s ease-in-out'
           }}
         >
           <span

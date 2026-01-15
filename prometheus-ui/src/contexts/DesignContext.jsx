@@ -590,6 +590,18 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     }
   }, [scalarData.modules]) // Re-run when modules change
 
+  // Sync canonicalData to timetableData.hierarchyData for LessonEditorModal
+  useEffect(() => {
+    const { los, topics, subtopics } = canonicalData
+    // Only sync if there's actual data
+    if (Object.keys(los).length > 0 || Object.keys(topics).length > 0 || Object.keys(subtopics).length > 0) {
+      setTimetableData(prev => ({
+        ...prev,
+        hierarchyData: { los, topics, subtopics }
+      }))
+    }
+  }, [canonicalData, setTimetableData])
+
   // --------------------------------------------
   // PHASE 1: DERIVE LEGACY scalarData FROM CANONICAL
   // This provides backward compatibility during transition
@@ -2002,6 +2014,9 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
         return newData
       })
     }
+
+    // Return the new LO ID for auto-selection
+    return loId
   }, [])
 
   // Add new Topic to an LO (or unlinked if loId is null)
@@ -2065,6 +2080,9 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
         return prev
       })
     }
+
+    // Return the new topic ID for auto-selection/expansion
+    return topicId
   }, [])
 
   // Add new Subtopic to a Topic
@@ -2130,6 +2148,9 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       return prev
       })
     }
+
+    // Return the new subtopic ID for auto-selection/expansion
+    return subtopicId
   }, [])
 
   // Update scalar node (LO, Topic, or Subtopic) with cross-app syncing
@@ -2907,6 +2928,60 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
   }, [])
 
   // --------------------------------------------
+  // CLEAR ALL DESIGN STATE (Reset for new course)
+  // --------------------------------------------
+  const clearDesignState = useCallback(() => {
+    // Clear timetable data (lessons, overviewBlocks)
+    setTimetableData({
+      lessons: [],
+      overviewBlocks: [],
+      overviewPlanningState: {
+        timelines: [],
+        notes: [],
+        colorLabels: {}
+      }
+    })
+
+    // Reset scalar data to empty structure
+    setScalarData({
+      modules: [{
+        id: 'module-1',
+        name: 'Module 1',
+        order: 1,
+        expanded: true,
+        learningObjectives: []
+      }],
+      unlinkedTopics: [],
+      performanceCriteria: []
+    })
+
+    // Clear canonical data store
+    setCanonicalData({
+      los: {},
+      topics: {},
+      subtopics: {},
+      lessonLOs: [],
+      lessonTopics: [],
+      lessonSubtopics: []
+    })
+
+    // Clear selection state
+    setSelection({ type: null, id: null, mode: null })
+    setMultiSelection([])
+    setLinkingSource(null)
+    setHighlightedItems([])
+
+    // Reset navigation state
+    setActiveTab('timetable')
+    setCurrentWeek(1)
+    setCurrentDay(1)
+    setCurrentModule(1)
+    setHierarchyNav({ currentLevel: 0, path: [], filterId: null })
+
+    console.log('Design state cleared')
+  }, [setTimetableData])
+
+  // --------------------------------------------
   // HIERARCHY NAVIGATION (Phase 4: Calm Wheel)
   // --------------------------------------------
 
@@ -3146,6 +3221,9 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     startEditing,
     clearSelection,
 
+    // Clear all Design state (for CLEAR button)
+    clearDesignState,
+
     // Editor
     editorCollapsed,
     setEditorCollapsed,
@@ -3213,7 +3291,7 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     linkingSource, clearLinkingSource, linkElements, handleShiftClickLink, linkToSource, sessionLinkedElements, isSessionLinked,
     isUnallocatedNumber,
     highlightedItems, updateHighlightedItems, clearHighlights, isItemHighlighted,
-    selection, select, startEditing, clearSelection,
+    selection, select, startEditing, clearSelection, clearDesignState,
     editorCollapsed, courseData, setCourseData,
     // Shared update helpers
     updateLessonTitle, updateTopicTitle, updateSubtopicTitle, updateLearningObjectiveText,

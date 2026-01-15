@@ -23,7 +23,7 @@
  * - Scale = Math.min(viewportW/1920, viewportH/1080)
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import './App.css'
 import { THEME } from './constants/theme'
 
@@ -108,7 +108,13 @@ function App() {
         saved: false
       }
     ],
-    overviewBlocks: []
+    overviewBlocks: [],
+    // Hierarchy data synced from DesignContext canonical store
+    hierarchyData: {
+      los: {},       // { [loId]: { id, moduleId, verb, description, order } }
+      topics: {},    // { [topicId]: { id, loId|null, title, order } }
+      subtopics: {}  // { [subtopicId]: { id, topicId, title, order } }
+    }
   })
 
   // Course state for Footer (save tracking)
@@ -136,6 +142,89 @@ function App() {
     : selectedLessonId
       ? timetableData.lessons.find(l => l.id === selectedLessonId)
       : null
+
+  // Enriched course data - combines courseData with hierarchy from timetableData
+  // Transforms string LOs to proper objects and includes topics/subtopics
+  const enrichedCourseData = useMemo(() => {
+    const { hierarchyData } = timetableData
+    const losFromHierarchy = Object.values(hierarchyData?.los || {})
+    const topicsFromHierarchy = Object.values(hierarchyData?.topics || {})
+    const subtopicsFromHierarchy = Object.values(hierarchyData?.subtopics || {})
+
+    // Transform courseData.learningObjectives (strings) to LO objects
+    const loStrings = courseData.learningObjectives || []
+    const transformedLOs = loStrings
+      .filter(lo => lo && lo.trim().length > 0)
+      .map((loText, idx) => {
+        const words = loText.trim().split(/\s+/)
+        const verb = words[0]?.toUpperCase() || 'IDENTIFY'
+        const description = words.slice(1).join(' ') || ''
+        return {
+          id: `lo-define-${idx + 1}`,
+          verb,
+          description,
+          order: idx + 1,
+          title: loText // Keep full text for display
+        }
+      })
+
+    // Prefer hierarchy LOs if available, otherwise use transformed string LOs
+    const finalLOs = losFromHierarchy.length > 0
+      ? losFromHierarchy.map(lo => ({
+          ...lo,
+          title: `${lo.verb} ${lo.description}` // Ensure title exists
+        }))
+      : transformedLOs
+
+    // Get topics with their serial numbers
+    const finalTopics = topicsFromHierarchy.map(topic => {
+      // Compute serial number based on linked LO
+      let serial = `x.${topic.order || 1}`
+      if (topic.loId) {
+        const parentLO = hierarchyData?.los?.[topic.loId]
+        if (parentLO) {
+          const loTopics = topicsFromHierarchy
+            .filter(t => t.loId === topic.loId)
+            .sort((a, b) => (a.order || 0) - (b.order || 0))
+          const idx = loTopics.findIndex(t => t.id === topic.id)
+          serial = `${parentLO.order}.${idx >= 0 ? idx + 1 : topic.order || 1}`
+        }
+      }
+      return {
+        ...topic,
+        number: serial,
+        serial
+      }
+    })
+
+    // Get subtopics with their serial numbers
+    const finalSubtopics = subtopicsFromHierarchy.map(subtopic => {
+      const parentTopic = hierarchyData?.topics?.[subtopic.topicId]
+      let serial = `?.${subtopic.order || 1}`
+      if (parentTopic) {
+        // Find topic's serial
+        const topicObj = finalTopics.find(t => t.id === subtopic.topicId)
+        const topicSerial = topicObj?.serial || '?.?'
+        const siblingSubtopics = subtopicsFromHierarchy
+          .filter(s => s.topicId === subtopic.topicId)
+          .sort((a, b) => (a.order || 0) - (b.order || 0))
+        const idx = siblingSubtopics.findIndex(s => s.id === subtopic.id)
+        serial = `${topicSerial}.${idx >= 0 ? idx + 1 : subtopic.order || 1}`
+      }
+      return {
+        ...subtopic,
+        number: serial,
+        serial
+      }
+    })
+
+    return {
+      ...courseData,
+      learningObjectives: finalLOs,
+      topics: finalTopics,
+      subtopics: finalSubtopics
+    }
+  }, [courseData, timetableData])
 
   // Handle opening Lesson Editor - with optional lessonId parameter
   const handleLessonEditorToggle = useCallback((open, lessonId = null) => {
@@ -314,6 +403,12 @@ function App() {
   // Keyboard shortcuts (non-grid)
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Escape: Cancel exit pending mode (green pulse)
+      if (e.key === 'Escape' && exitPending) {
+        e.preventDefault()
+        setExitPending(false)
+        return
+      }
       // Ctrl+Space: Toggle to Navigate page
       if (e.ctrlKey && e.code === 'Space' && isAuthenticated) {
         e.preventDefault()
@@ -325,7 +420,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isAuthenticated])
+  }, [isAuthenticated, exitPending])
 
   // Render Login page (before authentication)
   if (!isAuthenticated) {
@@ -573,7 +668,7 @@ function App() {
           onClose={() => handleLessonEditorToggle(false)}
           onCreateLesson={handleCreateLesson}
           onUpdateLesson={handleUpdateLesson}
-          courseData={courseData}
+          courseData={enrichedCourseData}
           timetableData={timetableData}
           selectedLesson={selectedLessonForEditor}
         />

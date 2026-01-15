@@ -78,7 +78,8 @@ function Design({
 function DesignPageContent({ onNavigate, courseLoaded, user, courseState, courseData, timetableData, lessonEditorOpen, onLessonEditorToggle, onSelectedLessonChange }) {
   const {
     activeTab,
-    selection
+    selection,
+    clearDesignState
   } = useDesign()
 
   // Report selected lesson changes to parent (App.jsx)
@@ -141,7 +142,7 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState, course
         isPKEActive={false}
         onPKEToggle={() => {}}
         onSave={() => console.log('Save clicked')}
-        onClear={() => console.log('Clear clicked')}
+        onClear={clearDesignState}
         onDelete={() => console.log('Delete clicked')}
         user={user || { name: '---' }}
         courseState={courseState || { startDate: null, saveCount: 0 }}

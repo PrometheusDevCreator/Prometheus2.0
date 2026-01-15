@@ -120,6 +120,25 @@ function Header({
         />
       </div>
 
+      {/* "Save before Exit" text - appears when exitPending */}
+      {exitPending && (
+        <div
+          style={{
+            position: 'absolute',
+            left: 'calc(2.6vw + 7vh)',  /* Right of logo */
+            top: '2.5vh',
+            fontFamily: THEME.FONT_PRIMARY,
+            fontSize: '1.4vh',
+            fontWeight: 500,
+            color: THEME.GREEN_BRIGHT,
+            whiteSpace: 'nowrap',
+            animation: 'exitTextPulse 1.5s ease-in-out infinite'
+          }}
+        >
+          Save before Exit
+        </div>
+      )}
+
       {/* Exit pending animation */}
       {exitPending && (
         <style>
@@ -127,6 +146,10 @@ function Header({
             @keyframes exitLogoPulse {
               0%, 100% { filter: drop-shadow(0 0 8px rgba(0, 255, 0, 0.4)); }
               50% { filter: drop-shadow(0 0 16px rgba(0, 255, 0, 0.8)); }
+            }
+            @keyframes exitTextPulse {
+              0%, 100% { opacity: 0.7; }
+              50% { opacity: 1; }
             }
           `}
         </style>

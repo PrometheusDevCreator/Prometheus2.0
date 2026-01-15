@@ -234,7 +234,7 @@ function WeekNavigator({ week, maxWeeks, onPrev, onNext }) {
         alignItems: 'center',
         gap: '0.5vw',
         padding: '0.5vh 1vw',
-        background: THEME.AMBER,
+        background: 'linear-gradient(to bottom, #D65700, #763000)',
         borderRadius: '2vh',
         minWidth: '100px'
       }}
