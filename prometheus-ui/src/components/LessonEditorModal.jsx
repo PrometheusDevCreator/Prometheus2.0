@@ -1,21 +1,18 @@
 /**
- * LessonEditorModal - Global Lesson Editor Modal
+ * LessonEditorModal - Redesigned Lesson Editor
  *
  * Full-screen modal for creating and editing lessons.
- * Accessible from all pages via the Footer "Lesson Editor" button.
- *
- * Features:
- * - Backdrop with blur effect
- * - All lesson fields (Title, LOs, Topics, etc.)
- * - Interactive section states (grey → amber → green → white)
- * - Dropdown menus for predefined items
- * - Large + (add to library) and O (add to timetable) buttons
+ * Matches the new mockup design with:
+ * - Two-column layout
+ * - Left: Form fields (Title, LO, Topics, Subtopics, Type, Timings, PC)
+ * - Right: Notes tabs (Slide Notes / Instructor Notes) + Image upload
+ * - Bottom: View tabs (UNALLOCATED/TIMETABLE/SCALAR) + CANCEL/SAVE buttons
  *
  * Close Methods:
  * 1. Click outside modal (backdrop)
  * 2. X button (top-right)
- * 3. Large + button (adds to library)
- * 4. Large O button (adds to timetable)
+ * 3. CANCEL button
+ * 4. SAVE LESSON button
  * 5. Escape key
  */
 
@@ -24,16 +21,16 @@ import { THEME } from '../constants/theme'
 
 // Lesson type options
 const LESSON_TYPES = [
-  'instructor-led',
-  'discussion',
-  'practical',
-  'assessment',
-  'self-study',
-  'workshop',
-  'simulation',
-  'presentation',
-  'break',
-  'other'
+  { id: 'instructor-led', name: 'Instructor Led' },
+  { id: 'practical', name: 'Practical' },
+  { id: 'discussion', name: 'Discussion' },
+  { id: 'assessment', name: 'Assessment' },
+  { id: 'self-study', name: 'Self Study' },
+  { id: 'workshop', name: 'Workshop' },
+  { id: 'simulation', name: 'Simulation' },
+  { id: 'presentation', name: 'Presentation' },
+  { id: 'break', name: 'Break' },
+  { id: 'other', name: 'Other' }
 ]
 
 function LessonEditorModal({
@@ -43,11 +40,10 @@ function LessonEditorModal({
   onUpdateLesson,
   courseData = {},
   timetableData = { lessons: [] },
-  selectedLesson = null  // Pre-populate with this lesson's data
+  selectedLesson = null,
+  initialTab = 'timetable' // Which bottom tab to show
 }) {
   const modalRef = useRef(null)
-
-  // Track if we're editing an existing lesson
   const isEditingExisting = selectedLesson !== null
 
   // Form state
@@ -56,88 +52,98 @@ function LessonEditorModal({
     learningObjectives: [],
     topics: [],
     subtopics: [],
-    lessonType: '',
+    lessonType: 'practical',
     performanceCriteria: [],
-    startTime: '',
-    stopTime: '',
-    duration: '',
-    durationUnit: 'mins',
-    day: '',
-    week: '',
-    term: '',
-    module: '',
-    slides: 0
+    startTime: '08:00',
+    endTime: '09:00',
+    duration: 60,
+    day: 1,
+    week: 1,
+    module: 1
   })
 
-  // Active section state (which field is focused)
-  const [activeSection, setActiveSection] = useState(null)
+  // Notes state
+  const [activeNotesTab, setActiveNotesTab] = useState('slide') // 'slide' | 'instructor'
+  const [slideNotes, setSlideNotes] = useState([''])
+  const [instructorNotes, setInstructorNotes] = useState([''])
+  const [currentNotePage, setCurrentNotePage] = useState(0)
 
-  // Helper to format time from "0900" to "09:00"
-  const formatTimeDisplay = (timeStr) => {
-    if (!timeStr) return ''
-    const clean = timeStr.replace(':', '')
-    if (clean.length === 4) {
-      return clean.slice(0, 2) + ':' + clean.slice(2, 4)
+  // Images state
+  const [images, setImages] = useState([])
+
+  // Bottom tab state
+  const [activeBottomTab, setActiveBottomTab] = useState(initialTab)
+
+  // Dropdown visibility states
+  const [showLODropdown, setShowLODropdown] = useState(false)
+  const [showTopicDropdown, setShowTopicDropdown] = useState(false)
+  const [showSubtopicDropdown, setShowSubtopicDropdown] = useState(false)
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false)
+  const [showPCDropdown, setShowPCDropdown] = useState(false)
+
+  // Helper to format time
+  const formatTimeForInput = (timeStr) => {
+    if (!timeStr) return '08:00'
+    if (timeStr.includes(':')) return timeStr
+    if (timeStr.length === 4) {
+      return timeStr.slice(0, 2) + ':' + timeStr.slice(2, 4)
     }
     return timeStr
   }
 
   // Calculate end time from start + duration
   const calculateEndTime = (startTime, duration) => {
-    if (!startTime || !duration) return ''
-    const clean = startTime.replace(':', '')
-    if (clean.length !== 4) return ''
-    const startHour = parseInt(clean.slice(0, 2))
-    const startMin = parseInt(clean.slice(2, 4))
-    const totalMinutes = startHour * 60 + startMin + parseInt(duration)
+    if (!startTime) return '09:00'
+    const [hours, mins] = startTime.split(':').map(Number)
+    const totalMinutes = hours * 60 + mins + (duration || 60)
     const endHour = Math.floor(totalMinutes / 60) % 24
     const endMin = totalMinutes % 60
     return `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`
   }
 
-  // Reset/populate form when modal opens or selectedLesson changes
+  // Reset/populate form when modal opens
   useEffect(() => {
     if (isOpen) {
       if (selectedLesson) {
-        // Pre-populate with selected lesson data
+        const startTime = formatTimeForInput(selectedLesson.startTime)
         setFormData({
           title: selectedLesson.title || '',
           learningObjectives: selectedLesson.learningObjectives || [],
           topics: selectedLesson.topics || [],
           subtopics: [],
-          lessonType: selectedLesson.type || '',
-          performanceCriteria: [],
-          startTime: formatTimeDisplay(selectedLesson.startTime),
-          stopTime: calculateEndTime(selectedLesson.startTime, selectedLesson.duration),
-          duration: selectedLesson.duration?.toString() || '',
-          durationUnit: 'mins',
-          day: selectedLesson.day?.toString() || '',
-          week: selectedLesson.week?.toString() || '',
-          term: '',
-          module: selectedLesson.module?.toString() || '',
-          slides: selectedLesson.slides?.length || 0
+          lessonType: selectedLesson.type || 'practical',
+          performanceCriteria: selectedLesson.performanceCriteria || [],
+          startTime: startTime,
+          endTime: calculateEndTime(startTime, selectedLesson.duration),
+          duration: selectedLesson.duration || 60,
+          day: selectedLesson.day || 1,
+          week: selectedLesson.week || 1,
+          module: selectedLesson.module || 1
         })
+        setSlideNotes(selectedLesson.slideNotes || [''])
+        setInstructorNotes(selectedLesson.instructorNotes || [''])
+        setImages(selectedLesson.images || [])
       } else {
-        // Reset to empty form for new lesson
         setFormData({
           title: '',
           learningObjectives: [],
           topics: [],
           subtopics: [],
-          lessonType: '',
+          lessonType: 'practical',
           performanceCriteria: [],
-          startTime: '',
-          stopTime: '',
-          duration: '',
-          durationUnit: 'mins',
-          day: '',
-          week: '',
-          term: '',
-          module: '',
-          slides: 0
+          startTime: '08:00',
+          endTime: '09:00',
+          duration: 60,
+          day: 1,
+          week: 1,
+          module: 1
         })
+        setSlideNotes([''])
+        setInstructorNotes([''])
+        setImages([])
       }
-      setActiveSection(null)
+      setCurrentNotePage(0)
+      setActiveNotesTab('slide')
     }
   }, [isOpen, selectedLesson])
 
@@ -161,115 +167,112 @@ function LessonEditorModal({
 
   // Update form field
   const updateField = useCallback((field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value }
+      // Auto-calculate end time when start or duration changes
+      if (field === 'startTime' || field === 'duration') {
+        updated.endTime = calculateEndTime(
+          field === 'startTime' ? value : prev.startTime,
+          field === 'duration' ? value : prev.duration
+        )
+      }
+      return updated
+    })
   }, [])
 
-  // Parse start time to HHMM format
-  const parseStartTime = (timeStr) => {
-    if (!timeStr) return null
-    const clean = timeStr.replace(':', '')
-    return /^\d{4}$/.test(clean) ? clean : null
-  }
-
-  // Build properly structured topics with IDs, LO association, and nested subtopics
-  const buildStructuredTopics = useCallback(() => {
-    const primaryLoId = formData.learningObjectives?.[0] || null
-    const timestamp = Date.now()
-
-    // Convert simple topic objects to properly structured ones
-    return formData.topics.map((topic, idx) => {
-      const topicId = topic.id || `topic-modal-${timestamp}-${idx}`
-
-      // Distribute subtopics evenly across topics (or attach all to first topic if only one)
-      const subtopicsForTopic = formData.topics.length === 1
-        ? formData.subtopics // All subtopics go to the only topic
-        : formData.subtopics.filter((_, subIdx) =>
-            Math.floor(subIdx / Math.ceil(formData.subtopics.length / formData.topics.length)) === idx
-          )
-
-      return {
-        id: topicId,
-        title: topic.title || topic,
-        loId: primaryLoId,
-        order: idx + 1, // Topic order within its group
-        subtopics: subtopicsForTopic.map((sub, subIdx) => ({
-          id: sub.id || `subtopic-modal-${timestamp}-${idx}-${subIdx}`,
-          title: sub.title || sub,
-          order: subIdx + 1 // Subtopic order within topic
-        }))
-      }
-    })
-  }, [formData.topics, formData.subtopics, formData.learningObjectives])
-
-  // Handle Add to Library / Update Unscheduled (+ button)
-  const handleAddToLibrary = useCallback(() => {
+  // Handle save
+  const handleSave = useCallback(() => {
     if (!formData.title.trim()) {
       alert('Title is required')
       return
     }
 
-    const structuredTopics = buildStructuredTopics()
-
     const lessonData = {
       title: formData.title,
-      type: formData.lessonType || 'instructor-led',
-      duration: parseInt(formData.duration) || 60,
-      startTime: parseStartTime(formData.startTime),
-      day: formData.day ? parseInt(formData.day) : null,
-      week: formData.week ? parseInt(formData.week) : 1,
-      module: formData.module ? parseInt(formData.module) : 1,
-      topics: structuredTopics,
+      type: formData.lessonType,
+      duration: formData.duration,
+      startTime: formData.startTime.replace(':', ''),
+      day: formData.day,
+      week: formData.week,
+      module: formData.module,
+      topics: formData.topics,
       learningObjectives: formData.learningObjectives,
-      scheduled: false // Add to library (unallocated)
+      performanceCriteria: formData.performanceCriteria,
+      slideNotes: slideNotes,
+      instructorNotes: instructorNotes,
+      images: images,
+      scheduled: activeBottomTab === 'timetable'
     }
 
     if (isEditingExisting) {
-      // Update existing lesson
-      onUpdateLesson?.(selectedLesson.id, { ...lessonData, scheduled: false })
-    } else {
-      // Create new lesson
-      onCreateLesson?.(lessonData)
-    }
-    onClose?.()
-  }, [formData, isEditingExisting, selectedLesson, onCreateLesson, onUpdateLesson, onClose, buildStructuredTopics])
-
-  // Handle Add to Timetable / Update Scheduled (O button)
-  const handleAddToTimetable = useCallback(() => {
-    if (!formData.title.trim()) {
-      alert('Title is required')
-      return
-    }
-
-    // Validate scheduling fields for timetable
-    if (!formData.day || !formData.startTime) {
-      alert('Day and Start Time are required to add to timetable')
-      return
-    }
-
-    const structuredTopics = buildStructuredTopics()
-
-    const lessonData = {
-      title: formData.title,
-      type: formData.lessonType || 'instructor-led',
-      duration: parseInt(formData.duration) || 60,
-      startTime: parseStartTime(formData.startTime),
-      day: parseInt(formData.day),
-      week: formData.week ? parseInt(formData.week) : 1,
-      module: formData.module ? parseInt(formData.module) : 1,
-      topics: structuredTopics,
-      learningObjectives: formData.learningObjectives,
-      scheduled: true // Add to timetable
-    }
-
-    if (isEditingExisting) {
-      // Update existing lesson
       onUpdateLesson?.(selectedLesson.id, lessonData)
     } else {
-      // Create new lesson
       onCreateLesson?.(lessonData)
     }
     onClose?.()
-  }, [formData, isEditingExisting, selectedLesson, onCreateLesson, onUpdateLesson, onClose, buildStructuredTopics])
+  }, [formData, slideNotes, instructorNotes, images, activeBottomTab, isEditingExisting, selectedLesson, onCreateLesson, onUpdateLesson, onClose])
+
+  // Get current notes array based on active tab
+  const currentNotes = activeNotesTab === 'slide' ? slideNotes : instructorNotes
+  const setCurrentNotes = activeNotesTab === 'slide' ? setSlideNotes : setInstructorNotes
+
+  // Handle note text change
+  const handleNoteChange = (text) => {
+    const newNotes = [...currentNotes]
+    newNotes[currentNotePage] = text
+    setCurrentNotes(newNotes)
+  }
+
+  // Navigate notes pages
+  const goToPrevNote = () => {
+    if (currentNotePage > 0) {
+      setCurrentNotePage(currentNotePage - 1)
+    }
+  }
+
+  const goToNextNote = () => {
+    if (currentNotePage < currentNotes.length - 1) {
+      setCurrentNotePage(currentNotePage + 1)
+    } else {
+      // Add new page
+      setCurrentNotes([...currentNotes, ''])
+      setCurrentNotePage(currentNotes.length)
+    }
+  }
+
+  // Handle image upload
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files)
+    files.forEach(file => {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        setImages(prev => [...prev, { name: file.name, data: event.target.result }])
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  // Handle drag and drop
+  const handleDrop = (e) => {
+    e.preventDefault()
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'))
+    files.forEach(file => {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        setImages(prev => [...prev, { name: file.name, data: event.target.result }])
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  // Get display values for dropdowns
+  const selectedLO = courseData.learningObjectives?.find(lo =>
+    formData.learningObjectives.includes(lo.id || lo)
+  )
+  const selectedTopic = formData.topics[0]
+  const selectedSubtopic = formData.subtopics[0] || (selectedTopic?.subtopics?.[0])
+  const selectedType = LESSON_TYPES.find(t => t.id === formData.lessonType) || LESSON_TYPES[1]
+  const selectedPC = formData.performanceCriteria[0]
 
   if (!isOpen) return null
 
@@ -282,7 +285,7 @@ function LessonEditorModal({
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0, 0, 0, 0.7)',
+        background: 'rgba(0, 0, 0, 0.85)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
         display: 'flex',
@@ -291,644 +294,738 @@ function LessonEditorModal({
         zIndex: 1000
       }}
     >
-      {/* Modal Container - 1.5x wider than tall, increased corner radius */}
+      {/* Modal Container */}
       <div
         ref={modalRef}
         style={{
-          width: '750px',
-          maxHeight: '500px',
-          background: THEME.BG_PANEL,
-          border: `2px solid ${THEME.AMBER}`, // Burnt orange border per mockup
-          borderRadius: '32px', // Increased corner radius
+          width: '900px',
+          maxWidth: '95vw',
+          background: '#1a1a1a',
+          border: `2px solid ${THEME.AMBER}`,
+          borderRadius: '16px',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          boxShadow: `0 0 30px rgba(0, 0, 0, 0.5), 0 0 15px ${THEME.AMBER}20`
+          boxShadow: `0 0 40px rgba(0, 0, 0, 0.6), 0 0 20px ${THEME.AMBER}30`
         }}
       >
-        {/* Header - Centered text */}
+        {/* Header */}
         <div
           style={{
-            padding: '20px 24px',
-            borderBottom: `1px solid ${THEME.BORDER}`,
+            padding: '16px 24px',
+            borderBottom: `2px solid ${THEME.AMBER}`,
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
             position: 'relative'
           }}
         >
-          <div style={{ textAlign: 'center' }}>
-            <h2
-              style={{
-                margin: 0,
-                fontSize: '16px',
-                letterSpacing: '3px',
-                color: THEME.WHITE,
-                fontFamily: THEME.FONT_PRIMARY
-              }}
-            >
-              {isEditingExisting ? 'EDITING LESSON' : 'LESSON EDITOR'}
-            </h2>
-            <span
-              style={{
-                fontSize: '12px',           /* 20% larger */
-                fontStyle: 'italic',        /* Italicized */
-                color: isEditingExisting ? THEME.AMBER : THEME.TEXT_DIM,
-                fontFamily: THEME.FONT_PRIMARY
-              }}
-            >
-              {isEditingExisting ? selectedLesson.title : 'Fields are Optional'}
-            </span>
-          </div>
+          <h2
+            style={{
+              margin: 0,
+              fontSize: '18px',
+              letterSpacing: '4px',
+              color: THEME.WHITE,
+              fontFamily: THEME.FONT_PRIMARY,
+              textTransform: 'uppercase'
+            }}
+          >
+            LESSON EDITOR
+          </h2>
           <button
             onClick={onClose}
             style={{
               position: 'absolute',
-              right: '24px',
+              right: '20px',
               top: '50%',
               transform: 'translateY(-50%)',
               background: 'transparent',
-              border: 'none',
+              border: `1px solid ${THEME.TEXT_DIM}`,
+              borderRadius: '50%',
+              width: '28px',
+              height: '28px',
               color: THEME.TEXT_DIM,
-              fontSize: '20px',
+              fontSize: '14px',
               cursor: 'pointer',
-              padding: '4px 8px',
-              transition: 'color 0.2s ease'
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease'
             }}
-            onMouseEnter={(e) => e.target.style.color = THEME.WHITE}
-            onMouseLeave={(e) => e.target.style.color = THEME.TEXT_DIM}
+            onMouseEnter={(e) => {
+              e.target.style.borderColor = THEME.WHITE
+              e.target.style.color = THEME.WHITE
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.borderColor = THEME.TEXT_DIM
+              e.target.style.color = THEME.TEXT_DIM
+            }}
           >
             X
           </button>
         </div>
 
-        {/* Content - Scrollable */}
+        {/* Title Row */}
         <div
           style={{
-            flex: 1,
-            overflow: 'auto',
-            padding: '20px 24px'
-          }}
-        >
-          {/* Title Field - MANDATORY */}
-          <FieldSection
-            label="Title"
-            value={formData.title}
-            onChange={(v) => updateField('title', v)}
-            placeholder="Enter Lesson Title"
-            isActive={activeSection === 'title'}
-            onFocus={() => setActiveSection('title')}
-            onBlur={() => setActiveSection(null)}
-            isMandatory={true}
-          />
-
-          {/* Learning Objectives */}
-          <FieldSection
-            label="Learning Objectives"
-            value={formData.learningObjectives.join(', ')}
-            onChange={(v) => updateField('learningObjectives', v ? v.split(', ') : [])}
-            placeholder="Select / Enter Text"
-            isActive={activeSection === 'los'}
-            onFocus={() => setActiveSection('los')}
-            onBlur={() => setActiveSection(null)}
-            dropdownOptions={courseData.learningObjectives || []}
-          />
-
-          {/* Topics */}
-          <FieldSection
-            label="Add Topic(s)"
-            value={formData.topics.map(t => t.title || t).join(', ')}
-            onChange={(v) => updateField('topics', v ? v.split(', ').map(t => ({ title: t })) : [])}
-            placeholder="Enter Text"
-            isActive={activeSection === 'topics'}
-            onFocus={() => setActiveSection('topics')}
-            onBlur={() => setActiveSection(null)}
-          />
-
-          {/* Subtopics */}
-          <FieldSection
-            label="Add Subtopic(s)"
-            value={formData.subtopics.map(s => s.title || s).join(', ')}
-            onChange={(v) => updateField('subtopics', v ? v.split(', ').map(s => ({ title: s })) : [])}
-            placeholder="Enter Text"
-            isActive={activeSection === 'subtopics'}
-            onFocus={() => setActiveSection('subtopics')}
-            onBlur={() => setActiveSection(null)}
-          />
-
-          {/* Lesson Type */}
-          <FieldSection
-            label="Lesson Type"
-            value={formData.lessonType}
-            onChange={(v) => updateField('lessonType', v)}
-            placeholder="Select / Enter Text"
-            isActive={activeSection === 'type'}
-            onFocus={() => setActiveSection('type')}
-            onBlur={() => setActiveSection(null)}
-            dropdownOptions={LESSON_TYPES}
-          />
-
-          {/* Performance Criteria */}
-          <FieldSection
-            label="Performance Criteria"
-            value={formData.performanceCriteria.join(', ')}
-            onChange={(v) => updateField('performanceCriteria', v ? v.split(', ') : [])}
-            placeholder="Select / Enter Text"
-            isActive={activeSection === 'criteria'}
-            onFocus={() => setActiveSection('criteria')}
-            onBlur={() => setActiveSection(null)}
-          />
-
-          {/* Time Row */}
-          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-            <TimeField
-              label="Start Time"
-              value={formData.startTime}
-              onChange={(v) => updateField('startTime', v)}
-              isActive={activeSection === 'startTime'}
-              onFocus={() => setActiveSection('startTime')}
-              onBlur={() => setActiveSection(null)}
-            />
-            <TimeField
-              label="Stop Time"
-              value={formData.stopTime}
-              onChange={(v) => updateField('stopTime', v)}
-              isActive={activeSection === 'stopTime'}
-              onFocus={() => setActiveSection('stopTime')}
-              onBlur={() => setActiveSection(null)}
-            />
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
-              <TimeField
-                label="Duration"
-                value={formData.duration}
-                onChange={(v) => updateField('duration', v)}
-                isActive={activeSection === 'duration'}
-                onFocus={() => setActiveSection('duration')}
-                onBlur={() => setActiveSection(null)}
-                width="60px"
-              />
-              <select
-                value={formData.durationUnit}
-                onChange={(e) => updateField('durationUnit', e.target.value)}
-                style={{
-                  background: 'transparent',
-                  border: `1px solid ${THEME.BORDER}`,
-                  borderRadius: '4px',
-                  padding: '6px 8px',
-                  color: THEME.GREEN_BRIGHT,
-                  fontSize: '12px',
-                  fontFamily: THEME.FONT_PRIMARY,
-                  marginBottom: '4px'
-                }}
-              >
-                <option value="mins">mins</option>
-                <option value="hrs">hrs</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Schedule Row */}
-          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
-            <TimeField
-              label="Day"
-              value={formData.day}
-              onChange={(v) => updateField('day', v)}
-              isActive={activeSection === 'day'}
-              onFocus={() => setActiveSection('day')}
-              onBlur={() => setActiveSection(null)}
-              width="50px"
-            />
-            <TimeField
-              label="Week"
-              value={formData.week}
-              onChange={(v) => updateField('week', v)}
-              isActive={activeSection === 'week'}
-              onFocus={() => setActiveSection('week')}
-              onBlur={() => setActiveSection(null)}
-              width="50px"
-            />
-            <TimeField
-              label="Term"
-              value={formData.term}
-              onChange={(v) => updateField('term', v)}
-              isActive={activeSection === 'term'}
-              onFocus={() => setActiveSection('term')}
-              onBlur={() => setActiveSection(null)}
-              width="50px"
-            />
-            <TimeField
-              label="Module"
-              value={formData.module}
-              onChange={(v) => updateField('module', v)}
-              isActive={activeSection === 'module'}
-              onFocus={() => setActiveSection('module')}
-              onBlur={() => setActiveSection(null)}
-              width="50px"
-            />
-            <TimeField
-              label="Slides"
-              value={formData.slides || ''}
-              onChange={() => {}}
-              isActive={false}
-              onFocus={() => {}}
-              onBlur={() => {}}
-              width="50px"
-              readOnly
-            />
-          </div>
-        </div>
-
-        {/* Footer - Action Buttons */}
-        <div
-          style={{
-            padding: '16px 24px',
-            borderTop: `1px solid ${THEME.BORDER}`,
+            padding: '12px 24px',
+            borderBottom: `1px solid ${THEME.BORDER}`,
             display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '12px'
+            justifyContent: 'space-between',
+            alignItems: 'center'
           }}
         >
-          {/* Large Action Buttons - no circles, grey default, orange on hover */}
-          <div style={{ display: 'flex', gap: '32px' }}>
-            <ActionButton
-              onClick={handleAddToLibrary}
-              symbol="+"
-              title="Add to Library (Unallocated)"
-            />
-            <ActionButton
-              onClick={handleAddToTimetable}
-              symbol="O"
-              title="Add to Timetable"
-            />
-          </div>
-
-          {/* Help Text - with orange + and O per mockup */}
-          <span
-            style={{
-              fontSize: '12px',           /* 20% larger */
-              fontStyle: 'italic',        /* Italicized */
-              color: THEME.TEXT_DIM,
-              fontFamily: THEME.FONT_PRIMARY,
-              textAlign: 'center'
-            }}
-          >
-            {isEditingExisting ? (
-              <>Press '<span style={{ color: THEME.AMBER }}>+</span>' to move to Unallocated. Press '<span style={{ color: THEME.AMBER }}>O</span>' to update on Timetable.</>
-            ) : (
-              <>Press '<span style={{ color: THEME.AMBER }}>+</span>' to add lesson to library. Press '<span style={{ color: THEME.AMBER }}>O</span>' to add lesson to Timetable.</>
-            )}
-          </span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/**
- * FieldSection - Individual field with label and interactive states
- * Layout matches mockup: Label + placeholder on same line, separator below, + V on right
- * Supports multi-line items via '+' button
- */
-function FieldSection({
-  label,
-  value,
-  onChange,
-  placeholder,
-  isActive,
-  onFocus,
-  onBlur,
-  isMandatory = false,
-  dropdownOptions = [],
-  multiLine = false
-}) {
-  const [isTyping, setIsTyping] = useState(false)
-  const [showDropdown, setShowDropdown] = useState(false)
-  const [items, setItems] = useState([]) // For multi-line support
-  const [currentInput, setCurrentInput] = useState('')
-  const inputRef = useRef(null)
-
-  // Determine placeholder text color - GREEN when highlighted
-  const getPlaceholderColor = () => {
-    if (isActive) return THEME.GREEN_BRIGHT // Highlighted = luminous green
-    return THEME.TEXT_DIM // Default grey
-  }
-
-  // Determine text color based on state
-  const getTextColor = () => {
-    if (isActive) return THEME.GREEN_BRIGHT // Active = luminous green for typing
-    if (value) return THEME.WHITE // Has value (confirmed)
-    return THEME.TEXT_DIM // Empty
-  }
-
-  // Determine label color - Title uses orange per mockup
-  const getLabelColor = () => {
-    if (isMandatory) return THEME.AMBER // Title label always orange
-    if (isActive) return THEME.AMBER // Focused = burnt orange
-    return THEME.WHITE // Default white per mockup
-  }
-
-  const handleInputChange = (e) => {
-    setIsTyping(true)
-    setCurrentInput(e.target.value)
-    onChange(e.target.value)
-  }
-
-  const handleBlur = () => {
-    setIsTyping(false)
-    setShowDropdown(false)
-    onBlur?.()
-  }
-
-  const handleDropdownSelect = (option) => {
-    if (items.length > 0) {
-      // Add to multi-line items
-      setItems([...items, option])
-      onChange([...items, option].join(', '))
-    } else {
-      onChange(option)
-    }
-    setShowDropdown(false)
-    inputRef.current?.blur()
-  }
-
-  // Handle '+' button - adds current text as a new line item
-  const handleAddItem = () => {
-    const textToAdd = currentInput.trim() || value
-    if (textToAdd) {
-      const newItems = [...items, textToAdd]
-      setItems(newItems)
-      onChange(newItems.join(', '))
-      setCurrentInput('')
-    }
-  }
-
-  return (
-    <div style={{ position: 'relative' }}>
-      {/* Main Row: Label + Input + Buttons */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          padding: '10px 0',
-          borderBottom: `1px solid ${THEME.BORDER}`,
-          gap: '8px'
-        }}
-      >
-        {/* Label */}
-        <span
-          style={{
-            fontSize: '16px',             /* 20% larger (was 13px) */
-            color: getLabelColor(),
-            fontFamily: THEME.FONT_PRIMARY,
-            transition: 'color 0.2s ease',
-            whiteSpace: 'nowrap',
-            flexShrink: 0
-          }}
-        >
-          {label}:
-        </span>
-
-        {/* Input - uses lesson-editor-input class for placeholder styling */}
-        <input
-          ref={inputRef}
-          type="text"
-          className="lesson-editor-input"
-          value={items.length > 0 ? currentInput : value}
-          onChange={handleInputChange}
-          onFocus={onFocus}
-          onBlur={handleBlur}
-          placeholder={placeholder}
-          style={{
-            flex: 1,
-            background: 'transparent',
-            border: 'none',
-            padding: '0',
-            color: getTextColor(),
-            fontSize: '16px',             /* 20% larger (was 13px) */
-            fontFamily: THEME.FONT_PRIMARY,
-            outline: 'none',
-            transition: 'color 0.2s ease'
-          }}
-        />
-
-        {/* Action Buttons - Right side */}
-        <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-          <button
-            onClick={handleAddItem}
+          <input
+            type="text"
+            value={formData.title}
+            onChange={(e) => updateField('title', e.target.value)}
+            placeholder="LESSON TITLE"
             style={{
               background: 'transparent',
               border: 'none',
               color: THEME.AMBER,
               fontSize: '16px',
-              cursor: 'pointer',
-              padding: '2px 6px',
-              fontWeight: 'bold'
+              fontFamily: THEME.FONT_PRIMARY,
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+              letterSpacing: '2px',
+              outline: 'none',
+              flex: 1
             }}
-            title="Add new line item"
-          >
-            +
-          </button>
-          {dropdownOptions.length > 0 && (
-            <button
-              onClick={() => setShowDropdown(!showDropdown)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: THEME.AMBER,
-                fontSize: '12px',
-                cursor: 'pointer',
-                padding: '2px 6px'
-              }}
-            >
-              V
-            </button>
-          )}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: THEME.TEXT_DIM, fontSize: '12px', textTransform: 'uppercase' }}>
+              DURATION
+            </span>
+            <span style={{ color: THEME.GREEN_BRIGHT, fontSize: '14px', fontFamily: THEME.FONT_MONO }}>
+              {formData.duration} MINS
+            </span>
+          </div>
         </div>
-      </div>
 
-      {/* Multi-line items display */}
-      {items.length > 0 && (
+        {/* Main Content - Two Column Layout */}
+        <div style={{ display: 'flex', flex: 1, minHeight: '400px' }}>
+          {/* Left Column - Form Fields */}
+          <div
+            style={{
+              flex: 1,
+              padding: '16px 24px',
+              borderRight: `1px solid ${THEME.BORDER}`,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              overflowY: 'auto'
+            }}
+          >
+            {/* Learning Objectives */}
+            <DropdownField
+              label="LEARNING OBJECTIVES"
+              hint="Enter to Assign"
+              value={selectedLO ? `1. ${selectedLO.verb || 'EXPLAIN'} ${selectedLO.description || 'concepts to someone'}` : '1. EXPLAIN concepts to someone'}
+              valueColor={THEME.GREEN_BRIGHT}
+              highlightFirst={true}
+              isOpen={showLODropdown}
+              onToggle={() => setShowLODropdown(!showLODropdown)}
+              options={courseData.learningObjectives || []}
+              onSelect={(lo) => {
+                updateField('learningObjectives', [lo.id || lo])
+                setShowLODropdown(false)
+              }}
+              renderOption={(lo) => `${lo.order || 1}. ${lo.verb} ${lo.description}`}
+            />
+
+            {/* Topics */}
+            <DropdownField
+              label="TOPICS"
+              value={selectedTopic?.number || selectedTopic?.title || '1.1'}
+              isOpen={showTopicDropdown}
+              onToggle={() => setShowTopicDropdown(!showTopicDropdown)}
+              options={courseData.topics || []}
+              onSelect={(topic) => {
+                updateField('topics', [topic])
+                setShowTopicDropdown(false)
+              }}
+              renderOption={(t) => `${t.number || ''} ${t.title}`}
+            />
+
+            {/* Sub Topics */}
+            <DropdownField
+              label="SUB TOPICS"
+              value={selectedSubtopic?.number || selectedSubtopic?.title || '1.1.1'}
+              isOpen={showSubtopicDropdown}
+              onToggle={() => setShowSubtopicDropdown(!showSubtopicDropdown)}
+              options={selectedTopic?.subtopics || []}
+              onSelect={(subtopic) => {
+                updateField('subtopics', [subtopic])
+                setShowSubtopicDropdown(false)
+              }}
+              renderOption={(s) => `${s.number || ''} ${s.title}`}
+            />
+
+            {/* Lesson Type + Times Row */}
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end' }}>
+              <div style={{ flex: 1, position: 'relative' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '11px',
+                  color: THEME.TEXT_DIM,
+                  marginBottom: '4px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px'
+                }}>
+                  LESSON TYPE
+                </label>
+                <button
+                  onClick={() => setShowTypeDropdown(!showTypeDropdown)}
+                  style={{
+                    width: '100%',
+                    background: 'transparent',
+                    border: `1px solid ${THEME.BORDER}`,
+                    borderRadius: '4px',
+                    padding: '8px 12px',
+                    color: THEME.WHITE,
+                    fontSize: '13px',
+                    fontFamily: THEME.FONT_PRIMARY,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
+                >
+                  <span>{selectedType.name}</span>
+                  <span style={{ color: THEME.AMBER }}>V</span>
+                </button>
+                {showTypeDropdown && (
+                  <DropdownList
+                    options={LESSON_TYPES}
+                    onSelect={(type) => {
+                      updateField('lessonType', type.id)
+                      setShowTypeDropdown(false)
+                    }}
+                    renderOption={(t) => t.name}
+                    onClose={() => setShowTypeDropdown(false)}
+                  />
+                )}
+              </div>
+              <TimeInput
+                label="START"
+                value={formData.startTime}
+                onChange={(v) => updateField('startTime', v)}
+              />
+              <TimeInput
+                label="END"
+                value={formData.endTime}
+                onChange={(v) => updateField('endTime', v)}
+              />
+            </div>
+
+            {/* Performance Criteria */}
+            <DropdownField
+              label="PERFORMANCE CRITERIA"
+              value={selectedPC ? `PC: ${formData.performanceCriteria.length}` : 'PC: 1'}
+              valueColor={THEME.GREEN_BRIGHT}
+              isOpen={showPCDropdown}
+              onToggle={() => setShowPCDropdown(!showPCDropdown)}
+              options={courseData.performanceCriteria || []}
+              onSelect={(pc) => {
+                updateField('performanceCriteria', [...formData.performanceCriteria, pc])
+                setShowPCDropdown(false)
+              }}
+              renderOption={(pc) => pc.name || pc.description || pc}
+            />
+          </div>
+
+          {/* Right Column - Notes + Images */}
+          <div
+            style={{
+              flex: 1,
+              padding: '16px 24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px'
+            }}
+          >
+            {/* Notes Section */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              {/* Notes Tabs */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '8px'
+              }}>
+                <div style={{ display: 'flex', gap: '24px' }}>
+                  <button
+                    onClick={() => { setActiveNotesTab('slide'); setCurrentNotePage(0) }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: activeNotesTab === 'slide' ? THEME.WHITE : THEME.TEXT_DIM,
+                      fontSize: '13px',
+                      fontFamily: THEME.FONT_PRIMARY,
+                      cursor: 'pointer',
+                      paddingBottom: '4px',
+                      borderBottom: activeNotesTab === 'slide' ? `2px solid ${THEME.WHITE}` : '2px solid transparent'
+                    }}
+                  >
+                    Slide Notes
+                  </button>
+                  <button
+                    onClick={() => { setActiveNotesTab('instructor'); setCurrentNotePage(0) }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: activeNotesTab === 'instructor' ? THEME.WHITE : THEME.TEXT_DIM,
+                      fontSize: '13px',
+                      fontFamily: THEME.FONT_PRIMARY,
+                      cursor: 'pointer',
+                      paddingBottom: '4px',
+                      borderBottom: activeNotesTab === 'instructor' ? `2px solid ${THEME.WHITE}` : '2px solid transparent'
+                    }}
+                  >
+                    Instructor Notes
+                  </button>
+                </div>
+                <span style={{ color: THEME.TEXT_DIM, fontSize: '12px' }}>
+                  {currentNotePage + 1}/{currentNotes.length}
+                </span>
+              </div>
+
+              {/* Notes Text Area */}
+              <div style={{ flex: 1, position: 'relative' }}>
+                <textarea
+                  value={currentNotes[currentNotePage] || ''}
+                  onChange={(e) => handleNoteChange(e.target.value)}
+                  placeholder="Enter Text Here"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    minHeight: '150px',
+                    background: '#0d0d0d',
+                    border: `1px solid ${THEME.BORDER}`,
+                    borderRadius: '8px',
+                    padding: '12px',
+                    paddingRight: '40px',
+                    color: THEME.TEXT_PRIMARY,
+                    fontSize: '13px',
+                    fontFamily: THEME.FONT_PRIMARY,
+                    resize: 'none',
+                    outline: 'none'
+                  }}
+                />
+                {/* Navigation Arrows */}
+                <div style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  display: 'flex',
+                  gap: '4px'
+                }}>
+                  <button
+                    onClick={goToPrevNote}
+                    disabled={currentNotePage === 0}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: currentNotePage === 0 ? THEME.TEXT_DIM : THEME.WHITE,
+                      fontSize: '14px',
+                      cursor: currentNotePage === 0 ? 'default' : 'pointer',
+                      padding: '2px'
+                    }}
+                  >
+                    &lt;
+                  </button>
+                  <button
+                    onClick={goToNextNote}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: THEME.WHITE,
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      padding: '2px'
+                    }}
+                  >
+                    &gt;
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Images Section */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '11px',
+                color: THEME.TEXT_DIM,
+                marginBottom: '8px',
+                textTransform: 'uppercase',
+                letterSpacing: '1px'
+              }}>
+                Images
+              </label>
+              <div
+                onDrop={handleDrop}
+                onDragOver={(e) => e.preventDefault()}
+                style={{
+                  border: `2px dashed ${THEME.BORDER}`,
+                  borderRadius: '8px',
+                  padding: '24px',
+                  textAlign: 'center',
+                  cursor: 'pointer'
+                }}
+                onClick={() => document.getElementById('image-upload').click()}
+              >
+                <input
+                  id="image-upload"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  style={{ display: 'none' }}
+                />
+                <div style={{ marginBottom: '8px' }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style={{ margin: '0 auto' }}>
+                    <path
+                      d="M12 16V8M12 8L9 11M12 8L15 11"
+                      stroke={THEME.TEXT_DIM}
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M3 15V16C3 18.2091 4.79086 20 7 20H17C19.2091 20 21 18.2091 21 16V15"
+                      stroke={THEME.TEXT_DIM}
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <div style={{ color: THEME.TEXT_DIM, fontSize: '12px' }}>
+                  Drag images here
+                </div>
+                <div style={{ fontSize: '12px' }}>
+                  <span style={{ color: THEME.TEXT_DIM }}>or </span>
+                  <span style={{ color: THEME.AMBER, cursor: 'pointer' }}>browse</span>
+                </div>
+              </div>
+              {/* Image Thumbnails */}
+              {images.length > 0 && (
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+                  {images.map((img, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '4px',
+                        overflow: 'hidden',
+                        position: 'relative'
+                      }}
+                    >
+                      <img
+                        src={img.data}
+                        alt={img.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setImages(images.filter((_, i) => i !== idx))
+                        }}
+                        style={{
+                          position: 'absolute',
+                          top: '2px',
+                          right: '2px',
+                          background: 'rgba(0,0,0,0.7)',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '16px',
+                          height: '16px',
+                          color: THEME.WHITE,
+                          fontSize: '10px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Section */}
         <div
           style={{
-            padding: '8px 0',
-            borderBottom: `1px solid ${THEME.BORDER}`
+            padding: '12px 24px',
+            borderTop: `1px solid ${THEME.BORDER}`,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
           }}
         >
-          {items.map((item, idx) => (
-            <div
-              key={idx}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '4px 0',
-                fontSize: '12px',
-                color: THEME.WHITE,
-                fontFamily: THEME.FONT_PRIMARY
-              }}
-            >
-              <span>• {item}</span>
+          {/* View Tabs */}
+          <div style={{ display: 'flex', gap: '32px' }}>
+            {['UNALLOCATED', 'TIMETABLE', 'SCALAR'].map(tab => (
               <button
-                onClick={() => {
-                  const newItems = items.filter((_, i) => i !== idx)
-                  setItems(newItems)
-                  onChange(newItems.join(', '))
-                }}
+                key={tab}
+                onClick={() => setActiveBottomTab(tab.toLowerCase())}
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: THEME.TEXT_DIM,
+                  color: activeBottomTab === tab.toLowerCase() ? THEME.WHITE : THEME.TEXT_DIM,
                   fontSize: '12px',
+                  fontFamily: THEME.FONT_PRIMARY,
+                  letterSpacing: '2px',
                   cursor: 'pointer',
-                  padding: '0 4px'
+                  padding: '4px 0',
+                  borderBottom: activeBottomTab === tab.toLowerCase()
+                    ? `2px solid ${THEME.AMBER}`
+                    : '2px solid transparent',
+                  transition: 'all 0.2s ease'
                 }}
               >
-                ×
+                {tab}
               </button>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
 
-      {/* Dropdown */}
-      {showDropdown && dropdownOptions.length > 0 && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            background: THEME.BG_DARK,
-            border: `1px solid ${THEME.BORDER}`,
-            borderRadius: '4px',
-            maxHeight: '150px',
-            overflow: 'auto',
-            zIndex: 10
-          }}
-        >
-          {dropdownOptions.map((option, idx) => (
-            <div
-              key={idx}
-              onClick={() => handleDropdownSelect(option)}
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={onClose}
               style={{
-                padding: '8px 12px',
-                color: THEME.TEXT_PRIMARY,
+                background: 'transparent',
+                border: `1px solid ${THEME.TEXT_DIM}`,
+                borderRadius: '4px',
+                padding: '8px 24px',
+                color: THEME.TEXT_DIM,
                 fontSize: '12px',
+                fontFamily: THEME.FONT_PRIMARY,
+                letterSpacing: '1px',
                 cursor: 'pointer',
-                transition: 'background 0.2s ease'
+                transition: 'all 0.2s ease'
               }}
-              onMouseEnter={(e) => e.target.style.background = THEME.BG_PANEL}
-              onMouseLeave={(e) => e.target.style.background = 'transparent'}
+              onMouseEnter={(e) => {
+                e.target.style.borderColor = THEME.WHITE
+                e.target.style.color = THEME.WHITE
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.borderColor = THEME.TEXT_DIM
+                e.target.style.color = THEME.TEXT_DIM
+              }}
             >
-              {option}
-            </div>
-          ))}
+              CANCEL
+            </button>
+            <button
+              onClick={handleSave}
+              style={{
+                background: THEME.AMBER,
+                border: 'none',
+                borderRadius: '4px',
+                padding: '8px 24px',
+                color: THEME.BG_DARK,
+                fontSize: '12px',
+                fontFamily: THEME.FONT_PRIMARY,
+                fontWeight: 'bold',
+                letterSpacing: '1px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = '#ff7700'
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = THEME.AMBER
+              }}
+            >
+              SAVE LESSON
+            </button>
+          </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * DropdownField - Reusable dropdown field component
+ */
+function DropdownField({
+  label,
+  hint,
+  value,
+  valueColor = THEME.WHITE,
+  highlightFirst = false,
+  isOpen,
+  onToggle,
+  options = [],
+  onSelect,
+  renderOption
+}) {
+  // Parse value to highlight first word if needed
+  const renderValue = () => {
+    if (highlightFirst && value) {
+      const parts = value.split(' ')
+      const firstWord = parts[0]
+      const rest = parts.slice(1).join(' ')
+      return (
+        <>
+          <span style={{ color: THEME.GREEN_BRIGHT }}>{firstWord}</span>
+          {rest && <span style={{ color: valueColor }}> {rest}</span>}
+        </>
+      )
+    }
+    return <span style={{ color: valueColor }}>{value}</span>
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '4px'
+      }}>
+        <label style={{
+          fontSize: '11px',
+          color: THEME.TEXT_DIM,
+          textTransform: 'uppercase',
+          letterSpacing: '1px'
+        }}>
+          {label}
+        </label>
+        {hint && (
+          <span style={{ fontSize: '10px', color: THEME.TEXT_DIM, fontStyle: 'italic' }}>
+            {hint}
+          </span>
+        )}
+      </div>
+      <button
+        onClick={onToggle}
+        style={{
+          width: '100%',
+          background: 'transparent',
+          border: `1px solid ${THEME.BORDER}`,
+          borderRadius: '4px',
+          padding: '10px 12px',
+          textAlign: 'left',
+          cursor: 'pointer',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: '13px',
+          fontFamily: THEME.FONT_PRIMARY
+        }}
+      >
+        {renderValue()}
+        <span style={{ color: THEME.AMBER, marginLeft: '8px' }}>V</span>
+      </button>
+      {isOpen && options.length > 0 && (
+        <DropdownList
+          options={options}
+          onSelect={onSelect}
+          renderOption={renderOption}
+          onClose={onToggle}
+        />
       )}
     </div>
   )
 }
 
 /**
- * ActionButton - Large + and O buttons with hover state
- * No background/border (removed orange circles), grey default, burnt orange on hover
- * Size increased by 25%
+ * DropdownList - Dropdown options list
  */
-function ActionButton({ onClick, symbol, title }) {
-  const [isHovered, setIsHovered] = useState(false)
-
+function DropdownList({ options, onSelect, renderOption, onClose }) {
   return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      title={title}
-      style={{
-        width: '60px',              /* 25% larger (was 48px) */
-        height: '60px',             /* 25% larger (was 48px) */
-        background: 'transparent',  /* No background */
-        border: 'none',             /* No border/circle */
-        color: isHovered ? THEME.AMBER : THEME.TEXT_DIM,  /* Grey default, orange on hover */
-        fontSize: symbol === '+' ? '36px' : '30px',       /* 25% larger */
-        fontWeight: 'bold',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        transition: 'color 0.2s ease'
-      }}
-    >
-      {symbol}
-    </button>
+    <>
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 99
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          background: '#1a1a1a',
+          border: `1px solid ${THEME.BORDER}`,
+          borderRadius: '4px',
+          maxHeight: '200px',
+          overflowY: 'auto',
+          marginTop: '4px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
+        }}
+      >
+        {options.map((option, idx) => (
+          <div
+            key={idx}
+            onClick={() => onSelect(option)}
+            style={{
+              padding: '8px 12px',
+              fontSize: '12px',
+              color: THEME.TEXT_PRIMARY,
+              cursor: 'pointer',
+              transition: 'background 0.15s ease'
+            }}
+            onMouseEnter={(e) => e.target.style.background = '#2a2a2a'}
+            onMouseLeave={(e) => e.target.style.background = 'transparent'}
+          >
+            {renderOption ? renderOption(option) : option}
+          </div>
+        ))}
+      </div>
+    </>
   )
 }
 
 /**
- * TimeField - Small input field for time/number values
- * No '--' placeholder - shows empty when no value
+ * TimeInput - Time input field
  */
-function TimeField({
-  label,
-  value,
-  onChange,
-  isActive,
-  onFocus,
-  onBlur,
-  width = '70px',
-  readOnly = false
-}) {
-  const [isTyping, setIsTyping] = useState(false)
-
-  const getTextColor = () => {
-    if (readOnly) return THEME.TEXT_DIM
-    if (isActive) return THEME.GREEN_BRIGHT // Active = luminous green
-    if (value) return THEME.WHITE // Has value
-    return THEME.TEXT_DIM
-  }
-
-  const getLabelColor = () => {
-    if (isActive) return THEME.AMBER
-    return THEME.TEXT_DIM
-  }
-
+function TimeInput({ label, value, onChange }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-      <span
-        style={{
-          fontSize: '12px',               /* 20% larger (was 10px) */
-          color: getLabelColor(),
-          fontFamily: THEME.FONT_PRIMARY,
-          transition: 'color 0.2s ease'
-        }}
-      >
-        {label}:
-      </span>
+    <div>
+      <label style={{
+        display: 'block',
+        fontSize: '11px',
+        color: THEME.TEXT_DIM,
+        marginBottom: '4px',
+        textTransform: 'uppercase',
+        letterSpacing: '1px'
+      }}>
+        {label}
+      </label>
       <input
-        type="text"
+        type="time"
         value={value}
-        onChange={(e) => {
-          setIsTyping(true)
-          onChange(e.target.value)
-        }}
-        onFocus={onFocus}
-        onBlur={() => {
-          setIsTyping(false)
-          onBlur?.()
-        }}
-        readOnly={readOnly}
+        onChange={(e) => onChange(e.target.value)}
         style={{
-          width,
           background: 'transparent',
-          border: 'none',
-          borderBottom: `1px solid ${isActive ? THEME.AMBER : THEME.BORDER}`,
-          padding: '4px 0',
-          color: getTextColor(),
-          fontSize: '14px',               /* 20% larger (was 12px) */
-          fontFamily: THEME.FONT_PRIMARY,
+          border: `1px solid ${THEME.BORDER}`,
+          borderRadius: '4px',
+          padding: '8px 12px',
+          color: THEME.WHITE,
+          fontSize: '13px',
+          fontFamily: THEME.FONT_MONO,
           outline: 'none',
-          textAlign: 'center',
-          transition: 'all 0.2s ease'
+          width: '90px'
         }}
       />
     </div>
