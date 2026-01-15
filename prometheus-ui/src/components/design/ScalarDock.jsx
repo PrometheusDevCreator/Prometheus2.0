@@ -411,6 +411,50 @@ function LOColumn({
   onDropOnHeader
 }) {
   const [isHovered, setIsHovered] = useState(false)
+  const [editValue, setEditValue] = useState(lo.description || lo.title || '')
+
+  // Update editValue when lo changes
+  useEffect(() => {
+    setEditValue(lo.description || lo.title || '')
+  }, [lo.description, lo.title])
+
+  // Check if this LO is in edit mode
+  const isEditing = selection.type === 'lo' && selection.id === lo.id && selection.mode === 'editing'
+
+  // Handle click - single click selects, shift+click enters linking mode
+  const handleLOClick = useCallback((e) => {
+    e.stopPropagation()
+    if (e.shiftKey) {
+      // Shift+click enters linking mode
+      onToggleLink?.('lo', lo.id)
+    } else {
+      // Normal click selects
+      onSelect?.('lo', lo.id)
+    }
+  }, [onSelect, onToggleLink, lo.id])
+
+  // Handle double-click - enters edit mode
+  const handleLODoubleClick = useCallback((e) => {
+    e.stopPropagation()
+    onEdit?.('lo', lo.id)
+  }, [onEdit, lo.id])
+
+  // Handle keyboard in edit mode
+  const handleLOKeyDown = useCallback((e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      onUpdate?.('lo', lo.id, editValue)
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setEditValue(lo.description || lo.title || '')
+      onSelect?.('lo', lo.id)
+    }
+  }, [onUpdate, onSelect, lo.id, editValue, lo.description, lo.title])
+
+  // Handle blur - save changes
+  const handleLOBlur = useCallback(() => {
+    onUpdate?.('lo', lo.id, editValue)
+  }, [onUpdate, lo.id, editValue])
 
   // Get topics for this LO
   const loTopics = useMemo(() => {
@@ -477,16 +521,19 @@ function LOColumn({
       <div
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        onClick={() => onSelect?.('lo', lo.id)}
-        onDoubleClick={() => onToggleLink?.('lo', lo.id)}
+        onClick={handleLOClick}
+        onDoubleClick={handleLODoubleClick}
         title={`${performanceVerb} ${loDescription}`}
         style={{
           display: 'flex',
           alignItems: 'center',
           padding: '0.5vh 0.5vw',
           marginBottom: '0.5vh',
-          cursor: 'pointer',
+          cursor: linkingMode.active ? 'crosshair' : 'pointer',
           background: 'transparent',
+          border: isEditing ? `1px solid ${THEME.GREEN_BRIGHT}` :
+                  (linkingMode.sourceElement?.type === 'lo' && linkingMode.sourceElement?.id === lo.id) ? `1px solid ${THEME.GREEN_BRIGHT}` :
+                  isSelected ? `1px solid ${THEME.AMBER}` : '1px solid transparent',
           borderRadius: '3px',
           transition: 'all 0.15s ease'
         }}
@@ -496,7 +543,7 @@ function LOColumn({
           style={{
             fontSize: FONT.HEADER,
             fontFamily: THEME.FONT_PRIMARY,
-            color: getSerialColor(),
+            color: isEditing ? THEME.GREEN_BRIGHT : getSerialColor(),
             marginRight: '0.3vw',
             transition: 'color 0.15s ease'
           }}
@@ -504,26 +551,48 @@ function LOColumn({
           {loIndex + 1}:
         </span>
 
-        {/* Performance Verb + Description */}
-        <span
-          style={{
-            flex: 1,
-            fontSize: FONT.ITEM,
-            fontFamily: THEME.FONT_PRIMARY,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          <span style={{ color: getVerbColor(), fontWeight: 500, transition: 'color 0.15s ease' }}>
-            {performanceVerb}
-          </span>
-          {loDescription && (
-            <span style={{ color: getDescColor(), marginLeft: '0.3vw', transition: 'color 0.15s ease' }}>
-              {loDescription}
+        {/* Performance Verb + Description - or Edit Input */}
+        {isEditing ? (
+          <input
+            type="text"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={handleLOKeyDown}
+            onBlur={handleLOBlur}
+            autoFocus
+            style={{
+              flex: 1,
+              background: THEME.BG_DARK,
+              border: 'none',
+              color: THEME.GREEN_BRIGHT,
+              fontSize: FONT.ITEM,
+              fontFamily: THEME.FONT_PRIMARY,
+              padding: '0.2vh 0.3vw',
+              outline: 'none',
+              borderRadius: '2px'
+            }}
+          />
+        ) : (
+          <span
+            style={{
+              flex: 1,
+              fontSize: FONT.ITEM,
+              fontFamily: THEME.FONT_PRIMARY,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <span style={{ color: getVerbColor(), fontWeight: 500, transition: 'color 0.15s ease' }}>
+              {performanceVerb}
             </span>
-          )}
-        </span>
+            {loDescription && (
+              <span style={{ color: getDescColor(), marginLeft: '0.3vw', transition: 'color 0.15s ease' }}>
+                {loDescription}
+              </span>
+            )}
+          </span>
+        )}
 
         {/* Expand/Collapse Toggle */}
         <button
@@ -1003,7 +1072,12 @@ function ScalarDock({ width = '100%', height = '100%' }) {
   }, [startEditing])
 
   const handleUpdate = useCallback((type, id, value) => {
-    updateScalarNode(type, id, { title: value })
+    // LOs use 'description' field, topics/subtopics use 'title'
+    if (type === 'lo') {
+      updateScalarNode(type, id, { description: value })
+    } else {
+      updateScalarNode(type, id, { title: value })
+    }
     select(type, id)
   }, [updateScalarNode, select])
 
@@ -1481,7 +1555,7 @@ function ScalarDock({ width = '100%', height = '100%' }) {
         }}
       >
         <span>{learningObjectives.length} LO{learningObjectives.length !== 1 ? 's' : ''} | {topics.length} Topics | {subtopics.length} Subtopics</span>
-        <span>Double-click to link | DEL to delete | Drag to reorder</span>
+        <span>Double-click to edit | SHIFT+click to link | DEL to delete</span>
       </div>
 
       {/* Delete Warning Modal */}
