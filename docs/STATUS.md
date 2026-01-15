@@ -5,7 +5,7 @@
 > This is the **single source of truth** for Prometheus project status.
 > AI assistants should update this file at the end of each significant session.
 
-**Last Updated:** 2025-01-14
+**Last Updated:** 2025-01-15
 **Last Session By:** Claude Code (CC)
 
 ---
@@ -13,6 +13,7 @@
 ## Quick Summary
 
 - **UI:** Stable and complete for current pages (Login, Navigate, Define, Design, BUILD, FORMAT)
+- **Lesson Editor:** Redesigned with two-column professional layout, notes tabs, image upload
 - **SCALAR Tab:** Bidirectional sync implemented - Topics/Subtopics sync between LessonEditor and SCALAR
 - **OVERVIEW Tab:** New planning canvas with Timeline and NoteBlock components
 - **Backend:** Scaffolded only - API structure exists but not connected
@@ -31,6 +32,7 @@
 | **Design - Overview** | ENHANCED | 2025-01-14 | New PlanningCanvas, Timeline, NoteBlock components |
 | **Design - Timetable** | ENHANCED | 2025-01-14 | TimeControls, TimetableGrid refinements |
 | **Design - Scalar** | ENHANCED | 2025-01-14 | **Bidirectional sync with LessonEditor** |
+| **Lesson Editor Modal** | REDESIGNED | 2025-01-15 | **Two-column layout, notes tabs, image upload** |
 | **Build page** | STABLE | 2025-12-30 | Slide authoring, bidirectional sync |
 | **Format page** | COMPLETE | 2025-12-30 | All 6 phases complete |
 | **Generate page** | PLACEHOLDER | - | Not implemented |
@@ -57,27 +59,27 @@
 
 | Date | Session | Key Changes |
 |------|---------|-------------|
+| 2025-01-15 | CC | **Lesson Editor Redesign**: Two-column layout, notes tabs, image upload, view destination tabs |
 | 2025-01-14 | CC | **SCALAR Bidirectional Sync**: 6 functions modified in DesignContext.jsx for Topic/Subtopic sync |
 | 2025-01-14 | CC | **OVERVIEW Planning Tools**: PlanningCanvas, Timeline, NoteBlock, ColorPalette, CourseElementBar |
 | 2025-01-11 | CC | Phase 6 System Testing: 180 tests passed, all Calm Wheel phases complete |
 | 2025-01-11 | CC | Phase 2-6 Integration: Canonical store, LessonCardPrimitive, WheelNav, ScalarDock, WorkDock |
-| 2025-01-09 | CC | Comprehensive status report, testing framework operational |
 
 ---
 
 ## Latest Commit
 
 ```
-commit 675d12f (feature/design-calm-wheel)
-Date: 2025-01-14
+commit 5410705 (feature/design-calm-wheel)
+Date: 2025-01-15
 
-feat(SCALAR): Bidirectional sync and OVERVIEW planning tools
+feat(UI): Redesign LessonEditorModal with two-column professional layout
 
-- Implement bidirectional sync between LessonEditor and SCALAR
-- Topics/Subtopics added in LessonEditor now appear in SCALAR
-- Changes in SCALAR propagate back to lesson data
-- Add PlanningCanvas, Timeline, NoteBlock for OVERVIEW
-- 21 files changed, +4,441 / -1,450 lines
+- Two-column design (left: form fields, right: notes/images)
+- Slide Notes / Instructor Notes tabs with pagination
+- Image drag-and-drop upload area
+- View destination tabs: UNALLOCATED / TIMETABLE / SCALAR
+- 1 file modified (+793 / -696 lines), 1 mockup added
 ```
 
 ---
@@ -103,36 +105,35 @@ None currently.
 
 *Important context for the next session:*
 
+### Lesson Editor Modal Redesign (2025-01-15)
+
+**Complete rewrite** of `LessonEditorModal.jsx` with professional two-column layout:
+- Left column: All form dropdowns (LO, Topics, Subtopics, Type, Times, PC)
+- Right column: Notes tabs with pagination, Image drag-drop upload
+- Bottom: View destination tabs, CANCEL/SAVE buttons
+
+**Key state patterns:**
+```javascript
+const [activeNotesTab, setActiveNotesTab] = useState('slide')
+const [activeViewTab, setActiveViewTab] = useState('timetable')
+const [currentNoteIndex, setCurrentNoteIndex] = useState(0)
+const [slideNotes, setSlideNotes] = useState([''])
+const [instructorNotes, setInstructorNotes] = useState([''])
+```
+
+**Testing completed:** All 14 manual tests passed via Playwright
+
 ### SCALAR Bidirectional Sync (Implemented 2025-01-14)
 
 **Root cause fixed:** Data store mismatch between LessonEditor and ScalarDock
-- LessonEditor was writing to `lesson.topics` and `scalarData`
-- ScalarDock was reading from `canonicalData.topics`
 - Now synchronized via 6 modified functions in DesignContext.jsx
 
-**Functions modified:**
-1. `addTopicToLesson` - Now writes to canonicalData
-2. `addSubtopicToLessonTopic` - Now writes to canonicalData
-3. `updateLessonTopic` - Syncs to canonical
-4. `updateLessonSubtopic` - Syncs to canonical
-5. `updateScalarNode` - Propagates back to lessons
-6. `deleteScalarNode` - Propagates deletes to lessons
-
-### New OVERVIEW Components
-
-| Component | Purpose |
-|-----------|---------|
-| `PlanningCanvas.jsx` | Infinite-pan canvas for course planning |
-| `Timeline.jsx` | Unit-based timeline with duration bars |
-| `NoteBlock.jsx` | Free-form planning notes |
-| `ColorPalette.jsx` | Color label management |
-| `CourseElementBar.jsx` | Element management toolbar |
-| `TabSelector.jsx` | OVERVIEW/TIMETABLE switching |
+**Functions:** `addTopicToLesson`, `addSubtopicToLessonTopic`, `updateLessonTopic`, `updateLessonSubtopic`, `updateScalarNode`, `deleteScalarNode`
 
 ### Testing Status
 
-- Automated Playwright tests: PASSING
-- Manual testing recommended for full CRUD validation
+- Lesson Editor Modal: All manual tests PASSING
+- SCALAR Sync: Ready for user validation
 - Test files: `prometheus-ui/test_bidirectional_sync.py`, `test_scalar.py`
 
 ---
@@ -144,7 +145,7 @@ None currently.
 - [../CLAUDE.md](../CLAUDE.md) - AI entry point and project context
 - [../UI_DOCTRINE.md](../UI_DOCTRINE.md) - Immutable UI frame definitions
 - [../CLAUDE_PROTOCOL.md](../CLAUDE_PROTOCOL.md) - Task execution protocol
-- [briefs/SARAH_BRIEF_scalar-bidirectional-sync_2025-01-14.md](briefs/SARAH_BRIEF_scalar-bidirectional-sync_2025-01-14.md) - Latest session brief
+- [briefs/SARAH_BRIEF_lesson-editor-redesign_2025-01-15.md](briefs/SARAH_BRIEF_lesson-editor-redesign_2025-01-15.md) - Latest session brief
 
 ---
 

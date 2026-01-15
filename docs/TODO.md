@@ -6,7 +6,7 @@
 > AI assistants should offer to update this file when tasks are identified or completed.
 > For strategic ideas and future vision, see [IDEAS.md](IDEAS.md).
 
-**Last Updated:** 2025-01-14
+**Last Updated:** 2025-01-15
 **Updated By:** Claude Code (CC)
 
 ---
@@ -15,6 +15,7 @@
 
 | Task | Priority | Status | Notes |
 |------|----------|--------|-------|
+| **Lesson Editor Modal Testing** | **HIGH** | **Ready for User Validation** | Redesign complete, test image upload & save |
 | **SCALAR Bidirectional Sync Testing** | **HIGH** | **Ready for Manual Testing** | Sync implemented, needs user validation |
 | Backend API integration | HIGH | Not Started | API scaffolded in `core/api/`, needs connection to UI |
 | PKE Engine implementation | HIGH | Not Started | Core intelligence feature, `core/pke/` is placeholder |
@@ -38,6 +39,7 @@
 
 | Task | Completed | Notes |
 |------|-----------|-------|
+| **Lesson Editor Modal Redesign** | 2025-01-15 | Two-column layout, notes tabs, image upload |
 | SCALAR Bidirectional Sync Implementation | 2025-01-14 | 6 functions modified in DesignContext.jsx |
 | OVERVIEW Planning Tools | 2025-01-14 | PlanningCanvas, Timeline, NoteBlock, ColorPalette |
 | DESIGN Phase 6: System Testing | 2025-01-11 | 180 tests passed, all phases complete |
@@ -47,11 +49,20 @@
 | DESIGN Phase 2: LessonCardPrimitive | 2025-01-11 | Unified lesson card component |
 | DESIGN Phase 1: Canonical Data Model | 2025-01-11 | Normalized stores with deterministic numbering |
 | FORMAT Page (All 6 Phases) | 2025-12-30 | TemplateContext, IndexedDB, all editors |
-| Build page implementation | 2025-12-30 | Slide authoring, bidirectional sync |
 
 ---
 
 ## Task Log (Audit Trail)
+
+### 2025-01-15 Session
+
+| Time | Task | Action | Commit |
+|------|------|--------|--------|
+| Session Start | Skills Development | Created 7 Claude Code skills for Prometheus | `18adb8b` |
+| - | Lesson Editor Redesign | Complete rewrite of LessonEditorModal.jsx | - |
+| - | Mockup Implementation | Two-column layout, notes tabs, image upload | - |
+| - | Manual Testing | 14 Playwright tests passed | - |
+| Session End | Commit & Document | Created Sarah Brief, updated docs | `5410705` |
 
 ### 2025-01-14 Session
 
