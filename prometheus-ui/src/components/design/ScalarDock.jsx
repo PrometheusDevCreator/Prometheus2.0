@@ -884,7 +884,7 @@ function OrphanedItemsSection({
 // MAIN COMPONENT
 // ============================================
 
-function ScalarDock({ width = '100%', height = '100%' }) {
+function ScalarDock({ width = '100%', height = '100%', onAddLesson, onAddPC }) {
   const {
     scalarData,
     canonicalData,
@@ -1217,53 +1217,72 @@ function ScalarDock({ width = '100%', height = '100%' }) {
       }}
       data-testid="scalar-dock"
     >
-      {/* Header Bar with +LO button on LEFT */}
+      {/* Header Bar - minimal, linking mode indicator moved to right */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          justifyContent: 'flex-end',
           padding: '0.8vh 1vw',
-          flexShrink: 0
+          flexShrink: 0,
+          minHeight: '4vh'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1vw' }}>
-          {/* +LO Button - Pill shape, dark grey default */}
-          <button
-            onClick={handleAddLO}
-            onMouseEnter={() => setAddLOHovered(true)}
-            onMouseLeave={() => setAddLOHovered(false)}
+        {/* Linking Mode Label - positioned 1200px from left (or right side), 50px up from baseline */}
+        {linkingMode.active && (
+          <div
             style={{
-              background: addLOHovered ? THEME.AMBER : THEME.TEXT_DIM,
-              border: 'none',
-              color: THEME.WHITE,
-              cursor: 'pointer',
-              padding: '0.6vh 1vw',
-              fontSize: FONT.BUTTON,
-              fontFamily: THEME.FONT_PRIMARY,
-              borderRadius: '1.5vh',
-              transition: 'all 0.2s ease'
+              position: 'absolute',
+              right: '2vw',
+              top: '1vh',
+              zIndex: 100,
+              textAlign: 'left',
+              lineHeight: 1.4
             }}
-            title="Add Learning Objective"
           >
-            + LO
-          </button>
-
-          {linkingMode.active && (
-            <span
+            <div
               style={{
-                fontSize: FONT.SERIAL,
+                fontSize: '1.3vh',
                 color: THEME.GREEN_BRIGHT,
-                fontFamily: THEME.FONT_MONO,
-                padding: '0.2vh 0.5vw',
-                background: `${THEME.GREEN_BRIGHT}20`,
-                borderRadius: '3px'
+                fontFamily: THEME.FONT_PRIMARY,
+                fontWeight: 500,
+                marginBottom: '0.3vh'
               }}
             >
-              LINKING MODE (ESC to exit)
-            </span>
-          )}
-        </div>
+              LINKING MODE - Active
+            </div>
+            <div
+              style={{
+                fontSize: '1.1vh',
+                color: THEME.GREEN_BRIGHT,
+                fontFamily: THEME.FONT_PRIMARY,
+                opacity: 0.9
+              }}
+            >
+              Link Lessons to Content
+            </div>
+            <div
+              style={{
+                fontSize: '1.0vh',
+                color: THEME.TEXT_DIM,
+                fontFamily: THEME.FONT_PRIMARY,
+                marginTop: '0.5vh'
+              }}
+            >
+              Click to select Lesson, then click Scalar elements to link / unlink them.
+            </div>
+            <div
+              style={{
+                fontSize: '1.0vh',
+                color: THEME.TEXT_DIM,
+                fontFamily: THEME.FONT_PRIMARY,
+                marginTop: '0.3vh'
+              }}
+            >
+              Press <span style={{ color: THEME.GREEN_BRIGHT }}>ESC</span> to EXIT (your changes will be saved)
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Column Headers Row - scrollable to sync with content */}
@@ -1283,7 +1302,10 @@ function ScalarDock({ width = '100%', height = '100%' }) {
             minWidth: loColumns.length * COLUMN_MIN_WIDTH,
             padding: '0.5vh 0.5vw',
             position: 'relative',
-            flexShrink: 0
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5vw'
           }}
         >
           <span
@@ -1297,6 +1319,25 @@ function ScalarDock({ width = '100%', height = '100%' }) {
           >
             LEARNING OBJECTIVES
           </span>
+          {/* + Button for Adding LO - Burnt Orange */}
+          <button
+            onClick={handleAddLO}
+            onMouseEnter={() => setAddLOHovered(true)}
+            onMouseLeave={() => setAddLOHovered(false)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: addLOHovered ? THEME.WHITE : THEME.AMBER,
+              cursor: 'pointer',
+              fontSize: '1.6vh',
+              fontWeight: 'bold',
+              padding: '0 0.3vw',
+              transition: 'color 0.2s ease'
+            }}
+            title="Add Learning Objective"
+          >
+            +
+          </button>
           {/* Selection underline */}
           {selectedColumn === 'lo' && (
             <div
@@ -1319,7 +1360,10 @@ function ScalarDock({ width = '100%', height = '100%' }) {
             width: COLUMN_WIDTH,
             minWidth: COLUMN_MIN_WIDTH,
             padding: '0.5vh 0.5vw',
-            position: 'relative'
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5vw'
           }}
         >
           <span
@@ -1333,6 +1377,25 @@ function ScalarDock({ width = '100%', height = '100%' }) {
           >
             LESSON TITLES
           </span>
+          {/* + Button for Adding Lesson - Burnt Orange */}
+          <button
+            onClick={onAddLesson}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: THEME.AMBER,
+              cursor: 'pointer',
+              fontSize: '1.6vh',
+              fontWeight: 'bold',
+              padding: '0 0.3vw',
+              transition: 'color 0.2s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = THEME.WHITE}
+            onMouseLeave={(e) => e.currentTarget.style.color = THEME.AMBER}
+            title="Add Lesson"
+          >
+            +
+          </button>
           {selectedColumn === 'lesson' && (
             <div
               style={{
@@ -1354,7 +1417,10 @@ function ScalarDock({ width = '100%', height = '100%' }) {
             width: COLUMN_WIDTH,
             minWidth: COLUMN_MIN_WIDTH,
             padding: '0.5vh 0.5vw',
-            position: 'relative'
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5vw'
           }}
         >
           <span
@@ -1368,6 +1434,25 @@ function ScalarDock({ width = '100%', height = '100%' }) {
           >
             PERFORMANCE CRITERIA
           </span>
+          {/* + Button for Adding PC - Burnt Orange */}
+          <button
+            onClick={onAddPC}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: THEME.AMBER,
+              cursor: 'pointer',
+              fontSize: '1.6vh',
+              fontWeight: 'bold',
+              padding: '0 0.3vw',
+              transition: 'color 0.2s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = THEME.WHITE}
+            onMouseLeave={(e) => e.currentTarget.style.color = THEME.AMBER}
+            title="Add Performance Criteria"
+          >
+            +
+          </button>
           {selectedColumn === 'pc' && (
             <div
               style={{

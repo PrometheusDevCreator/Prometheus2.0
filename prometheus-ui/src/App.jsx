@@ -218,11 +218,15 @@ function App() {
       }
     })
 
+    // Get performance criteria from hierarchy data
+    const finalPCs = hierarchyData?.performanceCriteria || []
+
     return {
       ...courseData,
       learningObjectives: finalLOs,
       topics: finalTopics,
-      subtopics: finalSubtopics
+      subtopics: finalSubtopics,
+      performanceCriteria: finalPCs
     }
   }, [courseData, timetableData])
 
@@ -279,6 +283,83 @@ function App() {
       )
     }))
   }, [])
+
+  // Handle adding a new Topic from Lesson Editor
+  const handleAddTopic = useCallback(() => {
+    const title = prompt('Enter new topic title:')
+    if (!title || !title.trim()) return
+
+    const newTopic = {
+      id: `topic-${Date.now()}`,
+      title: title.trim(),
+      loId: null, // Unlinked by default
+      order: Object.keys(timetableData.hierarchyData?.topics || {}).length + 1
+    }
+
+    setTimetableData(prev => ({
+      ...prev,
+      hierarchyData: {
+        ...prev.hierarchyData,
+        topics: {
+          ...(prev.hierarchyData?.topics || {}),
+          [newTopic.id]: newTopic
+        }
+      }
+    }))
+  }, [timetableData.hierarchyData?.topics])
+
+  // Handle adding a new Subtopic from Lesson Editor
+  const handleAddSubtopic = useCallback(() => {
+    const title = prompt('Enter new subtopic title:')
+    if (!title || !title.trim()) return
+
+    // Get the first topic if any exist, otherwise create without parent
+    const topics = Object.values(timetableData.hierarchyData?.topics || {})
+    const firstTopicId = topics[0]?.id || null
+
+    const newSubtopic = {
+      id: `subtopic-${Date.now()}`,
+      title: title.trim(),
+      topicId: firstTopicId,
+      order: Object.keys(timetableData.hierarchyData?.subtopics || {}).length + 1
+    }
+
+    setTimetableData(prev => ({
+      ...prev,
+      hierarchyData: {
+        ...prev.hierarchyData,
+        subtopics: {
+          ...(prev.hierarchyData?.subtopics || {}),
+          [newSubtopic.id]: newSubtopic
+        }
+      }
+    }))
+  }, [timetableData.hierarchyData?.topics, timetableData.hierarchyData?.subtopics])
+
+  // Handle adding a new Performance Criteria from Lesson Editor
+  const handleAddPC = useCallback(() => {
+    const name = prompt('Enter new performance criteria name:')
+    if (!name || !name.trim()) return
+
+    const PC_COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F']
+    const existingPCs = timetableData.hierarchyData?.performanceCriteria || []
+    const colorIndex = existingPCs.length % PC_COLORS.length
+
+    const newPC = {
+      id: `pc-${Date.now()}`,
+      name: name.trim(),
+      color: PC_COLORS[colorIndex],
+      order: existingPCs.length + 1
+    }
+
+    setTimetableData(prev => ({
+      ...prev,
+      hierarchyData: {
+        ...prev.hierarchyData,
+        performanceCriteria: [...(prev.hierarchyData?.performanceCriteria || []), newPC]
+      }
+    }))
+  }, [timetableData.hierarchyData?.performanceCriteria])
 
   // Handle save count increment (updates status in Footer)
   const handleSaveCountIncrement = useCallback(() => {
@@ -671,6 +752,9 @@ function App() {
           courseData={enrichedCourseData}
           timetableData={timetableData}
           selectedLesson={selectedLessonForEditor}
+          onAddTopic={handleAddTopic}
+          onAddSubtopic={handleAddSubtopic}
+          onAddPC={handleAddPC}
         />
       )}
 

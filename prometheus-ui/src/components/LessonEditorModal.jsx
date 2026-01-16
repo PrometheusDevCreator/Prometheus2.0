@@ -41,7 +41,10 @@ function LessonEditorModal({
   courseData = {},
   timetableData = { lessons: [] },
   selectedLesson = null,
-  initialTab = 'timetable' // Which bottom tab to show
+  initialTab = 'timetable', // Which bottom tab to show
+  onAddTopic,  // Handler to add new topic
+  onAddSubtopic,  // Handler to add new subtopic
+  onAddPC  // Handler to add new performance criteria
 }) {
   const modalRef = useRef(null)
   const isEditingExisting = selectedLesson !== null
@@ -463,6 +466,7 @@ function LessonEditorModal({
                 setShowTopicDropdown(false)
               }}
               renderOption={(t) => `${t.serial || t.number || ''} ${t.title}`}
+              onAdd={onAddTopic}
             />
 
             {/* Sub Topics */}
@@ -481,6 +485,7 @@ function LessonEditorModal({
                 setShowSubtopicDropdown(false)
               }}
               renderOption={(s) => `${s.serial || s.number || ''} ${s.title}`}
+              onAdd={selectedTopic ? onAddSubtopic : undefined}
             />
 
             {/* Lesson Type + Times Row */}
@@ -554,6 +559,7 @@ function LessonEditorModal({
                 setShowPCDropdown(false)
               }}
               renderOption={(pc) => pc.name || pc.description || pc}
+              onAdd={onAddPC}
             />
           </div>
 
@@ -890,7 +896,8 @@ function DropdownField({
   onToggle,
   options = [],
   onSelect,
-  renderOption
+  renderOption,
+  onAdd  // Optional handler for '+' button
 }) {
   // Parse value to highlight first word if needed
   const renderValue = () => {
@@ -916,14 +923,41 @@ function DropdownField({
         alignItems: 'center',
         marginBottom: '4px'
       }}>
-        <label style={{
-          fontSize: '11px',
-          color: THEME.TEXT_DIM,
-          textTransform: 'uppercase',
-          letterSpacing: '1px'
-        }}>
-          {label}
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <label style={{
+            fontSize: '11px',
+            color: THEME.TEXT_DIM,
+            textTransform: 'uppercase',
+            letterSpacing: '1px'
+          }}>
+            {label}
+          </label>
+          {/* + Button for Adding - Burnt Orange */}
+          {onAdd && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onAdd()
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: THEME.AMBER,
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                padding: '0 4px',
+                transition: 'color 0.2s ease',
+                lineHeight: 1
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = THEME.WHITE}
+              onMouseLeave={(e) => e.currentTarget.style.color = THEME.AMBER}
+              title={`Add ${label}`}
+            >
+              +
+            </button>
+          )}
+        </div>
         {hint && (
           <span style={{ fontSize: '10px', color: THEME.TEXT_DIM, fontStyle: 'italic' }}>
             {hint}

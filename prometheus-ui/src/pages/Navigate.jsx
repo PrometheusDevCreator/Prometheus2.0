@@ -671,17 +671,17 @@ function NavigateWheel({ onNavigate }) {
             }),
             ...(tooltipVisible === 'design' && {
               left: 'calc(50% + 400px)',
-              top: 'calc(50% - 25px)',  // Moved UP 25px
+              top: 'calc(50% - 45px)',  // Moved UP additional 20px
               transform: 'translateX(-50%)'
             }),
             ...(tooltipVisible === 'build' && {
               left: '50%',
-              top: 'calc(50% + 130px)',  // Moved UP 120px - between GENERATE and BUILD
+              top: 'calc(50% + 80px)',  // Moved UP additional 50px
               transform: 'translateX(-50%)'
             }),
             ...(tooltipVisible === 'format' && {
               left: 'calc(50% - 400px)',
-              top: 'calc(50% - 25px)',  // Moved UP 25px
+              top: 'calc(50% - 45px)',  // Moved UP additional 20px
               transform: 'translateX(-50%)'
             }),
             ...(tooltipVisible === 'generate' && {

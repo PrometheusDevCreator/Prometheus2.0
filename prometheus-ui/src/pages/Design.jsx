@@ -80,7 +80,8 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState, course
     activeTab,
     selection,
     select,
-    clearDesignState
+    clearDesignState,
+    addPerformanceCriteria
   } = useDesign()
 
   // Handle opening Lesson Editor for a specific lesson
@@ -88,6 +89,17 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState, course
     select('lesson', lessonId)
     onLessonEditorToggle?.()
   }, [select, onLessonEditorToggle])
+
+  // Handle adding a new lesson from SCALAR (opens editor with no selection)
+  const handleAddLessonFromScalar = useCallback(() => {
+    clearDesignState() // Clear any existing selection
+    onLessonEditorToggle?.() // Open lesson editor for new lesson
+  }, [clearDesignState, onLessonEditorToggle])
+
+  // Handle adding a new Performance Criteria from SCALAR
+  const handleAddPCFromScalar = useCallback(() => {
+    addPerformanceCriteria?.()
+  }, [addPerformanceCriteria])
 
   // Report selected lesson changes to parent (App.jsx)
   useEffect(() => {
@@ -138,7 +150,10 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState, course
         )}
 
         {activeTab === 'scalar' && (
-          <ScalarDock />
+          <ScalarDock
+            onAddLesson={handleAddLessonFromScalar}
+            onAddPC={handleAddPCFromScalar}
+          />
         )}
       </div>
 

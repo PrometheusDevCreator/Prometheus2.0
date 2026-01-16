@@ -1,5 +1,8 @@
 /**
- * UnallocatedLessonsPanel - Shared Unallocated Lessons Component
+ * UnallocatedLessonsPanel - LESSON LIBRARY Component
+ *
+ * Renamed from "Unallocated" to "Lesson Library" per design spec.
+ * Shows both unscheduled lessons AND lessons saved to library via right-click menu.
  *
  * Item 18: Add to OVERVIEW (same functionality as TIMETABLE)
  * Item 19: Position directly above DELETE, CLEAR, SAVE buttons
@@ -10,6 +13,7 @@
  * - FLOATABLE: Drag header to move window anywhere
  * - Drag-and-drop support (drop scheduled lessons to unschedule)
  * - Consistent styling across OVERVIEW and TIMETABLE
+ * - Save to Library: Right-click any lesson block > "Save to Library" adds it here
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
@@ -179,7 +183,7 @@ function UnallocatedLessonsPanel({
             fontWeight: 500
           }}
         >
-          Unallocated ({lessons.length})
+          LESSON LIBRARY ({lessons.length})
         </span>
         <span
           data-collapse-toggle="true"
@@ -217,7 +221,7 @@ function UnallocatedLessonsPanel({
                 fontFamily: THEME.FONT_PRIMARY
               }}
             >
-              Drag lessons here to unschedule
+              Drag lessons here to unschedule or save to library
             </div>
           ) : (
             lessons.map(lesson => (
