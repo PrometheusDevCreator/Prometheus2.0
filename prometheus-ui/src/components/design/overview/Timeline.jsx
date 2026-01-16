@@ -3,15 +3,18 @@
  *
  * Features:
  * - Centered at Y=0, X=0 on initial open
- * - Width: 1000px (-500 to +500)
- * - Color: Luminous Green (#00FF00)
+ * - Width: Dynamically scales with units (PIXELS_PER_UNIT constant)
+ * - Color: Amber (#FF6600)
  * - Floating: Drag to move anywhere
- * - Resizable: Drag either end to extend/shorten
+ * - Resizable: Drag either end to PHYSICALLY extend/shorten the line
  * - Division labels above (Day 1, Day 2, etc.)
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { THEME } from '../../../constants/theme'
+
+// Constant pixels per unit - timeline physically grows/shrinks when dragging
+const PIXELS_PER_UNIT = 150
 
 // Calculate unit type based on course duration
 function getUnitType(totalDays) {
@@ -59,9 +62,9 @@ function Timeline({
   const [unitsStart, setUnitsStart] = useState({ start: 0, end: 5 }) // Store initial units for resize
   const timelineRef = useRef(null)
 
-  // Calculate dimensions
+  // Calculate dimensions - timeline physically grows/shrinks based on units
   const numDivisions = units.end - units.start
-  const pixelsPerUnit = 1000 / Math.max(1, numDivisions) // Base width 1000px
+  const pixelsPerUnit = PIXELS_PER_UNIT  // Constant: timeline length changes with units
   const timelineWidth = numDivisions * pixelsPerUnit
 
   // Sync position from props
@@ -109,10 +112,8 @@ function Timeline({
       } else if (isResizing) {
         // Resize timeline using cumulative delta from initial position
         const deltaPixels = e.clientX - mouseStart.x
-        // Use initial pixelsPerUnit to calculate deltaUnits consistently
-        const initialNumDivisions = unitsStart.end - unitsStart.start
-        const initialPixelsPerUnit = 1000 / Math.max(1, initialNumDivisions)
-        const deltaUnits = Math.round(deltaPixels / initialPixelsPerUnit)
+        // Use constant pixelsPerUnit - timeline physically grows/shrinks
+        const deltaUnits = Math.round(deltaPixels / PIXELS_PER_UNIT)
 
         if (isResizing === 'left') {
           const newStart = Math.max(0, unitsStart.start + deltaUnits)

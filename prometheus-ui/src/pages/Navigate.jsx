@@ -666,22 +666,22 @@ function NavigateWheel({ onNavigate }) {
             // Individual positioning per tooltip
             ...(tooltipVisible === 'define' && {
               left: '50%',
-              top: 'calc(50% - 170px)',
+              top: 'calc(50% - 180px)',  // Moved UP 10px
               transform: 'translateX(-50%)'
             }),
             ...(tooltipVisible === 'design' && {
               left: 'calc(50% + 400px)',
-              top: '50%',
+              top: 'calc(50% - 25px)',  // Moved UP 25px
               transform: 'translateX(-50%)'
             }),
             ...(tooltipVisible === 'build' && {
               left: '50%',
-              top: 'calc(50% + 250px)',
+              top: 'calc(50% + 130px)',  // Moved UP 120px - between GENERATE and BUILD
               transform: 'translateX(-50%)'
             }),
             ...(tooltipVisible === 'format' && {
               left: 'calc(50% - 400px)',
-              top: '50%',
+              top: 'calc(50% - 25px)',  // Moved UP 25px
               transform: 'translateX(-50%)'
             }),
             ...(tooltipVisible === 'generate' && {

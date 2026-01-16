@@ -12,7 +12,7 @@
  * No grey lines between rows.
  */
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { THEME } from '../../constants/theme'
 import { useDesign } from '../../contexts/DesignContext'
 
@@ -24,15 +24,25 @@ const TABS = [
 ]
 
 // Tab Button Component
-function TabButton({ id, label, isActive, onClick }) {
+function TabButton({ id, label, isActive, onClick, onHoverStart, onHoverEnd }) {
   const [isHovered, setIsHovered] = useState(false)
   const isHighlighted = isActive || isHovered
+
+  const handleMouseEnter = () => {
+    setIsHovered(true)
+    onHoverStart?.(id)
+  }
+
+  const handleMouseLeave = () => {
+    setIsHovered(false)
+    onHoverEnd?.(id)
+  }
 
   return (
     <button
       onClick={() => onClick(id)}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       style={{
         padding: '1.3vh 1.88vw',
         fontSize: '1.39vh',
@@ -62,6 +72,45 @@ function DesignNavBar() {
     activeTab,
     setActiveTab
   } = useDesign()
+
+  // OVERVIEW tab tooltip state (1-second delay)
+  const [tooltipVisible, setTooltipVisible] = useState(false)
+  const tooltipTimeoutRef = useRef(null)
+
+  // Handle tab hover start - only show tooltip for OVERVIEW
+  const handleTabHoverStart = (tabId) => {
+    if (tabId === 'overview') {
+      // Clear any pending timeout
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current)
+      }
+      // Show tooltip after 1 second delay
+      tooltipTimeoutRef.current = setTimeout(() => {
+        setTooltipVisible(true)
+      }, 1000)
+    }
+  }
+
+  // Handle tab hover end
+  const handleTabHoverEnd = (tabId) => {
+    if (tabId === 'overview') {
+      // Clear pending timeout
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current)
+      }
+      // Hide tooltip
+      setTooltipVisible(false)
+    }
+  }
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Get active course and lesson titles
   const activeCourseTitle = courseData?.title || 'No Course Loaded'
@@ -212,7 +261,7 @@ function DesignNavBar() {
         </div>
 
         {/* Tab Buttons - centered */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.5vw' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.5vw', position: 'relative' }}>
           {TABS.map((tab) => (
             <TabButton
               key={tab.id}
@@ -220,8 +269,43 @@ function DesignNavBar() {
               label={tab.label}
               isActive={activeTab === tab.id}
               onClick={handleTabClick}
+              onHoverStart={handleTabHoverStart}
+              onHoverEnd={handleTabHoverEnd}
             />
           ))}
+
+          {/* OVERVIEW Tab Tooltip - positioned 15px below tabs, 300px wide, centered */}
+          {tooltipVisible && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 15px)',  // 15px below the tabs
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '300px',
+                padding: '8px 12px',
+                background: 'transparent',
+                border: 'none',
+                zIndex: 100,
+                pointerEvents: 'none',
+                opacity: tooltipVisible ? 1 : 0,
+                transition: 'opacity 0.3s ease-in'
+              }}
+            >
+              <span
+                style={{
+                  color: THEME.GREEN_BRIGHT,
+                  fontFamily: THEME.FONT_PRIMARY,
+                  fontSize: '12px',
+                  lineHeight: 1.5,
+                  textAlign: 'center',
+                  display: 'block'
+                }}
+              >
+                Freeform planning space: use this area to sketch out course frameworks, ideas and notes.
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Empty right side to balance layout */}

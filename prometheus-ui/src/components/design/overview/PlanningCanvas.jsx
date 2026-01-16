@@ -35,12 +35,25 @@ function PlanningCanvas({
   onUpdateColorLabel,
   lessonTypes = [],
   unscheduledLessons = [],
-  onUnscheduleLesson
+  onUnscheduleLesson,
+  onUpdateDescription
 }) {
   const canvasRef = useRef(null)
   const [isPanning, setIsPanning] = useState(false)
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [panStart, setPanStart] = useState({ x: 0, y: 0 })
+
+  // Description editing state
+  const [isEditingDesc, setIsEditingDesc] = useState(false)
+  const [editedDesc, setEditedDesc] = useState(courseData.description || '')
+
+  // Handle description blur
+  const handleDescBlur = useCallback(() => {
+    setIsEditingDesc(false)
+    if (editedDesc !== courseData.description) {
+      onUpdateDescription?.(editedDesc)
+    }
+  }, [editedDesc, courseData.description, onUpdateDescription])
 
   // Calculate unit type based on course duration
   const totalDays = courseData?.days || 5
@@ -124,25 +137,29 @@ function PlanningCanvas({
     : DEFAULT_PIXELS_PER_UNIT
 
   // Auto-create initial 5-day timeline and note block when canvas first opens
+  // Positioned LEFT-ALIGNED: Timeline 100px below buttons, NoteBlock below Timeline
   useEffect(() => {
     if (!initialElementsCreated && timelines.length === 0 && notes.length === 0) {
       initialElementsCreated = true
 
-      // Add default 5-day timeline centered horizontally, positioned in upper area
+      // Add default 5-day timeline on LEFT side, 100px below buttons
+      // Timeline uses transform: translate(-50%, 0), so x=450 puts left edge at ~75px
+      // (with PIXELS_PER_UNIT=150 and 5 days, width=750px, so left edge = 450-375=75px)
       onAddTimeline?.({
         id: `timeline-${Date.now()}`,
-        x: 500,  // Center of canvas area
-        y: 100,  // Upper portion
+        x: 450,  // Left-aligned (center point, with -50% transform)
+        y: 120,  // 100px below buttons (buttons at ~2vh ≈ 20px)
         startUnit: 0,
         endUnit: 5,  // 5 days
         unitType: 'day'
       })
 
-      // Add default note block below timeline
+      // Add default note block below timeline, left-aligned
+      // NoteBlock has NO centering transform, so x is left edge position
       setTimeout(() => {
         onAddNote?.({
           id: `note-${Date.now()}`,
-          x: 500,
+          x: 75,   // Left edge aligned with timeline left edge
           y: 180,  // Below timeline
           widthUnits: 2,
           text: '',
@@ -244,6 +261,75 @@ function PlanningCanvas({
         >
           + NOTE
         </button>
+      </div>
+
+      {/* DESCRIPTION Window - positioned right side, moved up from OverviewHeader */}
+      <div
+        style={{
+          position: 'absolute',
+          right: '2vw',
+          top: '2vh',
+          width: '20vw',
+          zIndex: 50
+        }}
+      >
+        <label
+          style={{
+            fontSize: '1.375vh',
+            fontFamily: THEME.FONT_PRIMARY,
+            letterSpacing: '0.15em',
+            color: THEME.AMBER,
+            display: 'block',
+            marginBottom: '0.5vh',
+            paddingLeft: '0'  // Label aligned with text content
+          }}
+        >
+          DESCRIPTION
+        </label>
+        {isEditingDesc ? (
+          <textarea
+            value={editedDesc}
+            onChange={(e) => setEditedDesc(e.target.value)}
+            onBlur={handleDescBlur}
+            autoFocus
+            style={{
+              width: '100%',
+              minHeight: '6vh',
+              padding: '0.8vh 0',  // No horizontal padding - text aligns with label
+              fontFamily: THEME.FONT_PRIMARY,
+              fontSize: '1.5vh',
+              color: THEME.WHITE,
+              background: 'transparent',
+              border: 'none',  // No border per spec
+              borderBottom: `1px solid ${THEME.AMBER}`,  // Subtle underline when editing
+              resize: 'vertical',
+              outline: 'none'
+            }}
+          />
+        ) : (
+          <p
+            onClick={() => {
+              setEditedDesc(courseData.description || '')
+              setIsEditingDesc(true)
+            }}
+            style={{
+              fontFamily: THEME.FONT_PRIMARY,
+              fontSize: '1.5vh',
+              color: THEME.TEXT_SECONDARY,
+              margin: 0,
+              padding: '0.8vh 0',  // No horizontal padding - text aligns with label
+              background: 'transparent',
+              minHeight: '6vh',
+              maxHeight: '8vh',
+              overflow: 'hidden',
+              cursor: 'text',
+              border: 'none',  // No border per spec
+              transition: 'color 0.2s ease'
+            }}
+          >
+            {courseData.description || 'Click to add description...'}
+          </p>
+        )}
       </div>
 
       {/* Panned Content Layer */}

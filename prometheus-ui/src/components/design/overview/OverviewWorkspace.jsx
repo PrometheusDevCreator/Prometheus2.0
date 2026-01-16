@@ -74,6 +74,7 @@ function OverviewWorkspace({ courseData, onLessonDeleteRequest }) {
         lessonTypes={LESSON_TYPES}
         unscheduledLessons={unscheduledLessons}
         onUnscheduleLesson={unscheduleLesson}
+        onUpdateDescription={handleUpdateDescription}
       />
     </div>
   )

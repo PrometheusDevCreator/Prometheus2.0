@@ -1,103 +1,26 @@
 /**
- * OverviewHeader - DESCRIPTION Panel for OVERVIEW Tab
+ * OverviewHeader - Minimal header for OVERVIEW Tab
  *
- * Simplified layout - just DESCRIPTION window
- * Grey line (borderBottom) preserved per design spec.
- *
- * Timeline and Note elements are now in PlanningCanvas.
+ * DESCRIPTION moved to PlanningCanvas per design spec.
+ * This component is now minimal (0 height) as content has been consolidated.
  */
 
-import { useState } from 'react'
 import { THEME } from '../../../constants/theme'
 
 function OverviewHeader({
   courseData = {},
   onUpdateDescription
 }) {
-  const [isEditingDesc, setIsEditingDesc] = useState(false)
-  const [editedDesc, setEditedDesc] = useState(courseData.description || '')
-
-  const handleDescBlur = () => {
-    setIsEditingDesc(false)
-    if (editedDesc !== courseData.description) {
-      onUpdateDescription?.(editedDesc)
-    }
-  }
-
+  // DESCRIPTION content moved to PlanningCanvas
+  // This component retained for potential future header elements
   return (
     <div
       style={{
         position: 'relative',
-        height: '10vh',
+        height: '0vh',  // Reduced from 10vh - content moved to PlanningCanvas
         background: THEME.BG_DARK
-        // Grey line removed per design spec
       }}
-    >
-      {/* DESCRIPTION Window - positioned right side */}
-      <div
-        style={{
-          position: 'absolute',
-          right: '2vw',
-          top: '1vh',
-          width: '20vw'
-        }}
-      >
-        <label
-          style={{
-            fontSize: '1.375vh',
-            fontFamily: THEME.FONT_PRIMARY,
-            letterSpacing: '0.15em',
-            color: THEME.AMBER,
-            display: 'block',
-            marginBottom: '0.5vh'
-          }}
-        >
-          DESCRIPTION
-        </label>
-        {isEditingDesc ? (
-          <textarea
-            value={editedDesc}
-            onChange={(e) => setEditedDesc(e.target.value)}
-            onBlur={handleDescBlur}
-            autoFocus
-            style={{
-              width: '100%',
-              minHeight: '6vh',
-              padding: '0.8vh 1vw',
-              fontFamily: THEME.FONT_PRIMARY,
-              fontSize: '1.5vh',
-              color: THEME.WHITE,
-              background: 'transparent',
-              border: `1px solid ${THEME.AMBER}`,
-              borderRadius: '1.5vh',
-              resize: 'vertical'
-            }}
-          />
-        ) : (
-          <p
-            onClick={() => {
-              setEditedDesc(courseData.description || '')
-              setIsEditingDesc(true)
-            }}
-            style={{
-              fontFamily: THEME.FONT_PRIMARY,
-              fontSize: '1.5vh',
-              color: THEME.TEXT_SECONDARY,
-              margin: 0,
-              padding: '0.8vh 1vw',
-              background: 'transparent',
-              borderRadius: '1.5vh',
-              minHeight: '6vh',
-              cursor: 'text',
-              border: `1px solid ${THEME.BORDER}`,
-              transition: 'border-color 0.2s ease'
-            }}
-          >
-            {courseData.description || 'Click to add description...'}
-          </p>
-        )}
-      </div>
-    </div>
+    />
   )
 }
 
