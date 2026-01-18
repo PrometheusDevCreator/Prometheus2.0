@@ -204,7 +204,8 @@ function ScalarColumns({ module }) {
     }))
   )
 
-  const performanceCriteria = scalarData.performanceCriteria || []
+  // Phase 3: Read from canonical (object → array)
+  const performanceCriteria = Object.values(canonicalData?.performanceCriteria || {})
 
   // Track selected PC for shift-click linking
   const [selectedPCId, setSelectedPCId] = useState(null)
@@ -483,6 +484,7 @@ function ScalarColumns({ module }) {
         )}
         onAdd={() => createLessonFromScalar('NEW LESSON')}
         addLabel="+ Lesson"
+        addTitle="Add Lesson"
         accentColor={THEME.AMBER}
       />
 
@@ -555,7 +557,7 @@ function getLessonTypeColor(typeId) {
 // SCALAR COLUMN COMPONENT
 // ============================================
 
-function ScalarColumn({ title, items, renderItem, onAdd, addLabel, accentColor }) {
+function ScalarColumn({ title, items, renderItem, onAdd, addLabel, addTitle, accentColor }) {
   return (
     <div
       style={{
@@ -591,6 +593,7 @@ function ScalarColumn({ title, items, renderItem, onAdd, addLabel, accentColor }
         {onAdd && (
           <button
             onClick={onAdd}
+            title={addTitle || addLabel}
             style={{
               background: 'transparent',
               border: `1px dashed ${accentColor}`,

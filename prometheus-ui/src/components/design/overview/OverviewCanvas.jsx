@@ -13,6 +13,7 @@ import { THEME } from '../../../constants/theme'
 import { LESSON_TYPES } from '../../../contexts/DesignContext'
 import LearningBlock, { BLOCK_TYPES, NESTING_RULES } from './LearningBlock'
 import CourseLine, { LINE_TYPES, LINE_NESTING } from './CourseLine'
+import CourseElementBar, { CourseElementModal, BAR_TYPES } from './CourseElementBar'
 import OverviewLessonCard from './OverviewLessonCard'
 import LessonMarker, { MARKER_WIDTH, MARKER_HEIGHT } from './LessonMarker'
 import UnallocatedLessonsPanel from '../UnallocatedLessonsPanel'
@@ -195,6 +196,12 @@ function OverviewCanvas({
   const [potentialParentId, setPotentialParentId] = useState(null)  // For stacking feedback
   const [potentialLessonLineId, setPotentialLessonLineId] = useState(null)  // For lesson->marker conversion
   const canvasRef = useRef(null)
+
+  // Phase 5: Modal state for CourseElementBar info editing
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalElementId, setModalElementId] = useState(null)
+  const [modalElementType, setModalElementType] = useState(null)
+  const [modalElementData, setModalElementData] = useState(null)
 
   // Calculate parent chain for selected block
   const activeParentChain = useMemo(() => {
@@ -437,29 +444,38 @@ function OverviewCanvas({
     })
   }, [onBlockUpdate])
 
-  // Add new block (or line for non-LESSON types)
+  // Add new block (bar for TERM/MODULE/WEEK/DAY, lesson card for LESSON)
+  // Phase 5: Bars stack vertically, no nesting
   const handleAddBlock = useCallback((type) => {
     const canvasRect = canvasRef.current?.getBoundingClientRect()
-    const isLine = type !== 'LESSON'
+    const isBar = type !== 'LESSON'
 
-    if (isLine) {
-      // Create a CourseLine for TERM, MODULE, WEEK, DAY
-      const lineConfig = LINE_TYPES[type]
-      const newLine = {
-        id: `line-${Date.now()}`,
+    if (isBar) {
+      // Phase 5: Create a CourseElementBar for TERM, MODULE, WEEK, DAY
+      const barConfig = BAR_TYPES[type] || BAR_TYPES.WEEK
+
+      // Calculate vertical position - stack below existing bars of same type
+      const existingBarsOfType = blocks.filter(b => b.isBar && b.type === type)
+      const barHeight = 30 // Approximate bar height in pixels
+      const verticalGap = 8
+      const yOffset = existingBarsOfType.length * (barHeight + verticalGap)
+
+      // Position bars by type hierarchy: TERM at top, then MODULE, WEEK, DAY
+      const typeOrder = { TERM: 0, MODULE: 1, WEEK: 2, DAY: 3 }
+      const baseY = 60 + (typeOrder[type] || 0) * 100 + yOffset
+
+      const newBar = {
+        id: `bar-${Date.now()}`,
         type,
         title: '',
-        x: canvasRect ? canvasRect.width / 2 - (lineConfig.startDuration * lineConfig.pixelsPerUnit) / 2 : 200,
-        y: canvasRect ? canvasRect.height / 2 - 20 : 200,
-        width: lineConfig.startDuration * lineConfig.pixelsPerUnit,
-        duration: lineConfig.startDuration,
-        isCommitted: false,  // New lines are uncommitted (green)
-        parentId: null,
-        nestingDepth: 0,
-        isLine: true  // Flag to distinguish from blocks
+        width: barConfig.startDuration * barConfig.pixelsPerUnit,
+        duration: barConfig.startDuration,
+        isBar: true,  // Phase 5: Flag for bar rendering
+        isLine: false,
+        y: baseY  // Store Y position for vertical stacking
       }
-      onBlockAdd?.(newLine)
-      setSelectedBlockId(newLine.id)
+      onBlockAdd?.(newBar)
+      setSelectedBlockId(newBar.id)
     } else {
       // Create an OverviewLessonCard for LESSON (Item 8)
       const newLesson = {
@@ -475,12 +491,13 @@ function OverviewCanvas({
         isCommitted: false,
         parentLineId: null,
         isLine: false,
+        isBar: false,
         isMarker: false
       }
       onBlockAdd?.(newLesson)
       setSelectedBlockId(newLesson.id)
     }
-  }, [onBlockAdd])
+  }, [onBlockAdd, blocks])
 
   // Delete selected block
   const handleDeleteSelected = useCallback(() => {
@@ -489,6 +506,25 @@ function OverviewCanvas({
       setSelectedBlockId(null)
     }
   }, [selectedBlockId, onBlockRemove])
+
+  // Phase 5: Modal handlers for CourseElementBar
+  const handleOpenModal = useCallback((id, type, data) => {
+    setModalElementId(id)
+    setModalElementType(type)
+    setModalElementData(data)
+    setModalOpen(true)
+  }, [])
+
+  const handleCloseModal = useCallback(() => {
+    setModalOpen(false)
+    setModalElementId(null)
+    setModalElementType(null)
+    setModalElementData(null)
+  }, [])
+
+  const handleModalSave = useCallback((id, updates) => {
+    onBlockUpdate?.(id, updates)
+  }, [onBlockUpdate])
 
   // Item 17: Add lesson by type - generates card centrally above "Select Lesson Type" label
   const handleAddLessonByType = useCallback((lessonTypeId) => {
@@ -587,9 +623,58 @@ function OverviewCanvas({
           />
         </div>
 
-        {/* Render blocks, lines, lesson cards, and markers */}
+        {/* Phase 5: Render bars stacked vertically by type */}
+        {/* Bars are positioned absolutely within a flex container for each type */}
+        <div style={{ padding: '2vh 2vw' }}>
+          {/* Group bars by type and render in hierarchy: TERM, MODULE, WEEK, DAY */}
+          {['TERM', 'MODULE', 'WEEK', 'DAY'].map((barType) => {
+            const barsOfType = blocks.filter(item => item.isBar && item.type === barType)
+            if (barsOfType.length === 0) return null
+
+            return (
+              <div key={barType} style={{ marginBottom: '1.5vh' }}>
+                {/* Type label */}
+                <div
+                  style={{
+                    fontSize: '1.2vh',
+                    fontFamily: THEME.FONT_PRIMARY,
+                    letterSpacing: '0.1em',
+                    color: THEME.TEXT_DIM,
+                    marginBottom: '0.5vh'
+                  }}
+                >
+                  {barType}S
+                </div>
+                {/* Bars of this type stacked vertically */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5vh', alignItems: 'flex-start' }}>
+                  {barsOfType.map((bar) => (
+                    <CourseElementBar
+                      key={bar.id}
+                      id={bar.id}
+                      type={bar.type}
+                      title={bar.title}
+                      duration={bar.duration}
+                      width={bar.width}
+                      isSelected={selectedBlockId === bar.id}
+                      onSelect={handleBlockSelect}
+                      onWidthChange={handleWidthChange}
+                      onDurationChange={handleDurationChange}
+                      onTitleChange={handleTitleChange}
+                      onOpenModal={handleOpenModal}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Render other blocks (lesson cards, markers, legacy lines) absolutely positioned */}
         {blocks.map((item) => {
-          // Render CourseLine for lines
+          // Skip bars - they're rendered above
+          if (item.isBar) return null
+
+          // Render CourseLine for legacy lines
           if (item.isLine) {
             return (
               <CourseLine
@@ -657,7 +742,7 @@ function OverviewCanvas({
             )
           }
 
-          // Render LearningBlock for other block types (TERM, MODULE, WEEK, DAY as blocks - legacy)
+          // Render LearningBlock for other block types (legacy)
           return (
             <LearningBlock
               key={item.id}
@@ -699,22 +784,27 @@ function OverviewCanvas({
           />
         ))}
       </div>
+
+      {/* Phase 5: Modal for editing course element bar properties */}
+      <CourseElementModal
+        isOpen={modalOpen}
+        elementId={modalElementId}
+        elementType={modalElementType}
+        elementData={modalElementData}
+        onClose={handleCloseModal}
+        onSave={handleModalSave}
+      />
     </div>
   )
 }
 
 // ============================================
 // LESSON TYPE CIRCLE BUTTON COMPONENT
+// Phase 2-6: Simple filled circles with label on hover
 // ============================================
-// Circular button with colored ring inside (4/5ths diameter)
-// Green border on hover, tooltip shows lesson type name
 
 function LessonTypeCircleButton({ type, onClick }) {
   const [hovered, setHovered] = useState(false)
-  const size = 56 // Same size as ANALYTICS button
-
-  // Inner ring is 4/5ths the diameter of outer circle
-  const innerRingRadius = (size / 2 - 4) * 0.8
 
   return (
     <div
@@ -725,82 +815,48 @@ function LessonTypeCircleButton({ type, onClick }) {
         alignItems: 'center'
       }}
     >
-      {/* Tooltip - shows on hover above the button */}
-      {hovered && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '100%',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            marginBottom: '0.5vh',
-            padding: '0.4vh 0.8vw',
-            background: THEME.BG_PANEL,
-            border: `1px solid ${THEME.BORDER}`,
-            borderRadius: '0.5vh',
-            whiteSpace: 'nowrap',
-            zIndex: 100
-          }}
-        >
-          <span
-            style={{
-              fontSize: '1.1vh',
-              color: THEME.TEXT_PRIMARY,
-              fontFamily: THEME.FONT_PRIMARY
-            }}
-          >
-            {type.name}
-          </span>
-        </div>
-      )}
-
-      {/* Circular button */}
       <button
         onClick={onClick}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
+        title={type.name}
         style={{
-          width: size,
-          height: size,
-          background: 'transparent',
-          border: 'none',
+          width: '3vh',
+          height: '3vh',
+          minWidth: '28px',
+          minHeight: '28px',
+          background: type.color,
+          border: `2px solid ${hovered ? THEME.WHITE : 'transparent'}`,
+          borderRadius: '50%',
           cursor: 'pointer',
-          padding: 0,
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          transition: 'all 0.2s ease',
+          boxShadow: hovered ? `0 0 12px ${type.color}` : 'none',
+          transform: hovered ? 'scale(1.1)' : 'scale(1)'
         }}
-      >
-        <svg
-          width={size}
-          height={size}
+      />
+      {/* Label - appears on hover */}
+      {hovered && (
+        <span
           style={{
-            transition: 'all 0.2s ease'
+            position: 'absolute',
+            top: '100%',
+            marginTop: '0.5vh',
+            fontSize: '1.1vh',
+            color: THEME.WHITE,
+            fontFamily: THEME.FONT_PRIMARY,
+            whiteSpace: 'nowrap',
+            background: 'rgba(0, 0, 0, 0.8)',
+            padding: '0.3vh 0.6vw',
+            borderRadius: '0.5vh',
+            zIndex: 100
           }}
         >
-          {/* Outer circle border */}
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={size / 2 - 2}
-            fill="none"
-            stroke={hovered ? THEME.GREEN_BRIGHT : '#444'}
-            strokeWidth={2}
-            style={{ transition: 'stroke 0.2s ease' }}
-          />
-
-          {/* Inner colored ring - 4/5ths diameter, no fill */}
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={innerRingRadius}
-            fill="none"
-            stroke={type.color}
-            strokeWidth={3}
-            style={{ transition: 'stroke 0.2s ease' }}
-          />
-        </svg>
-      </button>
+          {type.name}
+        </span>
+      )}
     </div>
   )
 }

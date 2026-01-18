@@ -23,7 +23,7 @@
  * - Scale = Math.min(viewportW/1920, viewportH/1080)
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import './App.css'
 import { THEME } from './constants/theme'
 
@@ -49,6 +49,9 @@ import Generate from './pages/Generate'
 import Header from './components/Header'
 import DebugGridController from './components/DevTools'
 import LessonEditorModal from './components/LessonEditorModal'
+
+// Context - Phase 2: Lifted to App level for single canonical store
+import { DesignProvider } from './contexts/DesignContext'
 
 // REFACTOR Phase 1: useScaleToFit hook removed
 // Original hook calculated scale = Math.min(vw/1920, vh/1080)
@@ -90,7 +93,7 @@ function App() {
   const [courseLoaded, setCourseLoaded] = useState(false)
 
   // Timetable data state (persists across page navigation)
-  // This is lifted from DesignContext to ensure data persists when navigating away from Design page
+  // Phase 2: hierarchyData removed - canonical store is now in DesignProvider at App level
   const [timetableData, setTimetableData] = useState({
     lessons: [
       {
@@ -109,6 +112,7 @@ function App() {
       }
     ],
     overviewBlocks: []
+    // Phase 2: hierarchyData REMOVED - read from canonical via DesignContext
   })
 
   // Course state for Footer (save tracking)
@@ -130,9 +134,15 @@ function App() {
   const [selectedLessonId, setSelectedLessonId] = useState(null)
 
   // Get the currently selected/editing lesson for the modal
+  // Priority: editingLessonId (explicit edit) > selectedLessonId (timetable selection)
   const selectedLessonForEditor = editingLessonId
     ? timetableData.lessons.find(l => l.id === editingLessonId)
-    : null
+    : selectedLessonId
+      ? timetableData.lessons.find(l => l.id === selectedLessonId)
+      : null
+
+  // Phase 2: enrichedCourseData removed - hierarchy data now comes from DesignContext
+  // LessonEditorModal will read canonical data directly from context
 
   // Handle opening Lesson Editor - with optional lessonId parameter
   const handleLessonEditorToggle = useCallback((open, lessonId = null) => {
@@ -187,6 +197,13 @@ function App() {
       )
     }))
   }, [])
+
+  // Phase 2: handleAddTopic, handleAddSubtopic, handleAddPC REMOVED
+  // These handlers bypassed the canonical store by writing to timetableData.hierarchyData
+  // LessonEditorModal now uses useDesign() context to call canonical actions directly:
+  // - addTopic() from DesignContext
+  // - addSubtopic() from DesignContext
+  // - addPerformanceCriteria() from DesignContext
 
   // Handle save count increment (updates status in Footer)
   const handleSaveCountIncrement = useCallback(() => {
@@ -311,6 +328,12 @@ function App() {
   // Keyboard shortcuts (non-grid)
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Escape: Cancel exit pending mode (green pulse)
+      if (e.key === 'Escape' && exitPending) {
+        e.preventDefault()
+        setExitPending(false)
+        return
+      }
       // Ctrl+Space: Toggle to Navigate page
       if (e.ctrlKey && e.code === 'Space' && isAuthenticated) {
         e.preventDefault()
@@ -322,7 +345,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isAuthenticated])
+  }, [isAuthenticated, exitPending])
 
   // Render Login page (before authentication)
   if (!isAuthenticated) {
@@ -504,87 +527,90 @@ function App() {
     }
   }
 
+  // Phase 2: DesignProvider lifted to App level for single canonical store instance
+  // All pages and modals can now access canonical actions via useDesign()
   return (
-    <div
-      style={{
-        width: '100vw',
-        height: '100vh',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        overflow: 'hidden',
-        backgroundColor: THEME.BG_BASE
-      }}
+    <DesignProvider
+      courseData={courseData}
+      setCourseData={setCourseData}
+      timetableData={timetableData}
+      setTimetableData={setTimetableData}
     >
-      {/* Stage Container - REFACTOR Phase 1: viewport units */}
       <div
         style={{
           width: '100vw',
           height: '100vh',
-          flexShrink: 0,
-          background: THEME.BG_DARK,
           display: 'flex',
-          flexDirection: 'column',
-          position: 'relative',
-          // Only apply transform when scale !== 1 to avoid breaking position:fixed descendants
-          ...(scale !== 1 && {
-            transform: `scale(${scale})`,
-            transformOrigin: 'center center'
-          })
+          justifyContent: 'center',
+          alignItems: 'center',
+          overflow: 'hidden',
+          backgroundColor: THEME.BG_BASE
         }}
       >
-        {/* Header - includes horizontal line, page title, and Lesson Editor lozenge */}
-        <Header
-          pageTitle={
-            currentPage === 'define' ? '' :  /* COURSE INFORMATION removed per founder request */
-            currentPage === 'design' ? '' :  /* COURSE PLANNER removed - Lesson Editor in header */
-            currentPage === 'build' ? '' :  /* Removed - burnt orange label only */
-            currentPage === 'format' ? '' :  /* Removed - burnt orange label only */
-            currentPage === 'generate' ? 'GENERATE' :
-            currentPage === 'navigate' ? 'NAVIGATION' :
-            currentPage.toUpperCase()
-          }
-          sectionName={
-            currentPage === 'define' ? 'DEFINE' :
-            currentPage === 'design' ? 'DESIGN' :
-            currentPage === 'build' ? 'BUILD' :
-            currentPage === 'format' ? 'FORMAT' :
-            currentPage === 'generate' ? 'GENERATE' :
-            null
-          }
-          courseData={courseData}
-          onExitClick={handleExitClick}
-          exitPending={exitPending}
-          lessonEditorOpen={lessonEditorOpen}
-          onLessonEditorToggle={handleLessonEditorToggle}
-          selectedLessonId={selectedLessonId}
-          currentSection={currentPage}
-          onNavigate={handleNavigate}
-        />
+        {/* Stage Container - REFACTOR Phase 1: viewport units */}
+        <div
+          style={{
+            width: '100vw',
+            height: '100vh',
+            flexShrink: 0,
+            background: THEME.BG_DARK,
+            display: 'flex',
+            flexDirection: 'column',
+            position: 'relative',
+            // Only apply transform when scale !== 1 to avoid breaking position:fixed descendants
+            ...(scale !== 1 && {
+              transform: `scale(${scale})`,
+              transformOrigin: 'center center'
+            })
+          }}
+        >
+          {/* Header - includes horizontal line, page title, and Lesson Editor lozenge */}
+          <Header
+            pageTitle={
+              currentPage === 'define' ? 'DEFINE' :
+              currentPage === 'design' ? 'DESIGN' :
+              currentPage === 'build' ? 'BUILD' :
+              currentPage === 'format' ? 'FORMAT' :
+              currentPage === 'generate' ? 'GENERATE' :
+              currentPage === 'navigate' ? 'NAVIGATION HUB' :
+              currentPage.toUpperCase()
+            }
+            sectionName={null}  /* sectionName no longer used - page title shown in nav row */
+            courseData={courseData}
+            onExitClick={handleExitClick}
+            exitPending={exitPending}
+            lessonEditorOpen={lessonEditorOpen}
+            onLessonEditorToggle={handleLessonEditorToggle}
+            selectedLessonId={selectedLessonId}
+            currentSection={currentPage}
+            onNavigate={handleNavigate}
+          />
 
-        {/* Page Content */}
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          {renderPage()}
+          {/* Page Content */}
+          <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            {renderPage()}
+          </div>
+
+          {/* Design Sub-navigation moved to internal DesignNavBar component */}
         </div>
 
-        {/* Design Sub-navigation moved to internal DesignNavBar component */}
+        {/* Lesson Editor Modal - renders on top of all content when open */}
+        {/* Phase 2: onAddTopic, onAddSubtopic, onAddPC props removed - modal uses useDesign() context */}
+        {lessonEditorOpen && (
+          <LessonEditorModal
+            isOpen={lessonEditorOpen}
+            onClose={() => handleLessonEditorToggle(false)}
+            onCreateLesson={handleCreateLesson}
+            onUpdateLesson={handleUpdateLesson}
+            courseData={courseData}
+            timetableData={timetableData}
+            selectedLesson={selectedLessonForEditor}
+          />
+        )}
+
+        <DebugGridController isVisible={showDebugGrid} onEscapeWhenNoPins={handleEscapeNavigation} />
       </div>
-
-      {/* Lesson Editor Modal - renders on top of all content when open */}
-      {lessonEditorOpen && (
-        <LessonEditorModal
-          isOpen={lessonEditorOpen}
-          onClose={() => handleLessonEditorToggle(false)}
-          onCreateLesson={handleCreateLesson}
-          onUpdateLesson={handleUpdateLesson}
-          courseData={courseData}
-          timetableData={timetableData}
-          selectedLesson={selectedLessonForEditor}
-        />
-      )}
-
-      <DebugGridController isVisible={showDebugGrid} onEscapeWhenNoPins={handleEscapeNavigation} />
-    </div>
+    </DesignProvider>
   )
 }
 

@@ -20,6 +20,22 @@
 
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react'
 
+// Canonical data adapter - Phase 1 Foundation
+import {
+  CANONICAL_FLAGS,
+  canonicalLog,
+  deriveScalarDataFromCanonical,
+  migrateToCanonical,
+  canonicalAddLO,
+  canonicalAddTopic,
+  canonicalAddSubtopic,
+  canonicalUpdate,
+  canonicalDelete,
+  canonicalMoveTopic,
+  computeTopicSerial as adapterComputeTopicSerial,
+  computeSubtopicSerial as adapterComputeSubtopicSerial
+} from '../utils/canonicalAdapter'
+
 // ============================================
 // DEBUG INSTRUMENTATION - Hierarchy Linking & Numbering
 // ============================================
@@ -218,21 +234,16 @@ const createDefaultSlide = () => ({
 })
 
 // ============================================
-// LESSON TYPES - 10 types per DESIGN_Page mockup
+// LESSON TYPES - 6 types per Phase 2-6 redesign
 // ============================================
 export const LESSON_TYPES = [
-  // Row 1
-  { id: 'instructor-led', name: 'Instructor Led', label: 'Instructor Led', color: '#FF6600' },
-  { id: 'group-discussion', name: 'Group Discussion', label: 'Group Discussion', color: '#00FF00' },
-  { id: 'practical', name: 'Practical', label: 'Practical', color: '#00BFFF' },
-  { id: 'assessment', name: 'Assessment', label: 'Assessment', color: '#FF4444' },
-  { id: 'break', name: 'Break', label: 'Break', color: '#FFD700' },
-  // Row 2
-  { id: 'student-led', name: 'Student Led', label: 'Student Led', color: '#FFFFFF' },
-  { id: 'research', name: 'Research', label: 'Research', color: '#00FF00' },
-  { id: 'external-lecturer', name: 'External Lecturer', label: 'External Lecturer', color: '#FF6600' },
-  { id: 'admin', name: 'Admin', label: 'Admin', color: '#FFD700' },
-  { id: 'user-defined', name: 'User Defined', label: 'User Defined', color: '#FF00FF' }
+  // Phase 2-6 Redesign: Reduced to 6 types, displayed as colored circles
+  { id: 'instructor-led', name: 'Instructor Led', label: 'Instructor Led', color: '#FF6600' },  // Orange/Red
+  { id: 'group', name: 'Group', label: 'Group', color: '#00BFFF' },                             // Blue
+  { id: 'student-led', name: 'Student Led', label: 'Student Led', color: '#00FF00' },          // Green
+  { id: 'assessment', name: 'Assessment', label: 'Assessment', color: '#9C27B0' },             // Purple
+  { id: 'admin', name: 'Admin', label: 'Admin', color: '#FFFFFF' },                            // White
+  { id: 'break', name: 'Break', label: 'Break', color: '#FFD700' }                             // Yellow
 ]
 
 // ============================================
@@ -261,7 +272,7 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
   // --------------------------------------------
   // NAVIGATION STATE
   // --------------------------------------------
-  const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'timetable' | 'scalar'
+  const [activeTab, setActiveTab] = useState('timetable') // 'overview' | 'timetable' | 'scalar' - TIMETABLE is default
   const [viewMode, setViewMode] = useState('week') // 'day' | 'week' | 'module'
   const [currentModule, setCurrentModule] = useState(1)
   const [currentWeek, setCurrentWeek] = useState(1)
@@ -287,6 +298,100 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     setTimetableData(prev => ({
       ...prev,
       overviewBlocks: typeof updater === 'function' ? updater(prev.overviewBlocks || []) : updater
+    }))
+  }, [setTimetableData])
+
+  // --------------------------------------------
+  // OVERVIEW PLANNING STATE (Phase 2-6 Redesign)
+  // Timelines and NoteBlocks for visual course planning
+  // --------------------------------------------
+  const overviewPlanningState = timetableData?.overviewPlanningState || {
+    timelines: [],
+    notes: [],
+    colorLabels: {}
+  }
+
+  // Add a new timeline
+  const addPlanningTimeline = useCallback((timeline) => {
+    setTimetableData(prev => ({
+      ...prev,
+      overviewPlanningState: {
+        ...(prev.overviewPlanningState || { timelines: [], notes: [], colorLabels: {} }),
+        timelines: [...(prev.overviewPlanningState?.timelines || []), timeline]
+      }
+    }))
+  }, [setTimetableData])
+
+  // Remove a timeline
+  const removePlanningTimeline = useCallback((timelineId) => {
+    setTimetableData(prev => ({
+      ...prev,
+      overviewPlanningState: {
+        ...(prev.overviewPlanningState || { timelines: [], notes: [], colorLabels: {} }),
+        timelines: (prev.overviewPlanningState?.timelines || []).filter(t => t.id !== timelineId)
+      }
+    }))
+  }, [setTimetableData])
+
+  // Update a timeline
+  const updatePlanningTimeline = useCallback((timelineId, updates) => {
+    setTimetableData(prev => ({
+      ...prev,
+      overviewPlanningState: {
+        ...(prev.overviewPlanningState || { timelines: [], notes: [], colorLabels: {} }),
+        timelines: (prev.overviewPlanningState?.timelines || []).map(t =>
+          t.id === timelineId ? { ...t, ...updates } : t
+        )
+      }
+    }))
+  }, [setTimetableData])
+
+  // Add a new note
+  const addPlanningNote = useCallback((note) => {
+    setTimetableData(prev => ({
+      ...prev,
+      overviewPlanningState: {
+        ...(prev.overviewPlanningState || { timelines: [], notes: [], colorLabels: {} }),
+        notes: [...(prev.overviewPlanningState?.notes || []), note]
+      }
+    }))
+  }, [setTimetableData])
+
+  // Remove a note
+  const removePlanningNote = useCallback((noteId) => {
+    setTimetableData(prev => ({
+      ...prev,
+      overviewPlanningState: {
+        ...(prev.overviewPlanningState || { timelines: [], notes: [], colorLabels: {} }),
+        notes: (prev.overviewPlanningState?.notes || []).filter(n => n.id !== noteId)
+      }
+    }))
+  }, [setTimetableData])
+
+  // Update a note
+  const updatePlanningNote = useCallback((noteId, updates) => {
+    setTimetableData(prev => ({
+      ...prev,
+      overviewPlanningState: {
+        ...(prev.overviewPlanningState || { timelines: [], notes: [], colorLabels: {} }),
+        notes: (prev.overviewPlanningState?.notes || []).map(n =>
+          n.id === noteId ? { ...n, ...updates } : n
+        )
+      }
+    }))
+  }, [setTimetableData])
+
+  // Update a color label
+  const updatePlanningColorLabel = useCallback((colorIndex, label) => {
+    setTimetableData(prev => ({
+      ...prev,
+      overviewPlanningState: {
+        ...(prev.overviewPlanningState || { timelines: [], notes: [], colorLabels: {} }),
+        colorLabels: {
+          ...(prev.overviewPlanningState?.colorLabels || {}),
+          [colorIndex]: label
+        }
+      }
     }))
   }, [setTimetableData])
 
@@ -364,6 +469,8 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     los: {},        // { [loId]: { id, moduleId, verb, description, order } }
     topics: {},     // { [topicId]: { id, loId|null, title, order } }
     subtopics: {},  // { [subtopicId]: { id, topicId, title, order } }
+    // Phase 3: Performance Criteria added to canonical
+    performanceCriteria: {}, // { [pcId]: { id, name, order, color, linkedItems: { los, topics, subtopics, lessons } } }
     // Lesson associations via junction arrays
     lessonLOs: [],      // [{ lessonId, loId, isPrimary }]
     lessonTopics: [],   // [{ lessonId, topicId }]
@@ -428,17 +535,125 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       })
     })
 
-    if (Object.keys(los).length > 0 || Object.keys(topics).length > 0) {
+    // Phase 3: Migrate Performance Criteria
+    const performanceCriteria = {}
+    ;(scalarData.performanceCriteria || []).forEach(pc => {
+      performanceCriteria[pc.id] = {
+        id: pc.id,
+        name: pc.name,
+        order: pc.order,
+        color: pc.color,
+        linkedItems: pc.linkedItems || { los: [], topics: [], subtopics: [], lessons: [] }
+      }
+    })
+
+    if (Object.keys(los).length > 0 || Object.keys(topics).length > 0 || Object.keys(performanceCriteria).length > 0) {
       debugLog('CANONICAL_STORE_INITIALIZED', {
         loCount: Object.keys(los).length,
         topicCount: Object.keys(topics).length,
         subtopicCount: Object.keys(subtopics).length,
+        pcCount: Object.keys(performanceCriteria).length,
         los: Object.values(los).map(l => `${l.order}. ${l.verb}`),
         topics: Object.values(topics).map(t => `${t.id}: loId=${t.loId}, order=${t.order}`)
       })
-      setCanonicalData(prev => ({ ...prev, los, topics, subtopics }))
+      setCanonicalData(prev => ({ ...prev, los, topics, subtopics, performanceCriteria }))
     }
   }, []) // Run once on mount
+
+  // Sync canonicalData when scalarData.modules changes (handles courseData updates)
+  useEffect(() => {
+    const los = {}
+    const topics = {}
+    const subtopics = {}
+
+    // Re-sync from scalarData structure
+    scalarData.modules.forEach(module => {
+      ;(module.learningObjectives || []).forEach(lo => {
+        los[lo.id] = {
+          id: lo.id,
+          moduleId: module.id,
+          verb: lo.verb,
+          description: lo.description,
+          title: lo.title || `${lo.verb} ${lo.description}`,
+          order: lo.order
+        }
+
+        ;(lo.topics || []).forEach((topic, tIdx) => {
+          topics[topic.id] = {
+            id: topic.id,
+            loId: lo.id,
+            title: topic.title,
+            order: topic.order || tIdx + 1,
+            expanded: topic.expanded || false
+          }
+
+          ;(topic.subtopics || []).forEach((sub, sIdx) => {
+            subtopics[sub.id] = {
+              id: sub.id,
+              topicId: topic.id,
+              title: sub.title,
+              order: sub.order || sIdx + 1
+            }
+          })
+        })
+      })
+    })
+
+    // Update canonical store if there are LOs
+    if (Object.keys(los).length > 0) {
+      setCanonicalData(prev => ({ ...prev, los, topics, subtopics }))
+    }
+  }, [scalarData.modules]) // Re-run when modules change
+
+  // Phase 2: hierarchyData sync effect REMOVED
+  // hierarchyData no longer exists in timetableData (App.jsx)
+  // LessonEditorModal now reads directly from canonicalData via useDesign() context
+
+  // --------------------------------------------
+  // PHASE 1: DERIVE LEGACY scalarData FROM CANONICAL
+  // This provides backward compatibility during transition
+  // When CANONICAL_FLAGS.DERIVE_LEGACY is true, scalarData is computed
+  // --------------------------------------------
+  const derivedScalarData = useMemo(() => {
+    if (!CANONICAL_FLAGS.DERIVE_LEGACY) return null
+
+    // Only derive if canonical has data
+    if (Object.keys(canonicalData.los).length === 0 &&
+        Object.keys(canonicalData.topics).length === 0) {
+      return null
+    }
+
+    // Get modules from existing scalarData (modules are not in canonical yet)
+    const modules = scalarData.modules.map(m => ({
+      id: m.id,
+      name: m.name,
+      order: m.order,
+      expanded: m.expanded
+    }))
+
+    // Phase 3: Read PC from canonical (object → array for derivation)
+    const pcArray = Object.values(canonicalData.performanceCriteria || {})
+
+    const derived = deriveScalarDataFromCanonical(
+      canonicalData,
+      modules,
+      pcArray
+    )
+
+    if (derived) {
+      canonicalLog('DERIVED_SCALAR_DATA', {
+        moduleCount: derived.modules?.length,
+        loCount: Object.keys(canonicalData.los).length,
+        topicCount: Object.keys(canonicalData.topics).length,
+        pcCount: pcArray.length
+      })
+    }
+
+    return derived
+  }, [canonicalData, scalarData.modules])
+
+  // Use derived data if available, otherwise fall back to legacy
+  const effectiveScalarData = derivedScalarData || scalarData
 
   // Computed: Get topic serial from canonical store
   const getCanonicalTopicSerial = useCallback((topicId) => {
@@ -557,6 +772,17 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     id: 'lesson-1',
     mode: 'selected'      // 'selected' | 'editing'
   })
+
+  // --------------------------------------------
+  // HIERARCHY NAVIGATION STATE (Phase 4: Calm Wheel)
+  // --------------------------------------------
+  const [hierarchyNav, setHierarchyNav] = useState({
+    currentLevel: 0,      // 0=module, 1=lo, 2=topic, 3=subtopic, 4=lesson
+    path: [],             // Breadcrumb: [{ level, id, label, serial }]
+    filterId: null        // ID of item filtering lower levels
+  })
+
+  const [wheelNavCollapsed, setWheelNavCollapsed] = useState(false)
 
   // --------------------------------------------
   // EDITOR PANEL STATE
@@ -760,33 +986,120 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       return { ...prev, topics: newTopics }
     })
 
-    // Also update legacy scalarData for backward compatibility
-    setScalarData(prev => {
-      const newData = { ...prev }
-      let topicToMove = null
-      let sourceLoId = null
-      let wasUnlinked = false
-      let sourceLoOrder = null
+    // Legacy write - kept for backward compatibility during transition
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
+        const newData = { ...prev }
+        let topicToMove = null
+        let sourceLoId = null
+        let wasUnlinked = false
+        let sourceLoOrder = null
 
-      // First, find and remove the topic from its current location
-      // Check in unlinked topics
-      const unlinkedIdx = (prev.unlinkedTopics || []).findIndex(t => t.id === topicId)
-      if (unlinkedIdx !== -1) {
-        topicToMove = { ...(prev.unlinkedTopics || [])[unlinkedIdx] }
-        newData.unlinkedTopics = (prev.unlinkedTopics || []).filter(t => t.id !== topicId)
-        wasUnlinked = true
-      }
+        // First, find and remove the topic from its current location
+        // Check in unlinked topics
+        const unlinkedIdx = (prev.unlinkedTopics || []).findIndex(t => t.id === topicId)
+        if (unlinkedIdx !== -1) {
+          topicToMove = { ...(prev.unlinkedTopics || [])[unlinkedIdx] }
+          newData.unlinkedTopics = (prev.unlinkedTopics || []).filter(t => t.id !== topicId)
+          wasUnlinked = true
+        }
 
-      // Check in LO topics
-      if (!topicToMove) {
+        // Check in LO topics
+        if (!topicToMove) {
+          newData.modules = prev.modules.map(module => ({
+            ...module,
+            learningObjectives: module.learningObjectives.map(lo => {
+              const topicIdx = (lo.topics || []).findIndex(t => t.id === topicId)
+              if (topicIdx !== -1) {
+                topicToMove = { ...lo.topics[topicIdx] }
+                sourceLoId = lo.id
+                sourceLoOrder = lo.order
+                return {
+                  ...lo,
+                  topics: lo.topics.filter(t => t.id !== topicId).map((t, idx) => ({ ...t, order: idx + 1 }))
+                }
+              }
+              return lo
+            })
+          }))
+        }
+
+        if (!topicToMove) {
+          return prev
+        }
+
+        // Determine action: if currently linked to targetLoId, unlink; otherwise link to targetLoId
+        if (sourceLoId === targetLoId) {
+          // Currently linked to this LO - unlink (move to unlinkedTopics)
+          topicToMove.loId = null
+          topicToMove.order = (newData.unlinkedTopics || []).length + 1
+          newData.unlinkedTopics = [...(newData.unlinkedTopics || []), topicToMove]
+        } else {
+          // Link to targetLoId
+          topicToMove.loId = targetLoId
+          newData.modules = newData.modules.map(module => ({
+            ...module,
+            learningObjectives: module.learningObjectives.map(lo => {
+              if (lo.id !== targetLoId) return lo
+              const newOrder = (lo.topics || []).length + 1
+              topicToMove.order = newOrder
+              return {
+                ...lo,
+                topics: [...(lo.topics || []), topicToMove]
+              }
+            })
+          }))
+        }
+
+        // Recalculate orders for unlinked topics
+        newData.unlinkedTopics = (newData.unlinkedTopics || []).map((t, idx) => ({ ...t, order: idx + 1 }))
+
+        return newData
+      })
+    }
+  }, [])
+
+  // Unlink topic from its LO (move to unlinked group)
+  // Phase 2: Updated to write to canonical first
+  const unlinkTopic = useCallback((topicId) => {
+    // Write to canonical first
+    setCanonicalData(prev => {
+      const topic = prev.topics[topicId]
+      if (!topic || topic.loId === null) return prev
+
+      const newTopics = { ...prev.topics }
+      const sourceLoId = topic.loId
+
+      // Calculate new order for unlinked group
+      const unlinkedCount = Object.values(prev.topics).filter(t => t.loId === null).length
+
+      // Unlink the topic
+      newTopics[topicId] = { ...topic, loId: null, order: unlinkedCount + 1 }
+
+      // Recalculate orders for topics remaining in source LO
+      const sourceTopics = Object.values(newTopics)
+        .filter(t => t.loId === sourceLoId)
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+      sourceTopics.forEach((t, idx) => {
+        newTopics[t.id] = { ...newTopics[t.id], order: idx + 1 }
+      })
+
+      return { ...prev, topics: newTopics }
+    })
+
+    // Legacy write for M3 compatibility
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
+        const newData = { ...prev }
+        let topicToMove = null
+
+        // Find and remove topic from its LO
         newData.modules = prev.modules.map(module => ({
           ...module,
           learningObjectives: module.learningObjectives.map(lo => {
             const topicIdx = (lo.topics || []).findIndex(t => t.id === topicId)
             if (topicIdx !== -1) {
-              topicToMove = { ...lo.topics[topicIdx] }
-              sourceLoId = lo.id
-              sourceLoOrder = lo.order
+              topicToMove = { ...lo.topics[topicIdx], loId: null }
               return {
                 ...lo,
                 topics: lo.topics.filter(t => t.id !== topicId).map((t, idx) => ({ ...t, order: idx + 1 }))
@@ -795,124 +1108,109 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
             return lo
           })
         }))
-      }
 
-      if (!topicToMove) {
-        return prev
-      }
+        if (topicToMove) {
+          topicToMove.order = (prev.unlinkedTopics || []).length + 1
+          newData.unlinkedTopics = [...(prev.unlinkedTopics || []), topicToMove]
+        }
 
-      // Determine action: if currently linked to targetLoId, unlink; otherwise link to targetLoId
-      if (sourceLoId === targetLoId) {
-        // Currently linked to this LO - unlink (move to unlinkedTopics)
-        topicToMove.loId = null
-        topicToMove.order = (newData.unlinkedTopics || []).length + 1
-        newData.unlinkedTopics = [...(newData.unlinkedTopics || []), topicToMove]
+        return topicToMove ? newData : prev
+      })
+    }
+  }, [])
+
+  // Link topic to an LO (move from unlinked or another LO)
+  // Phase 2: Updated to write to canonical first
+  const linkTopicToLO = useCallback((topicId, targetLoId) => {
+    // Write to canonical first
+    setCanonicalData(prev => {
+      const topic = prev.topics[topicId]
+      if (!topic) return prev
+      if (topic.loId === targetLoId) return prev // Already in target LO
+
+      const newTopics = { ...prev.topics }
+      const sourceLoId = topic.loId
+
+      // Calculate new order for target LO
+      const targetLOTopicsCount = Object.values(prev.topics).filter(t => t.loId === targetLoId).length
+
+      // Link the topic to target LO
+      newTopics[topicId] = { ...topic, loId: targetLoId, order: targetLOTopicsCount + 1 }
+
+      // Recalculate orders for source group (unlinked or LO)
+      if (sourceLoId === null) {
+        // Was unlinked, renumber unlinked topics
+        const unlinkedTopics = Object.values(newTopics)
+          .filter(t => t.loId === null && t.id !== topicId)
+          .sort((a, b) => (a.order || 0) - (b.order || 0))
+        unlinkedTopics.forEach((t, idx) => {
+          newTopics[t.id] = { ...newTopics[t.id], order: idx + 1 }
+        })
       } else {
-        // Link to targetLoId
+        // Was in another LO, renumber that LO's topics
+        const sourceTopics = Object.values(newTopics)
+          .filter(t => t.loId === sourceLoId && t.id !== topicId)
+          .sort((a, b) => (a.order || 0) - (b.order || 0))
+        sourceTopics.forEach((t, idx) => {
+          newTopics[t.id] = { ...newTopics[t.id], order: idx + 1 }
+        })
+      }
+
+      return { ...prev, topics: newTopics }
+    })
+
+    // Legacy write for M3 compatibility
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
+        const newData = { ...prev }
+        let topicToMove = null
+
+        // Check in unlinked topics first
+        const unlinkedIdx = (prev.unlinkedTopics || []).findIndex(t => t.id === topicId)
+        if (unlinkedIdx !== -1) {
+          topicToMove = { ...(prev.unlinkedTopics || [])[unlinkedIdx] }
+          newData.unlinkedTopics = (prev.unlinkedTopics || [])
+            .filter(t => t.id !== topicId)
+            .map((t, idx) => ({ ...t, order: idx + 1 }))
+        }
+
+        // Check in other LO topics
+        if (!topicToMove) {
+          newData.modules = prev.modules.map(module => ({
+            ...module,
+            learningObjectives: module.learningObjectives.map(lo => {
+              const topicIdx = (lo.topics || []).findIndex(t => t.id === topicId)
+              if (topicIdx !== -1 && lo.id !== targetLoId) {
+                topicToMove = { ...lo.topics[topicIdx] }
+                return {
+                  ...lo,
+                  topics: lo.topics.filter(t => t.id !== topicId).map((t, idx) => ({ ...t, order: idx + 1 }))
+                }
+              }
+              return lo
+            })
+          }))
+        }
+
+        if (!topicToMove) return prev // Already in target LO or not found
+
+        // Add to target LO
         topicToMove.loId = targetLoId
-        newData.modules = newData.modules.map(module => ({
+        newData.modules = (newData.modules || prev.modules).map(module => ({
           ...module,
           learningObjectives: module.learningObjectives.map(lo => {
             if (lo.id !== targetLoId) return lo
-            const newOrder = (lo.topics || []).length + 1
-            topicToMove.order = newOrder
+            topicToMove.order = (lo.topics || []).length + 1
             return {
               ...lo,
               topics: [...(lo.topics || []), topicToMove]
             }
           })
         }))
-      }
 
-      // Recalculate orders for unlinked topics
-      newData.unlinkedTopics = (newData.unlinkedTopics || []).map((t, idx) => ({ ...t, order: idx + 1 }))
-
-      return newData
-    })
-  }, [])
-
-  // Unlink topic from its LO (move to unlinked group)
-  const unlinkTopic = useCallback((topicId) => {
-    setScalarData(prev => {
-      const newData = { ...prev }
-      let topicToMove = null
-
-      // Find and remove topic from its LO
-      newData.modules = prev.modules.map(module => ({
-        ...module,
-        learningObjectives: module.learningObjectives.map(lo => {
-          const topicIdx = (lo.topics || []).findIndex(t => t.id === topicId)
-          if (topicIdx !== -1) {
-            topicToMove = { ...lo.topics[topicIdx], loId: null }
-            return {
-              ...lo,
-              topics: lo.topics.filter(t => t.id !== topicId).map((t, idx) => ({ ...t, order: idx + 1 }))
-            }
-          }
-          return lo
-        })
-      }))
-
-      if (topicToMove) {
-        topicToMove.order = (prev.unlinkedTopics || []).length + 1
-        newData.unlinkedTopics = [...(prev.unlinkedTopics || []), topicToMove]
-      }
-
-      return topicToMove ? newData : prev
-    })
-  }, [])
-
-  // Link topic to an LO (move from unlinked or another LO)
-  const linkTopicToLO = useCallback((topicId, targetLoId) => {
-    setScalarData(prev => {
-      const newData = { ...prev }
-      let topicToMove = null
-
-      // Check in unlinked topics first
-      const unlinkedIdx = (prev.unlinkedTopics || []).findIndex(t => t.id === topicId)
-      if (unlinkedIdx !== -1) {
-        topicToMove = { ...(prev.unlinkedTopics || [])[unlinkedIdx] }
-        newData.unlinkedTopics = (prev.unlinkedTopics || [])
-          .filter(t => t.id !== topicId)
-          .map((t, idx) => ({ ...t, order: idx + 1 }))
-      }
-
-      // Check in other LO topics
-      if (!topicToMove) {
-        newData.modules = prev.modules.map(module => ({
-          ...module,
-          learningObjectives: module.learningObjectives.map(lo => {
-            const topicIdx = (lo.topics || []).findIndex(t => t.id === topicId)
-            if (topicIdx !== -1 && lo.id !== targetLoId) {
-              topicToMove = { ...lo.topics[topicIdx] }
-              return {
-                ...lo,
-                topics: lo.topics.filter(t => t.id !== topicId).map((t, idx) => ({ ...t, order: idx + 1 }))
-              }
-            }
-            return lo
-          })
-        }))
-      }
-
-      if (!topicToMove) return prev // Already in target LO or not found
-
-      // Add to target LO
-      topicToMove.loId = targetLoId
-      newData.modules = (newData.modules || prev.modules).map(module => ({
-        ...module,
-        learningObjectives: module.learningObjectives.map(lo => {
-          if (lo.id !== targetLoId) return lo
-          topicToMove.order = (lo.topics || []).length + 1
-          return {
-            ...lo,
-            topics: [...(lo.topics || []), topicToMove]
-          }
-        })
-      }))
-
-      return newData
-    })
+        return newData
+      })
+    }
   }, [])
 
   // Helper: Recalculate topic numbers for a lesson based on LO assignment
@@ -1111,7 +1409,15 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       )
     })
 
-    // Sync to Scalar separately (only if LO is assigned)
+    // PHASE 1: Sync to canonical data store (ScalarDock reads from here)
+    // Always add to canonical, whether LO is assigned or not
+    setCanonicalData(prev => canonicalAddTopic(prev, {
+      id: scalarTopicId,
+      loId: primaryLOId, // null if no LO assigned - will show as orphan
+      title: topicTitle
+    }))
+
+    // Legacy sync to Scalar (for backward compatibility)
     if (loOrder && primaryLOId) {
       setScalarData(prev => {
         const newData = { ...prev, modules: [...prev.modules] }
@@ -1163,7 +1469,12 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       const topic = (lesson.topics || []).find(t => t.id === topicId)
       const scalarTopicId = topic?.scalarTopicId
 
-      // If there's a linked scalar topic and title is being updated, sync to scalar
+      // PHASE 1: Sync to canonical data store
+      if (scalarTopicId && updates.title) {
+        setCanonicalData(prevCanonical => canonicalUpdate(prevCanonical, 'topic', scalarTopicId, { title: updates.title }))
+      }
+
+      // Legacy: If there's a linked scalar topic and title is being updated, sync to scalar
       if (scalarTopicId && updates.title) {
         setScalarData(prevScalar => {
           const newData = { ...prevScalar, modules: [...prevScalar.modules] }
@@ -1232,7 +1543,17 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
         scalarSubtopicId: !isUnallocated && scalarTopicId ? scalarSubtopicId : null // Link to scalar only if allocated
       }
 
-      // Auto-sync: Add subtopic to scalar if parent topic has a scalar link
+      // PHASE 1: Sync to canonical data store (ScalarDock reads from here)
+      // Use scalarTopicId as the topicId in canonical store
+      if (scalarTopicId) {
+        setCanonicalData(prev => canonicalAddSubtopic(prev, {
+          id: scalarSubtopicId,
+          topicId: scalarTopicId,
+          title: subtopicTitle
+        }))
+      }
+
+      // Legacy sync: Add subtopic to scalar if parent topic has a scalar link
       if (scalarTopicId) {
         setScalarData(prevScalar => {
           const newData = { ...prevScalar, modules: [...prevScalar.modules] }
@@ -1311,7 +1632,12 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       const subtopic = (topic.subtopics || []).find(s => s.id === subtopicId)
       const scalarSubtopicId = subtopic?.scalarSubtopicId
 
-      // If there's a linked scalar subtopic and title is being updated, sync to scalar
+      // PHASE 1: Sync to canonical data store
+      if (scalarSubtopicId && updates.title) {
+        setCanonicalData(prevCanonical => canonicalUpdate(prevCanonical, 'subtopic', scalarSubtopicId, { title: updates.title }))
+      }
+
+      // Legacy: If there's a linked scalar subtopic and title is being updated, sync to scalar
       if (scalarSubtopicId && updates.title) {
         setScalarData(prevScalar => {
           const newData = { ...prevScalar, modules: [...prevScalar.modules] }
@@ -1737,48 +2063,41 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
   const addLearningObjective = useCallback((moduleId) => {
     const loId = `lo-${Date.now()}`
 
-    setScalarData(prev => {
-      const newData = { ...prev, modules: [...prev.modules] }
-      const moduleIndex = newData.modules.findIndex(m => m.id === moduleId)
-      if (moduleIndex === -1) return prev
+    // PHASE 1: Write to canonical store FIRST (source of truth)
+    setCanonicalData(prev => canonicalAddLO(prev, {
+      id: loId,
+      moduleId: moduleId,
+      verb: 'IDENTIFY',
+      description: 'new learning objective'
+    }))
 
-      const module = { ...newData.modules[moduleIndex] }
-      newData.modules[moduleIndex] = module
-      module.learningObjectives = [...module.learningObjectives]
+    // Legacy write - kept for backward compatibility during transition
+    // Will be removed when CANONICAL_FLAGS.LEGACY_STORE_REMOVED = true
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
+        const newData = { ...prev, modules: [...prev.modules] }
+        const moduleIndex = newData.modules.findIndex(m => m.id === moduleId)
+        if (moduleIndex === -1) return prev
 
-      const newLO = {
-        id: loId,
-        verb: 'IDENTIFY',
-        description: 'new learning objective',
-        order: module.learningObjectives.length + 1,
-        expanded: true,
-        topics: []
-      }
-      module.learningObjectives.push(newLO)
-      return newData
-    })
+        const module = { ...newData.modules[moduleIndex] }
+        newData.modules[moduleIndex] = module
+        module.learningObjectives = [...module.learningObjectives]
 
-    // Also update canonical store
-    setCanonicalData(prev => {
-      const existingLOs = Object.values(prev.los)
-      const newOrder = existingLOs.length + 1
-
-      debugLog('ADD_LO_CANONICAL', { loId, order: newOrder })
-
-      return {
-        ...prev,
-        los: {
-          ...prev.los,
-          [loId]: {
-            id: loId,
-            moduleId: moduleId,
-            verb: 'IDENTIFY',
-            description: 'new learning objective',
-            order: newOrder
-          }
+        const newLO = {
+          id: loId,
+          verb: 'IDENTIFY',
+          description: 'new learning objective',
+          order: module.learningObjectives.length + 1,
+          expanded: true,
+          topics: []
         }
-      }
-    })
+        module.learningObjectives.push(newLO)
+        return newData
+      })
+    }
+
+    // Return the new LO ID for auto-selection
+    return loId
   }, [])
 
   // Add new Topic to an LO (or unlinked if loId is null)
@@ -1786,118 +2105,81 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     const topicId = `topic-${Date.now()}`
     debugLog('ADD_TOPIC_START', { loId, topicId, action: 'Creating new topic' })
 
-    // Update canonical store FIRST
-    setCanonicalData(prev => {
-      // Count existing topics in this group
-      const groupTopics = Object.values(prev.topics).filter(t => t.loId === loId)
-      const newOrder = groupTopics.length + 1
+    // PHASE 1: Write to canonical store FIRST (source of truth)
+    setCanonicalData(prev => canonicalAddTopic(prev, {
+      id: topicId,
+      loId: loId,
+      title: 'New Topic'
+    }))
 
-      const newTopic = {
-        id: topicId,
-        loId: loId,
-        title: 'New Topic',
-        order: newOrder,
-        expanded: false
-      }
+    // Legacy write - kept for backward compatibility during transition
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
+        const newData = { ...prev, modules: [...prev.modules] }
 
-      const lo = loId ? prev.los[loId] : null
-      debugLog('ADD_TOPIC_CANONICAL', {
-        topicId,
-        loId,
-        loOrder: lo?.order,
-        newOrder,
-        computedSerial: computeTopicSerial(newTopic, prev.los, { ...prev.topics, [topicId]: newTopic }),
-        existingInGroup: groupTopics.length
-      })
-
-      return {
-        ...prev,
-        topics: { ...prev.topics, [topicId]: newTopic }
-      }
-    })
-
-    // Also update legacy scalarData for backward compatibility
-    setScalarData(prev => {
-      const newData = { ...prev, modules: [...prev.modules] }
-
-      // If no loId provided, add to unlinkedTopics
-      if (!loId) {
-        const newTopic = {
-          id: topicId,
-          title: 'New Topic',
-          order: (prev.unlinkedTopics || []).length + 1,
-          loId: null,
-          expanded: false,
-          subtopics: []
-        }
-        return {
-          ...newData,
-          unlinkedTopics: [...(prev.unlinkedTopics || []), newTopic]
-        }
-      }
-
-      // Otherwise add to the specified LO
-      for (let m = 0; m < newData.modules.length; m++) {
-        const module = { ...newData.modules[m] }
-        newData.modules[m] = module
-        module.learningObjectives = [...module.learningObjectives]
-
-        for (let l = 0; l < module.learningObjectives.length; l++) {
-          const lo = { ...module.learningObjectives[l] }
-          module.learningObjectives[l] = lo
-
-          if (lo.id === loId) {
-            lo.topics = [...lo.topics]
-            const newTopic = {
-              id: topicId,
-              title: 'New Topic',
-              order: lo.topics.length + 1,
-              loId: lo.id,
-              expanded: false,
-              subtopics: []
-            }
-            lo.topics.push(newTopic)
-            return newData
+        // If no loId provided, add to unlinkedTopics
+        if (!loId) {
+          const newTopic = {
+            id: topicId,
+            title: 'New Topic',
+            order: (prev.unlinkedTopics || []).length + 1,
+            loId: null,
+            expanded: false,
+            subtopics: []
+          }
+          return {
+            ...newData,
+            unlinkedTopics: [...(prev.unlinkedTopics || []), newTopic]
           }
         }
-      }
-      return prev
-    })
+
+        // Otherwise add to the specified LO
+        for (let m = 0; m < newData.modules.length; m++) {
+          const module = { ...newData.modules[m] }
+          newData.modules[m] = module
+          module.learningObjectives = [...module.learningObjectives]
+
+          for (let l = 0; l < module.learningObjectives.length; l++) {
+            const lo = { ...module.learningObjectives[l] }
+            module.learningObjectives[l] = lo
+
+            if (lo.id === loId) {
+              lo.topics = [...lo.topics]
+              const newTopic = {
+                id: topicId,
+                title: 'New Topic',
+                order: lo.topics.length + 1,
+                loId: lo.id,
+                expanded: false,
+                subtopics: []
+              }
+              lo.topics.push(newTopic)
+              return newData
+            }
+          }
+        }
+        return prev
+      })
+    }
+
+    // Return the new topic ID for auto-selection/expansion
+    return topicId
   }, [])
 
   // Add new Subtopic to a Topic
   const addSubtopic = useCallback((topicId) => {
     const subtopicId = `subtopic-${Date.now()}`
 
-    // Update canonical store FIRST
-    setCanonicalData(prev => {
-      // Count existing subtopics for this topic
-      const siblingSubtopics = Object.values(prev.subtopics).filter(s => s.topicId === topicId)
-      const newOrder = siblingSubtopics.length + 1
+    // PHASE 1: Write to canonical store FIRST (source of truth)
+    setCanonicalData(prev => canonicalAddSubtopic(prev, {
+      id: subtopicId,
+      topicId: topicId,
+      title: 'New Subtopic'
+    }))
 
-      const newSubtopic = {
-        id: subtopicId,
-        topicId: topicId,
-        title: 'New Subtopic',
-        order: newOrder
-      }
-
-      debugLog('ADD_SUBTOPIC_CANONICAL', {
-        subtopicId,
-        topicId,
-        newOrder,
-        computedSerial: computeSubtopicSerial(newSubtopic, prev.topics, prev.los, { ...prev.subtopics, [subtopicId]: newSubtopic }),
-        existingSiblings: siblingSubtopics.length
-      })
-
-      return {
-        ...prev,
-        subtopics: { ...prev.subtopics, [subtopicId]: newSubtopic }
-      }
-    })
-
-    // Also update legacy scalarData for backward compatibility
-    setScalarData(prev => {
+    // Legacy write - kept for backward compatibility during transition
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
       const newData = { ...prev, modules: [...prev.modules] }
 
       // Check unlinked topics first
@@ -1945,13 +2227,42 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
         }
       }
       return prev
-    })
+      })
+    }
+
+    // Return the new subtopic ID for auto-selection/expansion
+    return subtopicId
   }, [])
 
   // Update scalar node (LO, Topic, or Subtopic) with cross-app syncing
   const updateScalarNode = useCallback((nodeType, nodeId, updates) => {
-    // Update scalarData
-    setScalarData(prev => {
+    // PHASE 1: Write to canonical store FIRST (source of truth)
+    setCanonicalData(prev => canonicalUpdate(prev, nodeType, nodeId, updates))
+
+    // BIDIRECTIONAL SYNC: Update lessons that have linked topics/subtopics
+    if (nodeType === 'topic' && updates.title) {
+      setLessons(prev => prev.map(lesson => ({
+        ...lesson,
+        topics: (lesson.topics || []).map(t =>
+          t.scalarTopicId === nodeId ? { ...t, title: updates.title } : t
+        )
+      })))
+    }
+    if (nodeType === 'subtopic' && updates.title) {
+      setLessons(prev => prev.map(lesson => ({
+        ...lesson,
+        topics: (lesson.topics || []).map(topic => ({
+          ...topic,
+          subtopics: (topic.subtopics || []).map(s =>
+            s.scalarSubtopicId === nodeId ? { ...s, title: updates.title } : s
+          )
+        }))
+      })))
+    }
+
+    // Legacy write - kept for backward compatibility during transition
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
       const newData = { ...prev, modules: [...prev.modules] }
 
       // Also check unlinked topics
@@ -2001,14 +2312,15 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
           }
         }
       }
-      return prev
-    })
+        return prev
+      })
+    }
 
     // CROSS-APP SYNC: Sync LO updates to courseData.learningObjectives
     if (nodeType === 'lo' && (updates.verb || updates.description)) {
       // Find the LO in scalarData to get its current data
       let targetLO = null
-      for (const module of scalarData.modules) {
+      for (const module of effectiveScalarData.modules) {
         const found = module.learningObjectives.find(lo => lo.id === nodeId)
         if (found) {
           targetLO = found
@@ -2069,67 +2381,191 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
 
   // Delete scalar node
   const deleteScalarNode = useCallback((nodeType, nodeId) => {
-    setScalarData(prev => {
-      const newData = { ...prev, modules: [...prev.modules] }
+    // PHASE 1: Write to canonical store FIRST (source of truth)
+    setCanonicalData(prev => canonicalDelete(prev, nodeType, nodeId))
 
-      // Check for unlinked topic first
-      if (nodeType === 'topic') {
-        const unlinkedIdx = (prev.unlinkedTopics || []).findIndex(t => t.id === nodeId)
-        if (unlinkedIdx !== -1) {
-          newData.unlinkedTopics = (prev.unlinkedTopics || [])
-            .filter(t => t.id !== nodeId)
-            .map((t, idx) => ({ ...t, order: idx + 1 }))
-          return newData
-        }
-      }
+    // BIDIRECTIONAL SYNC: Remove from lessons that have linked topics/subtopics
+    if (nodeType === 'topic') {
+      setLessons(prev => prev.map(lesson => ({
+        ...lesson,
+        topics: (lesson.topics || []).filter(t => t.scalarTopicId !== nodeId && t.id !== nodeId)
+      })))
+    }
+    if (nodeType === 'subtopic') {
+      setLessons(prev => prev.map(lesson => ({
+        ...lesson,
+        topics: (lesson.topics || []).map(topic => ({
+          ...topic,
+          subtopics: (topic.subtopics || []).filter(s => s.scalarSubtopicId !== nodeId && s.id !== nodeId)
+        }))
+      })))
+    }
 
-      for (let m = 0; m < newData.modules.length; m++) {
-        const module = { ...newData.modules[m] }
-        newData.modules[m] = module
-        module.learningObjectives = [...module.learningObjectives]
+    // Legacy write - kept for backward compatibility during transition
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
+        const newData = { ...prev, modules: [...prev.modules] }
 
-        if (nodeType === 'lo') {
-          const loIndex = module.learningObjectives.findIndex(lo => lo.id === nodeId)
-          if (loIndex !== -1) {
-            module.learningObjectives.splice(loIndex, 1)
-            // Renumber
-            module.learningObjectives.forEach((lo, idx) => lo.order = idx + 1)
+        // Check for unlinked topic first
+        if (nodeType === 'topic') {
+          const unlinkedIdx = (prev.unlinkedTopics || []).findIndex(t => t.id === nodeId)
+          if (unlinkedIdx !== -1) {
+            newData.unlinkedTopics = (prev.unlinkedTopics || [])
+              .filter(t => t.id !== nodeId)
+              .map((t, idx) => ({ ...t, order: idx + 1 }))
             return newData
           }
         }
 
-        for (let l = 0; l < module.learningObjectives.length; l++) {
-          const lo = { ...module.learningObjectives[l] }
-          module.learningObjectives[l] = lo
-          lo.topics = [...lo.topics]
+        for (let m = 0; m < newData.modules.length; m++) {
+          const module = { ...newData.modules[m] }
+          newData.modules[m] = module
+          module.learningObjectives = [...module.learningObjectives]
 
-          if (nodeType === 'topic') {
-            const topicIndex = lo.topics.findIndex(t => t.id === nodeId)
-            if (topicIndex !== -1) {
-              lo.topics.splice(topicIndex, 1)
-              lo.topics.forEach((t, idx) => t.order = idx + 1)
+          if (nodeType === 'lo') {
+            const loIndex = module.learningObjectives.findIndex(lo => lo.id === nodeId)
+            if (loIndex !== -1) {
+              module.learningObjectives.splice(loIndex, 1)
+              // Renumber
+              module.learningObjectives.forEach((lo, idx) => lo.order = idx + 1)
               return newData
             }
           }
 
-          for (let t = 0; t < lo.topics.length; t++) {
-            const topic = { ...lo.topics[t] }
-            lo.topics[t] = topic
-            topic.subtopics = [...(topic.subtopics || [])]
+          for (let l = 0; l < module.learningObjectives.length; l++) {
+            const lo = { ...module.learningObjectives[l] }
+            module.learningObjectives[l] = lo
+            lo.topics = [...lo.topics]
 
-            if (nodeType === 'subtopic') {
-              const subIndex = topic.subtopics.findIndex(s => s.id === nodeId)
-              if (subIndex !== -1) {
-                topic.subtopics.splice(subIndex, 1)
-                topic.subtopics.forEach((s, idx) => s.order = idx + 1)
+            if (nodeType === 'topic') {
+              const topicIndex = lo.topics.findIndex(t => t.id === nodeId)
+              if (topicIndex !== -1) {
+                lo.topics.splice(topicIndex, 1)
+                lo.topics.forEach((t, idx) => t.order = idx + 1)
                 return newData
+              }
+            }
+
+            for (let t = 0; t < lo.topics.length; t++) {
+              const topic = { ...lo.topics[t] }
+              lo.topics[t] = topic
+              topic.subtopics = [...(topic.subtopics || [])]
+
+              if (nodeType === 'subtopic') {
+                const subIndex = topic.subtopics.findIndex(s => s.id === nodeId)
+                if (subIndex !== -1) {
+                  topic.subtopics.splice(subIndex, 1)
+                  topic.subtopics.forEach((s, idx) => s.order = idx + 1)
+                  return newData
+                }
               }
             }
           }
         }
+        return prev
+      })
+    }
+  }, [])
+
+  // Reorder topic within its parent LO or move to a different LO
+  const reorderTopic = useCallback((topicId, targetLoId, newOrder) => {
+    setCanonicalData(prev => {
+      const topic = prev.topics[topicId]
+      if (!topic) return prev
+
+      const newTopics = { ...prev.topics }
+
+      // If moving to a different LO
+      if (topic.loId !== targetLoId) {
+        // Update topic's loId
+        newTopics[topicId] = { ...topic, loId: targetLoId, order: newOrder }
+      } else {
+        // Reorder within same LO
+        const siblingTopics = Object.values(prev.topics)
+          .filter(t => t.loId === topic.loId && t.id !== topicId)
+          .sort((a, b) => (a.order || 0) - (b.order || 0))
+
+        // Insert at new position and renumber
+        siblingTopics.splice(newOrder - 1, 0, { ...topic })
+        siblingTopics.forEach((t, idx) => {
+          newTopics[t.id] = { ...newTopics[t.id], order: idx + 1 }
+        })
       }
-      return prev
+
+      return { ...prev, topics: newTopics }
     })
+
+    // Legacy update for backward compatibility
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
+        // Simplified - just trigger a re-render
+        return { ...prev }
+      })
+    }
+  }, [])
+
+  // Reorder subtopic within its parent topic or move to a different topic
+  const reorderSubtopic = useCallback((subtopicId, targetTopicId, newOrder) => {
+    setCanonicalData(prev => {
+      const subtopic = prev.subtopics[subtopicId]
+      if (!subtopic) return prev
+
+      const newSubtopics = { ...prev.subtopics }
+
+      // If moving to a different topic
+      if (subtopic.topicId !== targetTopicId) {
+        newSubtopics[subtopicId] = { ...subtopic, topicId: targetTopicId, order: newOrder }
+      } else {
+        // Reorder within same topic
+        const siblingSubtopics = Object.values(prev.subtopics)
+          .filter(s => s.topicId === subtopic.topicId && s.id !== subtopicId)
+          .sort((a, b) => (a.order || 0) - (b.order || 0))
+
+        siblingSubtopics.splice(newOrder - 1, 0, { ...subtopic })
+        siblingSubtopics.forEach((s, idx) => {
+          newSubtopics[s.id] = { ...newSubtopics[s.id], order: idx + 1 }
+        })
+      }
+
+      return { ...prev, subtopics: newSubtopics }
+    })
+
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => ({ ...prev }))
+    }
+  }, [])
+
+  // Reorder LO within module
+  const reorderLO = useCallback((loId, newOrder) => {
+    setCanonicalData(prev => {
+      const lo = prev.los[loId]
+      if (!lo) return prev
+
+      const newLOs = { ...prev.los }
+      const siblingLOs = Object.values(prev.los)
+        .filter(l => l.moduleId === lo.moduleId && l.id !== loId)
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+
+      siblingLOs.splice(newOrder - 1, 0, { ...lo })
+      siblingLOs.forEach((l, idx) => {
+        newLOs[l.id] = { ...newLOs[l.id], order: idx + 1 }
+      })
+
+      return { ...prev, los: newLOs }
+    })
+
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
+        const newData = { ...prev, modules: [...prev.modules] }
+        for (let m = 0; m < newData.modules.length; m++) {
+          const module = { ...newData.modules[m] }
+          newData.modules[m] = module
+          module.learningObjectives = [...module.learningObjectives]
+            .sort((a, b) => (a.order || 0) - (b.order || 0))
+        }
+        return newData
+      })
+    }
   }, [])
 
   // --------------------------------------------
@@ -2137,100 +2573,208 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
   // --------------------------------------------
 
   // Add new Performance Criteria (with color assignment)
+  // Phase 3: Canonical-first write
   const addPerformanceCriteria = useCallback((name) => {
-    setScalarData(prev => {
-      const colorIndex = (prev.performanceCriteria?.length || 0) % PC_COLORS.length
+    const pcId = `pc-${Date.now()}`
+
+    // Write to canonical FIRST
+    setCanonicalData(prev => {
+      const pcCount = Object.keys(prev.performanceCriteria || {}).length
+      const colorIndex = pcCount % PC_COLORS.length
       const newPC = {
-        id: `pc-${Date.now()}`,
-        name: name || `PC${(prev.performanceCriteria?.length || 0) + 1}`,
-        order: (prev.performanceCriteria?.length || 0) + 1,
-        color: PC_COLORS[colorIndex],  // Assign color from palette
-        linkedItems: {
-          los: [],
-          topics: [],
-          subtopics: [],
-          lessons: []
-        }
+        id: pcId,
+        name: name || `PC${pcCount + 1}`,
+        order: pcCount + 1,
+        color: PC_COLORS[colorIndex],
+        linkedItems: { los: [], topics: [], subtopics: [], lessons: [] }
       }
+      console.log('[CANONICAL] ADD_PC', { pcId, name: newPC.name })
       return {
         ...prev,
-        performanceCriteria: [...(prev.performanceCriteria || []), newPC]
+        performanceCriteria: { ...prev.performanceCriteria, [pcId]: newPC }
       }
     })
+
+    // Legacy write for M3 compatibility
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
+        const colorIndex = (prev.performanceCriteria?.length || 0) % PC_COLORS.length
+        const newPC = {
+          id: pcId,
+          name: name || `PC${(prev.performanceCriteria?.length || 0) + 1}`,
+          order: (prev.performanceCriteria?.length || 0) + 1,
+          color: PC_COLORS[colorIndex],
+          linkedItems: { los: [], topics: [], subtopics: [], lessons: [] }
+        }
+        return {
+          ...prev,
+          performanceCriteria: [...(prev.performanceCriteria || []), newPC]
+        }
+      })
+    }
   }, [])
 
   // Update Performance Criteria
+  // Phase 3: Canonical-first write
   const updatePerformanceCriteria = useCallback((pcId, updates) => {
-    setScalarData(prev => ({
-      ...prev,
-      performanceCriteria: (prev.performanceCriteria || []).map(pc =>
-        pc.id === pcId ? { ...pc, ...updates } : pc
-      )
-    }))
+    // Write to canonical FIRST
+    setCanonicalData(prev => {
+      if (!prev.performanceCriteria[pcId]) return prev
+      console.log('[CANONICAL] UPDATE_PC', { pcId, updates })
+      return {
+        ...prev,
+        performanceCriteria: {
+          ...prev.performanceCriteria,
+          [pcId]: { ...prev.performanceCriteria[pcId], ...updates }
+        }
+      }
+    })
+
+    // Legacy write for M3 compatibility
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => ({
+        ...prev,
+        performanceCriteria: (prev.performanceCriteria || []).map(pc =>
+          pc.id === pcId ? { ...pc, ...updates } : pc
+        )
+      }))
+    }
   }, [])
 
   // Delete Performance Criteria
+  // Phase 3: Canonical-first write
   const deletePerformanceCriteria = useCallback((pcId) => {
-    setScalarData(prev => ({
-      ...prev,
-      performanceCriteria: (prev.performanceCriteria || [])
-        .filter(pc => pc.id !== pcId)
-        .map((pc, idx) => ({ ...pc, order: idx + 1 }))
-    }))
+    // Write to canonical FIRST
+    setCanonicalData(prev => {
+      if (!prev.performanceCriteria[pcId]) return prev
+      console.log('[CANONICAL] DELETE_PC', { pcId })
+      const { [pcId]: deleted, ...remaining } = prev.performanceCriteria
+      // Renumber remaining PCs
+      const renumbered = {}
+      Object.values(remaining)
+        .sort((a, b) => a.order - b.order)
+        .forEach((pc, idx) => {
+          renumbered[pc.id] = { ...pc, order: idx + 1 }
+        })
+      return { ...prev, performanceCriteria: renumbered }
+    })
+
+    // Legacy write for M3 compatibility
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => ({
+        ...prev,
+        performanceCriteria: (prev.performanceCriteria || [])
+          .filter(pc => pc.id !== pcId)
+          .map((pc, idx) => ({ ...pc, order: idx + 1 }))
+      }))
+    }
   }, [])
 
   // Link an item to a Performance Criteria
+  // Phase 3: Canonical-first write
   const linkItemToPC = useCallback((pcId, itemType, itemId) => {
-    setScalarData(prev => ({
-      ...prev,
-      performanceCriteria: (prev.performanceCriteria || []).map(pc => {
-        if (pc.id !== pcId) return pc
-        const typeKey = itemType === 'lo' ? 'los' : `${itemType}s`
-        if (pc.linkedItems[typeKey]?.includes(itemId)) return pc // Already linked
-        return {
-          ...pc,
-          linkedItems: {
-            ...pc.linkedItems,
-            [typeKey]: [...(pc.linkedItems[typeKey] || []), itemId]
+    const typeKey = itemType === 'lo' ? 'los' : `${itemType}s`
+
+    // Write to canonical FIRST
+    setCanonicalData(prev => {
+      const pc = prev.performanceCriteria[pcId]
+      if (!pc) return prev
+      if (pc.linkedItems[typeKey]?.includes(itemId)) return prev // Already linked
+      console.log('[CANONICAL] LINK_TO_PC', { pcId, itemType, itemId })
+      return {
+        ...prev,
+        performanceCriteria: {
+          ...prev.performanceCriteria,
+          [pcId]: {
+            ...pc,
+            linkedItems: {
+              ...pc.linkedItems,
+              [typeKey]: [...(pc.linkedItems[typeKey] || []), itemId]
+            }
           }
         }
-      })
-    }))
+      }
+    })
+
+    // Legacy write for M3 compatibility
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => ({
+        ...prev,
+        performanceCriteria: (prev.performanceCriteria || []).map(pc => {
+          if (pc.id !== pcId) return pc
+          if (pc.linkedItems[typeKey]?.includes(itemId)) return pc
+          return {
+            ...pc,
+            linkedItems: {
+              ...pc.linkedItems,
+              [typeKey]: [...(pc.linkedItems[typeKey] || []), itemId]
+            }
+          }
+        })
+      }))
+    }
   }, [])
 
   // Unlink an item from a Performance Criteria
+  // Phase 3: Canonical-first write
   const unlinkItemFromPC = useCallback((pcId, itemType, itemId) => {
-    setScalarData(prev => ({
-      ...prev,
-      performanceCriteria: (prev.performanceCriteria || []).map(pc => {
-        if (pc.id !== pcId) return pc
-        const typeKey = itemType === 'lo' ? 'los' : `${itemType}s`
-        return {
-          ...pc,
-          linkedItems: {
-            ...pc.linkedItems,
-            [typeKey]: (pc.linkedItems[typeKey] || []).filter(id => id !== itemId)
+    const typeKey = itemType === 'lo' ? 'los' : `${itemType}s`
+
+    // Write to canonical FIRST
+    setCanonicalData(prev => {
+      const pc = prev.performanceCriteria[pcId]
+      if (!pc) return prev
+      console.log('[CANONICAL] UNLINK_FROM_PC', { pcId, itemType, itemId })
+      return {
+        ...prev,
+        performanceCriteria: {
+          ...prev.performanceCriteria,
+          [pcId]: {
+            ...pc,
+            linkedItems: {
+              ...pc.linkedItems,
+              [typeKey]: (pc.linkedItems[typeKey] || []).filter(id => id !== itemId)
+            }
           }
         }
-      })
-    }))
+      }
+    })
+
+    // Legacy write for M3 compatibility
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => ({
+        ...prev,
+        performanceCriteria: (prev.performanceCriteria || []).map(pc => {
+          if (pc.id !== pcId) return pc
+          return {
+            ...pc,
+            linkedItems: {
+              ...pc.linkedItems,
+              [typeKey]: (pc.linkedItems[typeKey] || []).filter(id => id !== itemId)
+            }
+          }
+        })
+      }))
+    }
   }, [])
 
   // Get linked PCs for an item (returns array of PC names for badge display)
+  // Phase 3: Read from canonical
   const getLinkedPCs = useCallback((itemType, itemId) => {
     const typeKey = itemType === 'lo' ? 'los' : `${itemType}s`
-    return (scalarData.performanceCriteria || [])
+    return Object.values(canonicalData.performanceCriteria || {})
       .filter(pc => pc.linkedItems[typeKey]?.includes(itemId))
       .map(pc => pc.name)
-  }, [scalarData.performanceCriteria])
+  }, [canonicalData.performanceCriteria])
 
   // Get linked PCs with full info (including color)
+  // Phase 3: Read from canonical
   const getLinkedPCsWithColor = useCallback((itemType, itemId) => {
     const typeKey = itemType === 'lo' ? 'los' : `${itemType}s`
-    return (scalarData.performanceCriteria || [])
+    return Object.values(canonicalData.performanceCriteria || {})
       .filter(pc => pc.linkedItems[typeKey]?.includes(itemId))
       .map(pc => ({ name: pc.name, color: pc.color || '#00FF00', id: pc.id }))
-  }, [scalarData.performanceCriteria])
+  }, [canonicalData.performanceCriteria])
 
   // --------------------------------------------
   // BULK OPERATIONS (for multi-selection)
@@ -2343,9 +2887,9 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       const otherType = srcType === 'pc' ? tgtType : srcType
       const otherId = srcType === 'pc' ? tgtId : srcId
 
-      // Check if already linked
+      // Check if already linked (Phase 3: read from canonical)
       const linkedPCs = getLinkedPCs(otherType, otherId)
-      const pc = scalarData.performanceCriteria?.find(p => p.id === pcId)
+      const pc = canonicalData.performanceCriteria?.[pcId]
       const isLinked = pc && linkedPCs.includes(pc.name)
 
       if (isLinked) {
@@ -2365,7 +2909,7 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     }
 
     return false
-  }, [lessons, scalarData.modules, scalarData.performanceCriteria, toggleLessonLO,
+  }, [lessons, scalarData.modules, canonicalData.performanceCriteria, toggleLessonLO,
       removeTopicFromLesson, getLinkedPCs, linkItemToPC, unlinkItemFromPC, setLessons])
 
   // Handle SHIFT+click for universal linking - sets source
@@ -2573,6 +3117,141 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
   }, [])
 
   // --------------------------------------------
+  // CLEAR ALL DESIGN STATE (Reset for new course)
+  // --------------------------------------------
+  const clearDesignState = useCallback(() => {
+    // Clear timetable data (lessons, overviewBlocks)
+    setTimetableData({
+      lessons: [],
+      overviewBlocks: [],
+      overviewPlanningState: {
+        timelines: [],
+        notes: [],
+        colorLabels: {}
+      }
+    })
+
+    // Reset scalar data to empty structure
+    setScalarData({
+      modules: [{
+        id: 'module-1',
+        name: 'Module 1',
+        order: 1,
+        expanded: true,
+        learningObjectives: []
+      }],
+      unlinkedTopics: [],
+      performanceCriteria: []
+    })
+
+    // Clear canonical data store (Phase 3: includes performanceCriteria)
+    setCanonicalData({
+      los: {},
+      topics: {},
+      subtopics: {},
+      performanceCriteria: {},
+      lessonLOs: [],
+      lessonTopics: [],
+      lessonSubtopics: []
+    })
+
+    // Clear selection state
+    setSelection({ type: null, id: null, mode: null })
+    setMultiSelection([])
+    setLinkingSource(null)
+    setHighlightedItems([])
+
+    // Reset navigation state
+    setActiveTab('timetable')
+    setCurrentWeek(1)
+    setCurrentDay(1)
+    setCurrentModule(1)
+    setHierarchyNav({ currentLevel: 0, path: [], filterId: null })
+
+    console.log('Design state cleared')
+  }, [setTimetableData])
+
+  // --------------------------------------------
+  // HIERARCHY NAVIGATION (Phase 4: Calm Wheel)
+  // --------------------------------------------
+
+  // Get item info for hierarchy level
+  const getHierarchyItem = useCallback((level, itemId) => {
+    const { los, topics, subtopics } = canonicalData
+
+    switch (level) {
+      case 0: // Module
+        return { id: itemId, label: 'Module 1', serial: '1' }
+      case 1: // LO
+        const lo = los[itemId]
+        return lo ? { id: itemId, label: lo.description, serial: String(lo.order) } : null
+      case 2: // Topic
+        const topic = topics[itemId]
+        if (!topic) return null
+        const topicSerial = getCanonicalTopicSerial(itemId)
+        return { id: itemId, label: topic.title, serial: topicSerial }
+      case 3: // Subtopic
+        const subtopic = subtopics[itemId]
+        if (!subtopic) return null
+        const subtopicSerial = getCanonicalSubtopicSerial(itemId)
+        return { id: itemId, label: subtopic.title, serial: subtopicSerial }
+      case 4: // Lesson
+        const lesson = lessons.find(l => l.id === itemId)
+        return lesson ? { id: itemId, label: lesson.title, serial: null } : null
+      default:
+        return null
+    }
+  }, [canonicalData, lessons, getCanonicalTopicSerial, getCanonicalSubtopicSerial])
+
+  // Navigate hierarchy down (drill into selected item)
+  const navigateDown = useCallback((itemId) => {
+    const { currentLevel, path } = hierarchyNav
+    if (currentLevel >= 4) return // Can't go deeper than lessons
+
+    const item = getHierarchyItem(currentLevel, itemId)
+    if (!item) return
+
+    setHierarchyNav({
+      currentLevel: currentLevel + 1,
+      path: [...path, { level: currentLevel, id: itemId, label: item.label, serial: item.serial }],
+      filterId: itemId
+    })
+  }, [hierarchyNav, getHierarchyItem])
+
+  // Navigate hierarchy up (go to parent level)
+  const navigateUp = useCallback(() => {
+    const { currentLevel, path } = hierarchyNav
+    if (currentLevel === 0) return
+
+    const newPath = path.slice(0, -1)
+    const parentItem = newPath[newPath.length - 1]
+
+    setHierarchyNav({
+      currentLevel: currentLevel - 1,
+      path: newPath,
+      filterId: parentItem?.id || null
+    })
+  }, [hierarchyNav])
+
+  // Navigate to specific level (breadcrumb click)
+  const navigateToLevel = useCallback((level) => {
+    const { path } = hierarchyNav
+    const newPath = path.slice(0, level)
+    const targetItem = newPath[newPath.length - 1]
+
+    setHierarchyNav({
+      currentLevel: level,
+      path: newPath,
+      filterId: targetItem?.id || null
+    })
+  }, [hierarchyNav])
+
+  // Toggle WheelNav collapse
+  const toggleWheelNav = useCallback(() => {
+    setWheelNavCollapsed(prev => !prev)
+  }, [])
+
+  // --------------------------------------------
   // COMPUTED VALUES
   // --------------------------------------------
 
@@ -2616,9 +3295,27 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     currentDay,
     setCurrentDay,
 
+    // Hierarchy Navigation (Phase 4: Calm Wheel)
+    hierarchyNav,
+    navigateDown,
+    navigateUp,
+    navigateToLevel,
+    wheelNavCollapsed,
+    toggleWheelNav,
+
     // Overview
     overviewBlocks,
     setOverviewBlocks,
+
+    // Overview Planning (Phase 2-6 Redesign)
+    overviewPlanningState,
+    addPlanningTimeline,
+    removePlanningTimeline,
+    updatePlanningTimeline,
+    addPlanningNote,
+    removePlanningNote,
+    updatePlanningNote,
+    updatePlanningColorLabel,
 
     // Lessons
     lessons,
@@ -2641,8 +3338,8 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     removeSubtopicFromLessonTopic,
     updateLessonSubtopic,
 
-    // Scalar
-    scalarData,
+    // Scalar (effectiveScalarData provides derived data from canonical when available)
+    scalarData: effectiveScalarData,
     setScalarData,
     selectedScalarItem,
     toggleScalarExpand,
@@ -2704,12 +3401,18 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     isItemHighlighted,
     updateScalarNode,
     deleteScalarNode,
+    reorderTopic,
+    reorderSubtopic,
+    reorderLO,
 
     // Selection
     selection,
     select,
     startEditing,
     clearSelection,
+
+    // Clear all Design state (for CLEAR button)
+    clearDesignState,
 
     // Editor
     editorCollapsed,
@@ -2753,15 +3456,20 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     PC_COLORS
   }), [
     activeTab, viewMode, currentModule, currentWeek, currentDay, overviewBlocks,
+    // Overview Planning (Phase 2-6)
+    overviewPlanningState, addPlanningTimeline, removePlanningTimeline, updatePlanningTimeline,
+    addPlanningNote, removePlanningNote, updatePlanningNote, updatePlanningColorLabel,
+    // Hierarchy navigation (Phase 4)
+    hierarchyNav, navigateDown, navigateUp, navigateToLevel, wheelNavCollapsed, toggleWheelNav,
     lessons, selectedLesson, scheduledLessons, unscheduledLessons, savedLessons,
     updateLesson, createLesson, deleteLesson, duplicateLesson,
     scheduleLesson, unscheduleLesson, saveToLibrary, toggleLessonLO,
     addTopicToLesson, removeTopicFromLesson, updateLessonTopic,
     addSubtopicToLessonTopic, removeSubtopicFromLessonTopic, updateLessonSubtopic,
     moveLesson, resizeLesson, checkCollision, findAvailableSlot,
-    scalarData, selectedScalarItem, toggleScalarExpand,
+    effectiveScalarData, selectedScalarItem, toggleScalarExpand,
     addLearningObjective, addTopic, addSubtopic, updateScalarNode, deleteScalarNode,
-    createLessonFromScalar,
+    reorderTopic, reorderSubtopic, reorderLO, createLessonFromScalar,
     // Canonical data store
     canonicalData, getCanonicalTopicSerial, getCanonicalSubtopicSerial,
     toggleTopicLOLink, unlinkTopic, linkTopicToLO, recalculateGroupOrders,
@@ -2773,7 +3481,7 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     linkingSource, clearLinkingSource, linkElements, handleShiftClickLink, linkToSource, sessionLinkedElements, isSessionLinked,
     isUnallocatedNumber,
     highlightedItems, updateHighlightedItems, clearHighlights, isItemHighlighted,
-    selection, select, startEditing, clearSelection,
+    selection, select, startEditing, clearSelection, clearDesignState,
     editorCollapsed, courseData, setCourseData,
     // Shared update helpers
     updateLessonTitle, updateTopicTitle, updateSubtopicTitle, updateLearningObjectiveText,

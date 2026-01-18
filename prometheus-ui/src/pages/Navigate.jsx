@@ -253,6 +253,8 @@ function NavigateWheel({ onNavigate }) {
   const [hoveredSection, setHoveredSection] = React.useState(null)
   const [isInOuterRing, setIsInOuterRing] = React.useState(false)
   const [isPulsing, setIsPulsing] = React.useState(false)
+  const [tooltipVisible, setTooltipVisible] = React.useState(null)
+  const tooltipTimeoutRef = React.useRef(null)
   const wheelRef = React.useRef(null)
 
   const sections = [
@@ -262,6 +264,42 @@ function NavigateWheel({ onNavigate }) {
     { id: 'format', label: 'FORMAT', angle: 270 },    // West
   ]
   const centerSection = { id: 'generate', label: 'GENERATE' }
+
+  // Tooltip text content for each section
+  const tooltipContent = {
+    define: 'Start Here. Define and capture Course Title, Learning Objectives, and other Meta Data.',
+    design: 'Timetable and Scalar: Import or create the course structure.',
+    build: 'Develop course content: Import, create and manage course information.',
+    format: 'Import and save Courseware templates, extract data, convert file types.',
+    generate: 'Select and Export your required courseware.'
+  }
+
+  // Handle tooltip visibility with fade timing
+  React.useEffect(() => {
+    if (hoveredSection) {
+      // Clear any pending hide timeout
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current)
+      }
+      // Show tooltip after brief delay for smooth transition
+      tooltipTimeoutRef.current = setTimeout(() => {
+        setTooltipVisible(hoveredSection)
+      }, 150)
+    } else {
+      // Hide tooltip with delay for fade out
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current)
+      }
+      tooltipTimeoutRef.current = setTimeout(() => {
+        setTooltipVisible(null)
+      }, 100)
+    }
+    return () => {
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current)
+      }
+    }
+  }, [hoveredSection])
 
   // +50% size: 350 → 525
   const size = 525
@@ -618,6 +656,80 @@ function NavigateWheel({ onNavigate }) {
           {centerSection.label}
         </span>
       </div>
+
+      {/* Tooltip Info Box - appears on hover */}
+      {/* Positioned individually: DESIGN right, BUILD below, FORMAT left */}
+      {tooltipVisible && (
+        <div
+          style={{
+            position: 'absolute',
+            // Individual positioning per tooltip
+            ...(tooltipVisible === 'define' && {
+              left: '50%',
+              top: 'calc(50% - 180px)',  // Moved UP 10px
+              transform: 'translateX(-50%)'
+            }),
+            ...(tooltipVisible === 'design' && {
+              left: 'calc(50% + 400px)',
+              top: 'calc(50% - 45px)',  // Moved UP additional 20px
+              transform: 'translateX(-50%)'
+            }),
+            ...(tooltipVisible === 'build' && {
+              left: '50%',
+              top: 'calc(50% + 80px)',  // Moved UP additional 50px
+              transform: 'translateX(-50%)'
+            }),
+            ...(tooltipVisible === 'format' && {
+              left: 'calc(50% - 400px)',
+              top: 'calc(50% - 45px)',  // Moved UP additional 20px
+              transform: 'translateX(-50%)'
+            }),
+            ...(tooltipVisible === 'generate' && {
+              left: '50%',
+              top: 'calc(50% + 78px)',
+              transform: 'translateX(-50%)'
+            }),
+            width: '200px',
+            height: '100px',
+            background: 'transparent',
+            border: 'none',
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            zIndex: 100,
+            pointerEvents: 'none',
+            opacity: tooltipVisible ? 1 : 0,
+            transition: 'opacity 1s ease-in-out'
+          }}
+        >
+          <span
+            style={{
+              color: THEME.GREEN_BRIGHT,
+              fontFamily: THEME.FONT_PRIMARY,
+              fontSize: '12px',
+              lineHeight: 1.5,
+              textAlign: 'left'
+            }}
+          >
+            {tooltipContent[tooltipVisible]}
+          </span>
+        </div>
+      )}
+
+      {/* CSS Keyframes for fade animation */}
+      <style>
+        {`
+          @keyframes tooltipFadeIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(5px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+          }
+          @keyframes tooltipFadeOut {
+            from { opacity: 1; transform: translateX(-50%) translateY(0); }
+            to { opacity: 0; transform: translateX(-50%) translateY(5px); }
+          }
+        `}
+      </style>
     </div>
   )
 }

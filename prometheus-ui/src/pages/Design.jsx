@@ -1,35 +1,42 @@
 /**
  * Design.jsx - Main DESIGN Section Container
  *
- * Structure:
+ * Phase 2-6: Calm Wheel Design/Build Integration
+ *
+ * Structure (Redesigned):
  * ┌─────────────────────────────────────────────────────────────┐
- * │ NAVIGATION BAR (DesignNavBar)                               │
+ * │ NAVIGATION BAR (DesignNavBar) with integrated Tab Selector  │
+ * │  Row 1: ACTIVE COURSE (left) | Total + Overtime (right)     │
+ * │  Row 2: ACTIVE LESSON (left) | [OVERVIEW][TIMETABLE][SCALAR]│
  * ├─────────────────────────────────────────────────────────────┤
- * │ WORKSPACE                                                   │
- * │ - OverviewWorkspace                                         │
- * │ - TimetableWorkspace                                        │
- * │ - ScalarWorkspace                                           │
+ * │  WORKSPACE (full width)                                     │
+ * │  - OverviewWorkspace                                        │
+ * │  - TimetableWorkspace                                       │
+ * │  - ScalarDock                                               │
  * ├─────────────────────────────────────────────────────────────┤
  * │ FOOTER (with global Lesson Editor modal access)             │
  * └─────────────────────────────────────────────────────────────┘
  *
- * Note: Lesson Editor is now a global modal accessible from Footer
- * on all pages, not a page-specific component.
+ * Note: WheelNav and WorkDock removed per design revamp.
+ * Tab buttons at same Y position as ACTIVE LESSON (no grey lines).
+ * Lesson Editor is a global modal accessible from Footer.
  */
 
 import { useCallback, useEffect } from 'react'
 import { THEME } from '../constants/theme'
-import { DesignProvider, useDesign } from '../contexts/DesignContext'
+import { useDesign } from '../contexts/DesignContext'
 import DesignNavBar from '../components/design/DesignNavBar'
 import OverviewWorkspace from '../components/design/overview/OverviewWorkspace'
 import TimetableWorkspace from '../components/design/TimetableWorkspace'
-import ScalarWorkspace from '../components/design/ScalarWorkspace'
+import ScalarDock from '../components/design/ScalarDock'
 import Footer from '../components/Footer'
 
 // ============================================
 // MAIN DESIGN PAGE COMPONENT
 // ============================================
 
+// Phase 2: DesignProvider removed - now at App.jsx level
+// Design page directly uses useDesign() context
 function Design({
   onNavigate,
   courseData,
@@ -45,24 +52,17 @@ function Design({
   onSelectedLessonChange  // Callback to report selected lesson to App
 }) {
   return (
-    <DesignProvider
+    <DesignPageContent
+      onNavigate={onNavigate}
+      courseLoaded={courseLoaded}
+      user={user}
+      courseState={courseState}
       courseData={courseData}
-      setCourseData={setCourseData}
       timetableData={timetableData}
-      setTimetableData={setTimetableData}
-    >
-      <DesignPageContent
-        onNavigate={onNavigate}
-        courseLoaded={courseLoaded}
-        user={user}
-        courseState={courseState}
-        courseData={courseData}
-        timetableData={timetableData}
-        lessonEditorOpen={lessonEditorOpen}
-        onLessonEditorToggle={onLessonEditorToggle}
-        onSelectedLessonChange={onSelectedLessonChange}
-      />
-    </DesignProvider>
+      lessonEditorOpen={lessonEditorOpen}
+      onLessonEditorToggle={onLessonEditorToggle}
+      onSelectedLessonChange={onSelectedLessonChange}
+    />
   )
 }
 
@@ -71,7 +71,30 @@ function Design({
 // ============================================
 
 function DesignPageContent({ onNavigate, courseLoaded, user, courseState, courseData, timetableData, lessonEditorOpen, onLessonEditorToggle, onSelectedLessonChange }) {
-  const { activeTab, courseData: contextCourseData, selection } = useDesign()
+  const {
+    activeTab,
+    selection,
+    select,
+    clearDesignState,
+    addPerformanceCriteria
+  } = useDesign()
+
+  // Handle opening Lesson Editor for a specific lesson
+  const handleOpenLessonEditor = useCallback((lessonId) => {
+    select('lesson', lessonId)
+    onLessonEditorToggle?.()
+  }, [select, onLessonEditorToggle])
+
+  // Handle adding a new lesson from SCALAR (opens editor with no selection)
+  const handleAddLessonFromScalar = useCallback(() => {
+    clearDesignState() // Clear any existing selection
+    onLessonEditorToggle?.() // Open lesson editor for new lesson
+  }, [clearDesignState, onLessonEditorToggle])
+
+  // Handle adding a new Performance Criteria from SCALAR
+  const handleAddPCFromScalar = useCallback(() => {
+    addPerformanceCriteria?.()
+  }, [addPerformanceCriteria])
 
   // Report selected lesson changes to parent (App.jsx)
   useEffect(() => {
@@ -99,39 +122,34 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState, course
         overflow: 'hidden'
       }}
     >
-      {/* Navigation Bar */}
+      {/* Navigation Bar with integrated Tab Selector */}
       <DesignNavBar />
 
-      {/* Main Working Area */}
+      {/* Main Working Area - Full Width (WheelNav and WorkDock removed) */}
       <div
         style={{
           flex: 1,
           display: 'flex',
+          flexDirection: 'column',
           overflow: 'hidden',
           position: 'relative'
         }}
       >
-        {/* Workspace Area (fills remaining space) */}
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            position: 'relative'
-          }}
-        >
-          {/* Workspace Content - switches based on active tab */}
-          {activeTab === 'overview' && (
-            <OverviewWorkspace courseData={courseData} />
-          )}
-          {activeTab === 'timetable' && (
-            <TimetableWorkspace />
-          )}
-          {activeTab === 'scalar' && (
-            <ScalarWorkspace />
-          )}
-        </div>
+        {/* Workspace Content - switches based on active tab */}
+        {activeTab === 'overview' && (
+          <OverviewWorkspace courseData={courseData} />
+        )}
+
+        {activeTab === 'timetable' && (
+          <TimetableWorkspace onOpenLessonEditor={handleOpenLessonEditor} />
+        )}
+
+        {activeTab === 'scalar' && (
+          <ScalarDock
+            onAddLesson={handleAddLessonFromScalar}
+            onAddPC={handleAddPCFromScalar}
+          />
+        )}
       </div>
 
       {/* Footer with PKE Interface */}
@@ -141,7 +159,7 @@ function DesignPageContent({ onNavigate, courseLoaded, user, courseState, course
         isPKEActive={false}
         onPKEToggle={() => {}}
         onSave={() => console.log('Save clicked')}
-        onClear={() => console.log('Clear clicked')}
+        onClear={clearDesignState}
         onDelete={() => console.log('Delete clicked')}
         user={user || { name: '---' }}
         courseState={courseState || { startDate: null, saveCount: 0 }}
