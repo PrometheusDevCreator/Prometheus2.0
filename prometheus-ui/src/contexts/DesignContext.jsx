@@ -469,6 +469,8 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     los: {},        // { [loId]: { id, moduleId, verb, description, order } }
     topics: {},     // { [topicId]: { id, loId|null, title, order } }
     subtopics: {},  // { [subtopicId]: { id, topicId, title, order } }
+    // Phase 3: Performance Criteria added to canonical
+    performanceCriteria: {}, // { [pcId]: { id, name, order, color, linkedItems: { los, topics, subtopics, lessons } } }
     // Lesson associations via junction arrays
     lessonLOs: [],      // [{ lessonId, loId, isPrimary }]
     lessonTopics: [],   // [{ lessonId, topicId }]
@@ -533,15 +535,28 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       })
     })
 
-    if (Object.keys(los).length > 0 || Object.keys(topics).length > 0) {
+    // Phase 3: Migrate Performance Criteria
+    const performanceCriteria = {}
+    ;(scalarData.performanceCriteria || []).forEach(pc => {
+      performanceCriteria[pc.id] = {
+        id: pc.id,
+        name: pc.name,
+        order: pc.order,
+        color: pc.color,
+        linkedItems: pc.linkedItems || { los: [], topics: [], subtopics: [], lessons: [] }
+      }
+    })
+
+    if (Object.keys(los).length > 0 || Object.keys(topics).length > 0 || Object.keys(performanceCriteria).length > 0) {
       debugLog('CANONICAL_STORE_INITIALIZED', {
         loCount: Object.keys(los).length,
         topicCount: Object.keys(topics).length,
         subtopicCount: Object.keys(subtopics).length,
+        pcCount: Object.keys(performanceCriteria).length,
         los: Object.values(los).map(l => `${l.order}. ${l.verb}`),
         topics: Object.values(topics).map(t => `${t.id}: loId=${t.loId}, order=${t.order}`)
       })
-      setCanonicalData(prev => ({ ...prev, los, topics, subtopics }))
+      setCanonicalData(prev => ({ ...prev, los, topics, subtopics, performanceCriteria }))
     }
   }, []) // Run once on mount
 
@@ -590,17 +605,9 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     }
   }, [scalarData.modules]) // Re-run when modules change
 
-  // Sync canonicalData to timetableData.hierarchyData for LessonEditorModal
-  useEffect(() => {
-    const { los, topics, subtopics } = canonicalData
-    // Only sync if there's actual data
-    if (Object.keys(los).length > 0 || Object.keys(topics).length > 0 || Object.keys(subtopics).length > 0) {
-      setTimetableData(prev => ({
-        ...prev,
-        hierarchyData: { los, topics, subtopics }
-      }))
-    }
-  }, [canonicalData, setTimetableData])
+  // Phase 2: hierarchyData sync effect REMOVED
+  // hierarchyData no longer exists in timetableData (App.jsx)
+  // LessonEditorModal now reads directly from canonicalData via useDesign() context
 
   // --------------------------------------------
   // PHASE 1: DERIVE LEGACY scalarData FROM CANONICAL
@@ -624,22 +631,26 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       expanded: m.expanded
     }))
 
+    // Phase 3: Read PC from canonical (object → array for derivation)
+    const pcArray = Object.values(canonicalData.performanceCriteria || {})
+
     const derived = deriveScalarDataFromCanonical(
       canonicalData,
       modules,
-      scalarData.performanceCriteria || []
+      pcArray
     )
 
     if (derived) {
       canonicalLog('DERIVED_SCALAR_DATA', {
         moduleCount: derived.modules?.length,
         loCount: Object.keys(canonicalData.los).length,
-        topicCount: Object.keys(canonicalData.topics).length
+        topicCount: Object.keys(canonicalData.topics).length,
+        pcCount: pcArray.length
       })
     }
 
     return derived
-  }, [canonicalData, scalarData.modules, scalarData.performanceCriteria])
+  }, [canonicalData, scalarData.modules])
 
   // Use derived data if available, otherwise fall back to legacy
   const effectiveScalarData = derivedScalarData || scalarData
@@ -1049,59 +1060,46 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
   }, [])
 
   // Unlink topic from its LO (move to unlinked group)
+  // Phase 2: Updated to write to canonical first
   const unlinkTopic = useCallback((topicId) => {
-    setScalarData(prev => {
-      const newData = { ...prev }
-      let topicToMove = null
+    // Write to canonical first
+    setCanonicalData(prev => {
+      const topic = prev.topics[topicId]
+      if (!topic || topic.loId === null) return prev
 
-      // Find and remove topic from its LO
-      newData.modules = prev.modules.map(module => ({
-        ...module,
-        learningObjectives: module.learningObjectives.map(lo => {
-          const topicIdx = (lo.topics || []).findIndex(t => t.id === topicId)
-          if (topicIdx !== -1) {
-            topicToMove = { ...lo.topics[topicIdx], loId: null }
-            return {
-              ...lo,
-              topics: lo.topics.filter(t => t.id !== topicId).map((t, idx) => ({ ...t, order: idx + 1 }))
-            }
-          }
-          return lo
-        })
-      }))
+      const newTopics = { ...prev.topics }
+      const sourceLoId = topic.loId
 
-      if (topicToMove) {
-        topicToMove.order = (prev.unlinkedTopics || []).length + 1
-        newData.unlinkedTopics = [...(prev.unlinkedTopics || []), topicToMove]
-      }
+      // Calculate new order for unlinked group
+      const unlinkedCount = Object.values(prev.topics).filter(t => t.loId === null).length
 
-      return topicToMove ? newData : prev
+      // Unlink the topic
+      newTopics[topicId] = { ...topic, loId: null, order: unlinkedCount + 1 }
+
+      // Recalculate orders for topics remaining in source LO
+      const sourceTopics = Object.values(newTopics)
+        .filter(t => t.loId === sourceLoId)
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+      sourceTopics.forEach((t, idx) => {
+        newTopics[t.id] = { ...newTopics[t.id], order: idx + 1 }
+      })
+
+      return { ...prev, topics: newTopics }
     })
-  }, [])
 
-  // Link topic to an LO (move from unlinked or another LO)
-  const linkTopicToLO = useCallback((topicId, targetLoId) => {
-    setScalarData(prev => {
-      const newData = { ...prev }
-      let topicToMove = null
+    // Legacy write for M3 compatibility
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
+        const newData = { ...prev }
+        let topicToMove = null
 
-      // Check in unlinked topics first
-      const unlinkedIdx = (prev.unlinkedTopics || []).findIndex(t => t.id === topicId)
-      if (unlinkedIdx !== -1) {
-        topicToMove = { ...(prev.unlinkedTopics || [])[unlinkedIdx] }
-        newData.unlinkedTopics = (prev.unlinkedTopics || [])
-          .filter(t => t.id !== topicId)
-          .map((t, idx) => ({ ...t, order: idx + 1 }))
-      }
-
-      // Check in other LO topics
-      if (!topicToMove) {
+        // Find and remove topic from its LO
         newData.modules = prev.modules.map(module => ({
           ...module,
           learningObjectives: module.learningObjectives.map(lo => {
             const topicIdx = (lo.topics || []).findIndex(t => t.id === topicId)
-            if (topicIdx !== -1 && lo.id !== targetLoId) {
-              topicToMove = { ...lo.topics[topicIdx] }
+            if (topicIdx !== -1) {
+              topicToMove = { ...lo.topics[topicIdx], loId: null }
               return {
                 ...lo,
                 topics: lo.topics.filter(t => t.id !== topicId).map((t, idx) => ({ ...t, order: idx + 1 }))
@@ -1110,26 +1108,109 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
             return lo
           })
         }))
+
+        if (topicToMove) {
+          topicToMove.order = (prev.unlinkedTopics || []).length + 1
+          newData.unlinkedTopics = [...(prev.unlinkedTopics || []), topicToMove]
+        }
+
+        return topicToMove ? newData : prev
+      })
+    }
+  }, [])
+
+  // Link topic to an LO (move from unlinked or another LO)
+  // Phase 2: Updated to write to canonical first
+  const linkTopicToLO = useCallback((topicId, targetLoId) => {
+    // Write to canonical first
+    setCanonicalData(prev => {
+      const topic = prev.topics[topicId]
+      if (!topic) return prev
+      if (topic.loId === targetLoId) return prev // Already in target LO
+
+      const newTopics = { ...prev.topics }
+      const sourceLoId = topic.loId
+
+      // Calculate new order for target LO
+      const targetLOTopicsCount = Object.values(prev.topics).filter(t => t.loId === targetLoId).length
+
+      // Link the topic to target LO
+      newTopics[topicId] = { ...topic, loId: targetLoId, order: targetLOTopicsCount + 1 }
+
+      // Recalculate orders for source group (unlinked or LO)
+      if (sourceLoId === null) {
+        // Was unlinked, renumber unlinked topics
+        const unlinkedTopics = Object.values(newTopics)
+          .filter(t => t.loId === null && t.id !== topicId)
+          .sort((a, b) => (a.order || 0) - (b.order || 0))
+        unlinkedTopics.forEach((t, idx) => {
+          newTopics[t.id] = { ...newTopics[t.id], order: idx + 1 }
+        })
+      } else {
+        // Was in another LO, renumber that LO's topics
+        const sourceTopics = Object.values(newTopics)
+          .filter(t => t.loId === sourceLoId && t.id !== topicId)
+          .sort((a, b) => (a.order || 0) - (b.order || 0))
+        sourceTopics.forEach((t, idx) => {
+          newTopics[t.id] = { ...newTopics[t.id], order: idx + 1 }
+        })
       }
 
-      if (!topicToMove) return prev // Already in target LO or not found
-
-      // Add to target LO
-      topicToMove.loId = targetLoId
-      newData.modules = (newData.modules || prev.modules).map(module => ({
-        ...module,
-        learningObjectives: module.learningObjectives.map(lo => {
-          if (lo.id !== targetLoId) return lo
-          topicToMove.order = (lo.topics || []).length + 1
-          return {
-            ...lo,
-            topics: [...(lo.topics || []), topicToMove]
-          }
-        })
-      }))
-
-      return newData
+      return { ...prev, topics: newTopics }
     })
+
+    // Legacy write for M3 compatibility
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
+        const newData = { ...prev }
+        let topicToMove = null
+
+        // Check in unlinked topics first
+        const unlinkedIdx = (prev.unlinkedTopics || []).findIndex(t => t.id === topicId)
+        if (unlinkedIdx !== -1) {
+          topicToMove = { ...(prev.unlinkedTopics || [])[unlinkedIdx] }
+          newData.unlinkedTopics = (prev.unlinkedTopics || [])
+            .filter(t => t.id !== topicId)
+            .map((t, idx) => ({ ...t, order: idx + 1 }))
+        }
+
+        // Check in other LO topics
+        if (!topicToMove) {
+          newData.modules = prev.modules.map(module => ({
+            ...module,
+            learningObjectives: module.learningObjectives.map(lo => {
+              const topicIdx = (lo.topics || []).findIndex(t => t.id === topicId)
+              if (topicIdx !== -1 && lo.id !== targetLoId) {
+                topicToMove = { ...lo.topics[topicIdx] }
+                return {
+                  ...lo,
+                  topics: lo.topics.filter(t => t.id !== topicId).map((t, idx) => ({ ...t, order: idx + 1 }))
+                }
+              }
+              return lo
+            })
+          }))
+        }
+
+        if (!topicToMove) return prev // Already in target LO or not found
+
+        // Add to target LO
+        topicToMove.loId = targetLoId
+        newData.modules = (newData.modules || prev.modules).map(module => ({
+          ...module,
+          learningObjectives: module.learningObjectives.map(lo => {
+            if (lo.id !== targetLoId) return lo
+            topicToMove.order = (lo.topics || []).length + 1
+            return {
+              ...lo,
+              topics: [...(lo.topics || []), topicToMove]
+            }
+          })
+        }))
+
+        return newData
+      })
+    }
   }, [])
 
   // Helper: Recalculate topic numbers for a lesson based on LO assignment
@@ -2492,100 +2573,208 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
   // --------------------------------------------
 
   // Add new Performance Criteria (with color assignment)
+  // Phase 3: Canonical-first write
   const addPerformanceCriteria = useCallback((name) => {
-    setScalarData(prev => {
-      const colorIndex = (prev.performanceCriteria?.length || 0) % PC_COLORS.length
+    const pcId = `pc-${Date.now()}`
+
+    // Write to canonical FIRST
+    setCanonicalData(prev => {
+      const pcCount = Object.keys(prev.performanceCriteria || {}).length
+      const colorIndex = pcCount % PC_COLORS.length
       const newPC = {
-        id: `pc-${Date.now()}`,
-        name: name || `PC${(prev.performanceCriteria?.length || 0) + 1}`,
-        order: (prev.performanceCriteria?.length || 0) + 1,
-        color: PC_COLORS[colorIndex],  // Assign color from palette
-        linkedItems: {
-          los: [],
-          topics: [],
-          subtopics: [],
-          lessons: []
-        }
+        id: pcId,
+        name: name || `PC${pcCount + 1}`,
+        order: pcCount + 1,
+        color: PC_COLORS[colorIndex],
+        linkedItems: { los: [], topics: [], subtopics: [], lessons: [] }
       }
+      console.log('[CANONICAL] ADD_PC', { pcId, name: newPC.name })
       return {
         ...prev,
-        performanceCriteria: [...(prev.performanceCriteria || []), newPC]
+        performanceCriteria: { ...prev.performanceCriteria, [pcId]: newPC }
       }
     })
+
+    // Legacy write for M3 compatibility
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => {
+        const colorIndex = (prev.performanceCriteria?.length || 0) % PC_COLORS.length
+        const newPC = {
+          id: pcId,
+          name: name || `PC${(prev.performanceCriteria?.length || 0) + 1}`,
+          order: (prev.performanceCriteria?.length || 0) + 1,
+          color: PC_COLORS[colorIndex],
+          linkedItems: { los: [], topics: [], subtopics: [], lessons: [] }
+        }
+        return {
+          ...prev,
+          performanceCriteria: [...(prev.performanceCriteria || []), newPC]
+        }
+      })
+    }
   }, [])
 
   // Update Performance Criteria
+  // Phase 3: Canonical-first write
   const updatePerformanceCriteria = useCallback((pcId, updates) => {
-    setScalarData(prev => ({
-      ...prev,
-      performanceCriteria: (prev.performanceCriteria || []).map(pc =>
-        pc.id === pcId ? { ...pc, ...updates } : pc
-      )
-    }))
+    // Write to canonical FIRST
+    setCanonicalData(prev => {
+      if (!prev.performanceCriteria[pcId]) return prev
+      console.log('[CANONICAL] UPDATE_PC', { pcId, updates })
+      return {
+        ...prev,
+        performanceCriteria: {
+          ...prev.performanceCriteria,
+          [pcId]: { ...prev.performanceCriteria[pcId], ...updates }
+        }
+      }
+    })
+
+    // Legacy write for M3 compatibility
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => ({
+        ...prev,
+        performanceCriteria: (prev.performanceCriteria || []).map(pc =>
+          pc.id === pcId ? { ...pc, ...updates } : pc
+        )
+      }))
+    }
   }, [])
 
   // Delete Performance Criteria
+  // Phase 3: Canonical-first write
   const deletePerformanceCriteria = useCallback((pcId) => {
-    setScalarData(prev => ({
-      ...prev,
-      performanceCriteria: (prev.performanceCriteria || [])
-        .filter(pc => pc.id !== pcId)
-        .map((pc, idx) => ({ ...pc, order: idx + 1 }))
-    }))
+    // Write to canonical FIRST
+    setCanonicalData(prev => {
+      if (!prev.performanceCriteria[pcId]) return prev
+      console.log('[CANONICAL] DELETE_PC', { pcId })
+      const { [pcId]: deleted, ...remaining } = prev.performanceCriteria
+      // Renumber remaining PCs
+      const renumbered = {}
+      Object.values(remaining)
+        .sort((a, b) => a.order - b.order)
+        .forEach((pc, idx) => {
+          renumbered[pc.id] = { ...pc, order: idx + 1 }
+        })
+      return { ...prev, performanceCriteria: renumbered }
+    })
+
+    // Legacy write for M3 compatibility
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => ({
+        ...prev,
+        performanceCriteria: (prev.performanceCriteria || [])
+          .filter(pc => pc.id !== pcId)
+          .map((pc, idx) => ({ ...pc, order: idx + 1 }))
+      }))
+    }
   }, [])
 
   // Link an item to a Performance Criteria
+  // Phase 3: Canonical-first write
   const linkItemToPC = useCallback((pcId, itemType, itemId) => {
-    setScalarData(prev => ({
-      ...prev,
-      performanceCriteria: (prev.performanceCriteria || []).map(pc => {
-        if (pc.id !== pcId) return pc
-        const typeKey = itemType === 'lo' ? 'los' : `${itemType}s`
-        if (pc.linkedItems[typeKey]?.includes(itemId)) return pc // Already linked
-        return {
-          ...pc,
-          linkedItems: {
-            ...pc.linkedItems,
-            [typeKey]: [...(pc.linkedItems[typeKey] || []), itemId]
+    const typeKey = itemType === 'lo' ? 'los' : `${itemType}s`
+
+    // Write to canonical FIRST
+    setCanonicalData(prev => {
+      const pc = prev.performanceCriteria[pcId]
+      if (!pc) return prev
+      if (pc.linkedItems[typeKey]?.includes(itemId)) return prev // Already linked
+      console.log('[CANONICAL] LINK_TO_PC', { pcId, itemType, itemId })
+      return {
+        ...prev,
+        performanceCriteria: {
+          ...prev.performanceCriteria,
+          [pcId]: {
+            ...pc,
+            linkedItems: {
+              ...pc.linkedItems,
+              [typeKey]: [...(pc.linkedItems[typeKey] || []), itemId]
+            }
           }
         }
-      })
-    }))
+      }
+    })
+
+    // Legacy write for M3 compatibility
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => ({
+        ...prev,
+        performanceCriteria: (prev.performanceCriteria || []).map(pc => {
+          if (pc.id !== pcId) return pc
+          if (pc.linkedItems[typeKey]?.includes(itemId)) return pc
+          return {
+            ...pc,
+            linkedItems: {
+              ...pc.linkedItems,
+              [typeKey]: [...(pc.linkedItems[typeKey] || []), itemId]
+            }
+          }
+        })
+      }))
+    }
   }, [])
 
   // Unlink an item from a Performance Criteria
+  // Phase 3: Canonical-first write
   const unlinkItemFromPC = useCallback((pcId, itemType, itemId) => {
-    setScalarData(prev => ({
-      ...prev,
-      performanceCriteria: (prev.performanceCriteria || []).map(pc => {
-        if (pc.id !== pcId) return pc
-        const typeKey = itemType === 'lo' ? 'los' : `${itemType}s`
-        return {
-          ...pc,
-          linkedItems: {
-            ...pc.linkedItems,
-            [typeKey]: (pc.linkedItems[typeKey] || []).filter(id => id !== itemId)
+    const typeKey = itemType === 'lo' ? 'los' : `${itemType}s`
+
+    // Write to canonical FIRST
+    setCanonicalData(prev => {
+      const pc = prev.performanceCriteria[pcId]
+      if (!pc) return prev
+      console.log('[CANONICAL] UNLINK_FROM_PC', { pcId, itemType, itemId })
+      return {
+        ...prev,
+        performanceCriteria: {
+          ...prev.performanceCriteria,
+          [pcId]: {
+            ...pc,
+            linkedItems: {
+              ...pc.linkedItems,
+              [typeKey]: (pc.linkedItems[typeKey] || []).filter(id => id !== itemId)
+            }
           }
         }
-      })
-    }))
+      }
+    })
+
+    // Legacy write for M3 compatibility
+    if (!CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      setScalarData(prev => ({
+        ...prev,
+        performanceCriteria: (prev.performanceCriteria || []).map(pc => {
+          if (pc.id !== pcId) return pc
+          return {
+            ...pc,
+            linkedItems: {
+              ...pc.linkedItems,
+              [typeKey]: (pc.linkedItems[typeKey] || []).filter(id => id !== itemId)
+            }
+          }
+        })
+      }))
+    }
   }, [])
 
   // Get linked PCs for an item (returns array of PC names for badge display)
+  // Phase 3: Read from canonical
   const getLinkedPCs = useCallback((itemType, itemId) => {
     const typeKey = itemType === 'lo' ? 'los' : `${itemType}s`
-    return (scalarData.performanceCriteria || [])
+    return Object.values(canonicalData.performanceCriteria || {})
       .filter(pc => pc.linkedItems[typeKey]?.includes(itemId))
       .map(pc => pc.name)
-  }, [scalarData.performanceCriteria])
+  }, [canonicalData.performanceCriteria])
 
   // Get linked PCs with full info (including color)
+  // Phase 3: Read from canonical
   const getLinkedPCsWithColor = useCallback((itemType, itemId) => {
     const typeKey = itemType === 'lo' ? 'los' : `${itemType}s`
-    return (scalarData.performanceCriteria || [])
+    return Object.values(canonicalData.performanceCriteria || {})
       .filter(pc => pc.linkedItems[typeKey]?.includes(itemId))
       .map(pc => ({ name: pc.name, color: pc.color || '#00FF00', id: pc.id }))
-  }, [scalarData.performanceCriteria])
+  }, [canonicalData.performanceCriteria])
 
   // --------------------------------------------
   // BULK OPERATIONS (for multi-selection)
@@ -2698,9 +2887,9 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       const otherType = srcType === 'pc' ? tgtType : srcType
       const otherId = srcType === 'pc' ? tgtId : srcId
 
-      // Check if already linked
+      // Check if already linked (Phase 3: read from canonical)
       const linkedPCs = getLinkedPCs(otherType, otherId)
-      const pc = scalarData.performanceCriteria?.find(p => p.id === pcId)
+      const pc = canonicalData.performanceCriteria?.[pcId]
       const isLinked = pc && linkedPCs.includes(pc.name)
 
       if (isLinked) {
@@ -2720,7 +2909,7 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     }
 
     return false
-  }, [lessons, scalarData.modules, scalarData.performanceCriteria, toggleLessonLO,
+  }, [lessons, scalarData.modules, canonicalData.performanceCriteria, toggleLessonLO,
       removeTopicFromLesson, getLinkedPCs, linkItemToPC, unlinkItemFromPC, setLessons])
 
   // Handle SHIFT+click for universal linking - sets source
@@ -2955,11 +3144,12 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       performanceCriteria: []
     })
 
-    // Clear canonical data store
+    // Clear canonical data store (Phase 3: includes performanceCriteria)
     setCanonicalData({
       los: {},
       topics: {},
       subtopics: {},
+      performanceCriteria: {},
       lessonLOs: [],
       lessonTopics: [],
       lessonSubtopics: []

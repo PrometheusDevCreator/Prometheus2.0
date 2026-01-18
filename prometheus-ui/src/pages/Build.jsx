@@ -16,7 +16,7 @@
 import { useCallback, useMemo } from 'react'
 import { THEME } from '../constants/theme'
 import Footer from '../components/Footer'
-import { DesignProvider, useDesign } from '../contexts/DesignContext'
+import { useDesign } from '../contexts/DesignContext'
 
 // Build components
 import BuildSelectorBar from '../components/build/BuildSelectorBar'
@@ -26,7 +26,8 @@ import BuildContentColumns from '../components/build/BuildContentColumns'
 import BuildProgressBar from '../components/build/BuildProgressBar'
 
 /**
- * Build page inner content (must be inside DesignProvider)
+ * Build page inner content
+ * Phase 2: DesignProvider removed - now at App.jsx level
  */
 function BuildContent({ onNavigate, user, courseState, exitPending, courseData, timetableData, lessonEditorOpen, onLessonEditorToggle }) {
   const { lessons, buildSelection, calculateLessonProgress } = useDesign()
@@ -105,27 +106,21 @@ function BuildContent({ onNavigate, user, courseState, exitPending, courseData, 
 }
 
 /**
- * Build Page - Wrapped with DesignProvider for shared state
+ * Build Page
+ * Phase 2: DesignProvider removed - now at App.jsx level
  */
 function Build({ onNavigate, courseData, setCourseData, timetableData, setTimetableData, courseLoaded, user, courseState, exitPending, lessonEditorOpen, onLessonEditorToggle }) {
   return (
-    <DesignProvider
+    <BuildContent
+      onNavigate={onNavigate}
+      user={user}
+      courseState={courseState}
+      exitPending={exitPending}
       courseData={courseData}
-      setCourseData={setCourseData}
       timetableData={timetableData}
-      setTimetableData={setTimetableData}
-    >
-      <BuildContent
-        onNavigate={onNavigate}
-        user={user}
-        courseState={courseState}
-        exitPending={exitPending}
-        courseData={courseData}
-        timetableData={timetableData}
-        lessonEditorOpen={lessonEditorOpen}
-        onLessonEditorToggle={onLessonEditorToggle}
-      />
-    </DesignProvider>
+      lessonEditorOpen={lessonEditorOpen}
+      onLessonEditorToggle={onLessonEditorToggle}
+    />
   )
 }
 

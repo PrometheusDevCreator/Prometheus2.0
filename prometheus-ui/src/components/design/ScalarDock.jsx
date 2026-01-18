@@ -902,7 +902,8 @@ function ScalarDock({ width = '100%', height = '100%', onAddLesson, onAddPC }) {
     reorderLO,
     currentModule,
     scheduledLessons = [],
-    unscheduledLessons = []
+    unscheduledLessons = [],
+    createLessonFromScalar  // Add lesson without view switch
   } = useDesign()
 
   // UI State
@@ -1379,7 +1380,7 @@ function ScalarDock({ width = '100%', height = '100%', onAddLesson, onAddPC }) {
           </span>
           {/* + Button for Adding Lesson - Burnt Orange */}
           <button
-            onClick={onAddLesson}
+            onClick={() => createLessonFromScalar('NEW LESSON')}
             style={{
               background: 'transparent',
               border: 'none',

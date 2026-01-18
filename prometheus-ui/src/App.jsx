@@ -50,6 +50,9 @@ import Header from './components/Header'
 import DebugGridController from './components/DevTools'
 import LessonEditorModal from './components/LessonEditorModal'
 
+// Context - Phase 2: Lifted to App level for single canonical store
+import { DesignProvider } from './contexts/DesignContext'
+
 // REFACTOR Phase 1: useScaleToFit hook removed
 // Original hook calculated scale = Math.min(vw/1920, vh/1080)
 // See docs/refactor-baseline/useScaleToFit_original.txt for backup
@@ -90,7 +93,7 @@ function App() {
   const [courseLoaded, setCourseLoaded] = useState(false)
 
   // Timetable data state (persists across page navigation)
-  // This is lifted from DesignContext to ensure data persists when navigating away from Design page
+  // Phase 2: hierarchyData removed - canonical store is now in DesignProvider at App level
   const [timetableData, setTimetableData] = useState({
     lessons: [
       {
@@ -108,13 +111,8 @@ function App() {
         saved: false
       }
     ],
-    overviewBlocks: [],
-    // Hierarchy data synced from DesignContext canonical store
-    hierarchyData: {
-      los: {},       // { [loId]: { id, moduleId, verb, description, order } }
-      topics: {},    // { [topicId]: { id, loId|null, title, order } }
-      subtopics: {}  // { [subtopicId]: { id, topicId, title, order } }
-    }
+    overviewBlocks: []
+    // Phase 2: hierarchyData REMOVED - read from canonical via DesignContext
   })
 
   // Course state for Footer (save tracking)
@@ -143,92 +141,8 @@ function App() {
       ? timetableData.lessons.find(l => l.id === selectedLessonId)
       : null
 
-  // Enriched course data - combines courseData with hierarchy from timetableData
-  // Transforms string LOs to proper objects and includes topics/subtopics
-  const enrichedCourseData = useMemo(() => {
-    const { hierarchyData } = timetableData
-    const losFromHierarchy = Object.values(hierarchyData?.los || {})
-    const topicsFromHierarchy = Object.values(hierarchyData?.topics || {})
-    const subtopicsFromHierarchy = Object.values(hierarchyData?.subtopics || {})
-
-    // Transform courseData.learningObjectives (strings) to LO objects
-    const loStrings = courseData.learningObjectives || []
-    const transformedLOs = loStrings
-      .filter(lo => lo && lo.trim().length > 0)
-      .map((loText, idx) => {
-        const words = loText.trim().split(/\s+/)
-        const verb = words[0]?.toUpperCase() || 'IDENTIFY'
-        const description = words.slice(1).join(' ') || ''
-        return {
-          id: `lo-define-${idx + 1}`,
-          verb,
-          description,
-          order: idx + 1,
-          title: loText // Keep full text for display
-        }
-      })
-
-    // Prefer hierarchy LOs if available, otherwise use transformed string LOs
-    const finalLOs = losFromHierarchy.length > 0
-      ? losFromHierarchy.map(lo => ({
-          ...lo,
-          title: `${lo.verb} ${lo.description}` // Ensure title exists
-        }))
-      : transformedLOs
-
-    // Get topics with their serial numbers
-    const finalTopics = topicsFromHierarchy.map(topic => {
-      // Compute serial number based on linked LO
-      let serial = `x.${topic.order || 1}`
-      if (topic.loId) {
-        const parentLO = hierarchyData?.los?.[topic.loId]
-        if (parentLO) {
-          const loTopics = topicsFromHierarchy
-            .filter(t => t.loId === topic.loId)
-            .sort((a, b) => (a.order || 0) - (b.order || 0))
-          const idx = loTopics.findIndex(t => t.id === topic.id)
-          serial = `${parentLO.order}.${idx >= 0 ? idx + 1 : topic.order || 1}`
-        }
-      }
-      return {
-        ...topic,
-        number: serial,
-        serial
-      }
-    })
-
-    // Get subtopics with their serial numbers
-    const finalSubtopics = subtopicsFromHierarchy.map(subtopic => {
-      const parentTopic = hierarchyData?.topics?.[subtopic.topicId]
-      let serial = `?.${subtopic.order || 1}`
-      if (parentTopic) {
-        // Find topic's serial
-        const topicObj = finalTopics.find(t => t.id === subtopic.topicId)
-        const topicSerial = topicObj?.serial || '?.?'
-        const siblingSubtopics = subtopicsFromHierarchy
-          .filter(s => s.topicId === subtopic.topicId)
-          .sort((a, b) => (a.order || 0) - (b.order || 0))
-        const idx = siblingSubtopics.findIndex(s => s.id === subtopic.id)
-        serial = `${topicSerial}.${idx >= 0 ? idx + 1 : subtopic.order || 1}`
-      }
-      return {
-        ...subtopic,
-        number: serial,
-        serial
-      }
-    })
-
-    // Get performance criteria from hierarchy data
-    const finalPCs = hierarchyData?.performanceCriteria || []
-
-    return {
-      ...courseData,
-      learningObjectives: finalLOs,
-      topics: finalTopics,
-      subtopics: finalSubtopics,
-      performanceCriteria: finalPCs
-    }
-  }, [courseData, timetableData])
+  // Phase 2: enrichedCourseData removed - hierarchy data now comes from DesignContext
+  // LessonEditorModal will read canonical data directly from context
 
   // Handle opening Lesson Editor - with optional lessonId parameter
   const handleLessonEditorToggle = useCallback((open, lessonId = null) => {
@@ -284,82 +198,12 @@ function App() {
     }))
   }, [])
 
-  // Handle adding a new Topic from Lesson Editor
-  const handleAddTopic = useCallback(() => {
-    const title = prompt('Enter new topic title:')
-    if (!title || !title.trim()) return
-
-    const newTopic = {
-      id: `topic-${Date.now()}`,
-      title: title.trim(),
-      loId: null, // Unlinked by default
-      order: Object.keys(timetableData.hierarchyData?.topics || {}).length + 1
-    }
-
-    setTimetableData(prev => ({
-      ...prev,
-      hierarchyData: {
-        ...prev.hierarchyData,
-        topics: {
-          ...(prev.hierarchyData?.topics || {}),
-          [newTopic.id]: newTopic
-        }
-      }
-    }))
-  }, [timetableData.hierarchyData?.topics])
-
-  // Handle adding a new Subtopic from Lesson Editor
-  const handleAddSubtopic = useCallback(() => {
-    const title = prompt('Enter new subtopic title:')
-    if (!title || !title.trim()) return
-
-    // Get the first topic if any exist, otherwise create without parent
-    const topics = Object.values(timetableData.hierarchyData?.topics || {})
-    const firstTopicId = topics[0]?.id || null
-
-    const newSubtopic = {
-      id: `subtopic-${Date.now()}`,
-      title: title.trim(),
-      topicId: firstTopicId,
-      order: Object.keys(timetableData.hierarchyData?.subtopics || {}).length + 1
-    }
-
-    setTimetableData(prev => ({
-      ...prev,
-      hierarchyData: {
-        ...prev.hierarchyData,
-        subtopics: {
-          ...(prev.hierarchyData?.subtopics || {}),
-          [newSubtopic.id]: newSubtopic
-        }
-      }
-    }))
-  }, [timetableData.hierarchyData?.topics, timetableData.hierarchyData?.subtopics])
-
-  // Handle adding a new Performance Criteria from Lesson Editor
-  const handleAddPC = useCallback(() => {
-    const name = prompt('Enter new performance criteria name:')
-    if (!name || !name.trim()) return
-
-    const PC_COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F']
-    const existingPCs = timetableData.hierarchyData?.performanceCriteria || []
-    const colorIndex = existingPCs.length % PC_COLORS.length
-
-    const newPC = {
-      id: `pc-${Date.now()}`,
-      name: name.trim(),
-      color: PC_COLORS[colorIndex],
-      order: existingPCs.length + 1
-    }
-
-    setTimetableData(prev => ({
-      ...prev,
-      hierarchyData: {
-        ...prev.hierarchyData,
-        performanceCriteria: [...(prev.hierarchyData?.performanceCriteria || []), newPC]
-      }
-    }))
-  }, [timetableData.hierarchyData?.performanceCriteria])
+  // Phase 2: handleAddTopic, handleAddSubtopic, handleAddPC REMOVED
+  // These handlers bypassed the canonical store by writing to timetableData.hierarchyData
+  // LessonEditorModal now uses useDesign() context to call canonical actions directly:
+  // - addTopic() from DesignContext
+  // - addSubtopic() from DesignContext
+  // - addPerformanceCriteria() from DesignContext
 
   // Handle save count increment (updates status in Footer)
   const handleSaveCountIncrement = useCallback(() => {
@@ -683,83 +527,90 @@ function App() {
     }
   }
 
+  // Phase 2: DesignProvider lifted to App level for single canonical store instance
+  // All pages and modals can now access canonical actions via useDesign()
   return (
-    <div
-      style={{
-        width: '100vw',
-        height: '100vh',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        overflow: 'hidden',
-        backgroundColor: THEME.BG_BASE
-      }}
+    <DesignProvider
+      courseData={courseData}
+      setCourseData={setCourseData}
+      timetableData={timetableData}
+      setTimetableData={setTimetableData}
     >
-      {/* Stage Container - REFACTOR Phase 1: viewport units */}
       <div
         style={{
           width: '100vw',
           height: '100vh',
-          flexShrink: 0,
-          background: THEME.BG_DARK,
           display: 'flex',
-          flexDirection: 'column',
-          position: 'relative',
-          // Only apply transform when scale !== 1 to avoid breaking position:fixed descendants
-          ...(scale !== 1 && {
-            transform: `scale(${scale})`,
-            transformOrigin: 'center center'
-          })
+          justifyContent: 'center',
+          alignItems: 'center',
+          overflow: 'hidden',
+          backgroundColor: THEME.BG_BASE
         }}
       >
-        {/* Header - includes horizontal line, page title, and Lesson Editor lozenge */}
-        <Header
-          pageTitle={
-            currentPage === 'define' ? 'DEFINE' :
-            currentPage === 'design' ? 'DESIGN' :
-            currentPage === 'build' ? 'BUILD' :
-            currentPage === 'format' ? 'FORMAT' :
-            currentPage === 'generate' ? 'GENERATE' :
-            currentPage === 'navigate' ? 'NAVIGATION HUB' :
-            currentPage.toUpperCase()
-          }
-          sectionName={null}  /* sectionName no longer used - page title shown in nav row */
-          courseData={courseData}
-          onExitClick={handleExitClick}
-          exitPending={exitPending}
-          lessonEditorOpen={lessonEditorOpen}
-          onLessonEditorToggle={handleLessonEditorToggle}
-          selectedLessonId={selectedLessonId}
-          currentSection={currentPage}
-          onNavigate={handleNavigate}
-        />
+        {/* Stage Container - REFACTOR Phase 1: viewport units */}
+        <div
+          style={{
+            width: '100vw',
+            height: '100vh',
+            flexShrink: 0,
+            background: THEME.BG_DARK,
+            display: 'flex',
+            flexDirection: 'column',
+            position: 'relative',
+            // Only apply transform when scale !== 1 to avoid breaking position:fixed descendants
+            ...(scale !== 1 && {
+              transform: `scale(${scale})`,
+              transformOrigin: 'center center'
+            })
+          }}
+        >
+          {/* Header - includes horizontal line, page title, and Lesson Editor lozenge */}
+          <Header
+            pageTitle={
+              currentPage === 'define' ? 'DEFINE' :
+              currentPage === 'design' ? 'DESIGN' :
+              currentPage === 'build' ? 'BUILD' :
+              currentPage === 'format' ? 'FORMAT' :
+              currentPage === 'generate' ? 'GENERATE' :
+              currentPage === 'navigate' ? 'NAVIGATION HUB' :
+              currentPage.toUpperCase()
+            }
+            sectionName={null}  /* sectionName no longer used - page title shown in nav row */
+            courseData={courseData}
+            onExitClick={handleExitClick}
+            exitPending={exitPending}
+            lessonEditorOpen={lessonEditorOpen}
+            onLessonEditorToggle={handleLessonEditorToggle}
+            selectedLessonId={selectedLessonId}
+            currentSection={currentPage}
+            onNavigate={handleNavigate}
+          />
 
-        {/* Page Content */}
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          {renderPage()}
+          {/* Page Content */}
+          <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            {renderPage()}
+          </div>
+
+          {/* Design Sub-navigation moved to internal DesignNavBar component */}
         </div>
 
-        {/* Design Sub-navigation moved to internal DesignNavBar component */}
+        {/* Lesson Editor Modal - renders on top of all content when open */}
+        {/* Phase 2: onAddTopic, onAddSubtopic, onAddPC props removed - modal uses useDesign() context */}
+        {lessonEditorOpen && (
+          <LessonEditorModal
+            isOpen={lessonEditorOpen}
+            onClose={() => handleLessonEditorToggle(false)}
+            onCreateLesson={handleCreateLesson}
+            onUpdateLesson={handleUpdateLesson}
+            courseData={courseData}
+            timetableData={timetableData}
+            selectedLesson={selectedLessonForEditor}
+          />
+        )}
+
+        <DebugGridController isVisible={showDebugGrid} onEscapeWhenNoPins={handleEscapeNavigation} />
       </div>
-
-      {/* Lesson Editor Modal - renders on top of all content when open */}
-      {lessonEditorOpen && (
-        <LessonEditorModal
-          isOpen={lessonEditorOpen}
-          onClose={() => handleLessonEditorToggle(false)}
-          onCreateLesson={handleCreateLesson}
-          onUpdateLesson={handleUpdateLesson}
-          courseData={enrichedCourseData}
-          timetableData={timetableData}
-          selectedLesson={selectedLessonForEditor}
-          onAddTopic={handleAddTopic}
-          onAddSubtopic={handleAddSubtopic}
-          onAddPC={handleAddPC}
-        />
-      )}
-
-      <DebugGridController isVisible={showDebugGrid} onEscapeWhenNoPins={handleEscapeNavigation} />
-    </div>
+    </DesignProvider>
   )
 }
 

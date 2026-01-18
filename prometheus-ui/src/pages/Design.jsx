@@ -24,7 +24,7 @@
 
 import { useCallback, useEffect } from 'react'
 import { THEME } from '../constants/theme'
-import { DesignProvider, useDesign } from '../contexts/DesignContext'
+import { useDesign } from '../contexts/DesignContext'
 import DesignNavBar from '../components/design/DesignNavBar'
 import OverviewWorkspace from '../components/design/overview/OverviewWorkspace'
 import TimetableWorkspace from '../components/design/TimetableWorkspace'
@@ -35,6 +35,8 @@ import Footer from '../components/Footer'
 // MAIN DESIGN PAGE COMPONENT
 // ============================================
 
+// Phase 2: DesignProvider removed - now at App.jsx level
+// Design page directly uses useDesign() context
 function Design({
   onNavigate,
   courseData,
@@ -50,24 +52,17 @@ function Design({
   onSelectedLessonChange  // Callback to report selected lesson to App
 }) {
   return (
-    <DesignProvider
+    <DesignPageContent
+      onNavigate={onNavigate}
+      courseLoaded={courseLoaded}
+      user={user}
+      courseState={courseState}
       courseData={courseData}
-      setCourseData={setCourseData}
       timetableData={timetableData}
-      setTimetableData={setTimetableData}
-    >
-      <DesignPageContent
-        onNavigate={onNavigate}
-        courseLoaded={courseLoaded}
-        user={user}
-        courseState={courseState}
-        courseData={courseData}
-        timetableData={timetableData}
-        lessonEditorOpen={lessonEditorOpen}
-        onLessonEditorToggle={onLessonEditorToggle}
-        onSelectedLessonChange={onSelectedLessonChange}
-      />
-    </DesignProvider>
+      lessonEditorOpen={lessonEditorOpen}
+      onLessonEditorToggle={onLessonEditorToggle}
+      onSelectedLessonChange={onSelectedLessonChange}
+    />
   )
 }
 

@@ -5,8 +5,41 @@
 > This is the **single source of truth** for Prometheus project status.
 > AI assistants should update this file at the end of each significant session.
 
-**Last Updated:** 2025-01-15
+**Last Updated:** 2025-01-18
 **Last Session By:** Claude Code (CC)
+
+---
+
+## Migration Phase Status
+
+> **PHASE 3 COMPLETE - 2025-01-18**
+>
+> **Declared Migration Phase:** M3 (Derive Legacy)
+>
+> **Actual Compliance:** FULL - All violations fixed, PC canonical-first
+
+| Flag | Expected | Actual | Compliant |
+|------|----------|--------|-----------|
+| WRITE_TO_CANONICAL | true | true | YES |
+| READ_FROM_CANONICAL | true | true | YES |
+| DERIVE_LEGACY | true | true | YES |
+| LEGACY_STORE_REMOVED | false | false | YES |
+
+**Phase 3 Fixes Applied:**
+- Performance Criteria added to canonicalData structure
+- 5 PC functions updated to canonical-first: addPC, updatePC, deletePC, linkItemToPC, unlinkItemFromPC
+- 4 PC reader functions updated to read from canonical
+- ScalarColumns.jsx updated to read PC from canonical
+- clearDesignState updated to reset performanceCriteria
+
+**Phase 2 Fixes (Previous):**
+- DesignProvider lifted to App.jsx level (single context instance)
+- App.jsx `handleAddTopic/Subtopic/PC` handlers REMOVED
+- `hierarchyData` store REMOVED from `timetableData`
+- LessonEditorModal now uses `useDesign()` context for canonical actions
+- `unlinkTopic`, `linkTopicToLO` updated to write canonical first
+
+**Evidence:** See `docs/briefs/PHASE3_GATE_TEST_LOG.md` for Phase 3 verification
 
 ---
 
@@ -59,27 +92,33 @@
 
 | Date | Session | Key Changes |
 |------|---------|-------------|
+| 2025-01-18 | CC | **Phase 3 Behavioural Fix**: SCALAR '+ Lesson' button fixed to add lesson without view switch or clear |
+| 2025-01-18 | CC | **Phase 2-3 Complete**: Canonical model alignment, PC added to canonical, all write/read paths verified |
+| 2025-01-18 | CC | **Phase 0-1 Diagnostics**: Documentation consolidation, state-map.md, mutation-map.md, migration phase determination |
+| 2025-01-16 | CC | **UI Polish**: '+' buttons for SCALAR/Lesson Editor, LESSON LIBRARY rename, tooltip adjustments |
 | 2025-01-15 | CC | **Lesson Editor Redesign**: Two-column layout, notes tabs, image upload, view destination tabs |
-| 2025-01-14 | CC | **SCALAR Bidirectional Sync**: 6 functions modified in DesignContext.jsx for Topic/Subtopic sync |
-| 2025-01-14 | CC | **OVERVIEW Planning Tools**: PlanningCanvas, Timeline, NoteBlock, ColorPalette, CourseElementBar |
-| 2025-01-11 | CC | Phase 6 System Testing: 180 tests passed, all Calm Wheel phases complete |
-| 2025-01-11 | CC | Phase 2-6 Integration: Canonical store, LessonCardPrimitive, WheelNav, ScalarDock, WorkDock |
 
 ---
 
-## Latest Commit
+## Latest Commits
 
 ```
-commit 5410705 (feature/design-calm-wheel)
-Date: 2025-01-15
+commit 2723a61 (feature/design-calm-wheel)
+Date: 2025-01-16
 
-feat(UI): Redesign LessonEditorModal with two-column professional layout
+feat(UI): Add + buttons, LESSON LIBRARY rename, and tooltip adjustments
 
-- Two-column design (left: form fields, right: notes/images)
-- Slide Notes / Instructor Notes tabs with pagination
-- Image drag-and-drop upload area
-- View destination tabs: UNALLOCATED / TIMETABLE / SCALAR
-- 1 file modified (+793 / -696 lines), 1 mockup added
+- SCALAR: '+' buttons next to LEARNING OBJECTIVES, LESSON TITLES, PERFORMANCE CRITERIA headers
+- SCALAR: LINKING MODE label with multi-line instructions (right-aligned)
+- LESSON EDITOR: '+' buttons for TOPIC, SUB TOPICS, PERFORMANCE CRITERIA dropdowns
+- TIMETABLE: Renamed "Unallocated" to "LESSON LIBRARY"
+- NAV HUB: Tooltip positions adjusted (DESIGN/FORMAT UP 20px, BUILD UP 50px)
+- 6 files modified
+
+commit 79ca18a
+Date: 2025-01-16
+
+feat(UI): Navigation Hub tooltip positioning and OVERVIEW tab improvements
 ```
 
 ---
@@ -92,12 +131,15 @@ None currently.
 
 ## Technical Debt
 
-| Item | Location | Priority |
-|------|----------|----------|
-| Backend not connected | `core/api/` | HIGH |
-| PKE not implemented | `core/pke/` | HIGH |
-| Consumer migration (LessonBlock) | `src/components/design/` | LOW |
-| Deprecated files retained | `src/deprecated/` | LOW |
+| Item | Location | Priority | Status |
+|------|----------|----------|--------|
+| ~~Non-canonical write paths~~ | App.jsx | ~~CRITICAL~~ | FIXED (Phase 2) |
+| ~~Dual-store sync issues~~ | DesignContext.jsx | ~~CRITICAL~~ | FIXED (Phase 2) |
+| ~~PC scalar-only writes~~ | DesignContext.jsx | ~~CRITICAL~~ | FIXED (Phase 3) |
+| Backend not connected | `core/api/` | HIGH | Open |
+| PKE not implemented | `core/pke/` | HIGH | Open |
+| Consumer migration (LessonBlock) | `src/components/design/` | LOW | Open |
+| Deprecated files retained | `src/deprecated/` | LOW | Open |
 
 ---
 
@@ -105,21 +147,41 @@ None currently.
 
 *Important context for the next session:*
 
+### Phase 3 Behavioural Fix (2025-01-18)
+
+**SCALAR '+ Lesson' Button Fixed:**
+- **Issue:** Clicking "+" next to LESSON TITLES triggered `clearDesignState()` and switched view to TIMETABLE
+- **Root Cause:** ScalarDock.jsx used `onAddLesson` prop from Design.jsx which called `handleAddLessonFromScalar()` - this function incorrectly cleared state
+- **Fix:** Changed ScalarDock.jsx button to use `createLessonFromScalar('NEW LESSON')` directly from DesignContext
+- **File Modified:** `src/components/design/ScalarDock.jsx` (lines 906, 1383)
+
+**Behavioural Tests:** All 4 tests now PASS:
+1. CLEAR persistence ✓
+2. Cross-view persistence ✓
+3. SCALAR '+ Lesson' behaviour ✓ (Fixed)
+4. LINK MODE persistence ✓
+
+**Evidence:** See `docs/briefs/PHASE3_BEHAVIOUR_TEST_LOG.md`
+
+### UI Polish Session (2025-01-16)
+
+**'+' Button Additions:**
+- SCALAR column headers: LEARNING OBJECTIVES, LESSON TITLES, PERFORMANCE CRITERIA
+- Lesson Editor dropdowns: TOPICS, SUB TOPICS, PERFORMANCE CRITERIA
+- All styled burnt orange (#FF6600), hover to white
+
+**LESSON LIBRARY Rename:**
+- `UnallocatedLessonsPanel.jsx` label changed from "Unallocated" to "LESSON LIBRARY"
+
+**LINKING MODE Update:**
+- Multi-line instructions, positioned right side of SCALAR header
+
 ### Lesson Editor Modal Redesign (2025-01-15)
 
 **Complete rewrite** of `LessonEditorModal.jsx` with professional two-column layout:
 - Left column: All form dropdowns (LO, Topics, Subtopics, Type, Times, PC)
 - Right column: Notes tabs with pagination, Image drag-drop upload
 - Bottom: View destination tabs, CANCEL/SAVE buttons
-
-**Key state patterns:**
-```javascript
-const [activeNotesTab, setActiveNotesTab] = useState('slide')
-const [activeViewTab, setActiveViewTab] = useState('timetable')
-const [currentNoteIndex, setCurrentNoteIndex] = useState(0)
-const [slideNotes, setSlideNotes] = useState([''])
-const [instructorNotes, setInstructorNotes] = useState([''])
-```
 
 **Testing completed:** All 14 manual tests passed via Playwright
 
@@ -132,9 +194,11 @@ const [instructorNotes, setInstructorNotes] = useState([''])
 
 ### Testing Status
 
+- Phase 3 Behavioural Tests: All 4 tests PASSING
 - Lesson Editor Modal: All manual tests PASSING
-- SCALAR Sync: Ready for user validation
+- SCALAR Sync: Validated and working
 - Test files: `prometheus-ui/test_bidirectional_sync.py`, `test_scalar.py`
+- Test logs: `docs/briefs/PHASE3_GATE_TEST_LOG.md`, `docs/briefs/PHASE3_BEHAVIOUR_TEST_LOG.md`
 
 ---
 

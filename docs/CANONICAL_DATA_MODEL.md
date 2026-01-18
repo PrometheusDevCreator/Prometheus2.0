@@ -1,7 +1,19 @@
 # Canonical Data Model - Prometheus Hierarchy
 
+> **SUPERSEDED**
+>
+> This document has been **superseded** by `COURSE_DATA_CONTRACT.md` (v1.0, 2025-01-10).
+>
+> **Authoritative specification:** [`docs/COURSE_DATA_CONTRACT.md`](COURSE_DATA_CONTRACT.md)
+>
+> This file is retained for historical reference only. Do not use for implementation.
+>
+> **Archived:** 2025-01-18
+
+---
+
 **Date:** 2026-01-03
-**Status:** Implementation Proposal
+**Status:** ~~Implementation Proposal~~ **SUPERSEDED**
 **Directive:** Founder Authority - Deterministic Numbering System
 
 ---

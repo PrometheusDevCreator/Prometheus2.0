@@ -18,6 +18,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { THEME } from '../constants/theme'
+import { useDesign } from '../contexts/DesignContext'
 
 // Lesson type options
 const LESSON_TYPES = [
@@ -41,12 +42,14 @@ function LessonEditorModal({
   courseData = {},
   timetableData = { lessons: [] },
   selectedLesson = null,
-  initialTab = 'timetable', // Which bottom tab to show
-  onAddTopic,  // Handler to add new topic
-  onAddSubtopic,  // Handler to add new subtopic
-  onAddPC  // Handler to add new performance criteria
+  initialTab = 'timetable' // Which bottom tab to show
+  // Phase 2: onAddTopic, onAddSubtopic, onAddPC props removed
+  // Now using useDesign() context for canonical actions
 }) {
   const modalRef = useRef(null)
+
+  // Phase 2: Get canonical actions from DesignContext
+  const { addTopic, addSubtopic, addPerformanceCriteria, canonicalData } = useDesign()
   const isEditingExisting = selectedLesson !== null
 
   // Form state
@@ -272,17 +275,25 @@ function LessonEditorModal({
   const selectedLO = courseData.learningObjectives?.find(lo =>
     formData.learningObjectives.includes(lo.id || lo)
   )
-  // Find selected topic from courseData.topics (now comes as proper objects)
-  const selectedTopic = courseData.topics?.find(t =>
+
+  // Phase 2: Read topics/subtopics from canonicalData instead of courseData
+  const canonicalTopics = Object.values(canonicalData?.topics || {})
+  const canonicalSubtopics = Object.values(canonicalData?.subtopics || {})
+
+  // Find selected topic from canonical data
+  const selectedTopic = canonicalTopics.find(t =>
     formData.topics.some(ft => ft?.id === t.id || ft === t.id)
   ) || formData.topics[0]
+
   // Get subtopics filtered by selected topic
   const availableSubtopics = selectedTopic?.id
-    ? (courseData.subtopics || []).filter(s => s.topicId === selectedTopic.id)
+    ? canonicalSubtopics.filter(s => s.topicId === selectedTopic.id)
     : []
-  const selectedSubtopic = (courseData.subtopics || []).find(s =>
+
+  const selectedSubtopic = canonicalSubtopics.find(s =>
     formData.subtopics.some(fs => fs?.id === s.id || fs === s.id)
   ) || formData.subtopics[0]
+
   const selectedType = LESSON_TYPES.find(t => t.id === formData.lessonType) || LESSON_TYPES[1]
   const selectedPC = formData.performanceCriteria[0]
 
@@ -459,14 +470,14 @@ function LessonEditorModal({
               valueColor={selectedTopic ? THEME.TEXT_PRIMARY : THEME.TEXT_DIM}
               isOpen={showTopicDropdown}
               onToggle={() => setShowTopicDropdown(!showTopicDropdown)}
-              options={courseData.topics || []}
+              options={canonicalTopics}
               onSelect={(topic) => {
                 updateField('topics', [topic])
                 updateField('subtopics', []) // Clear subtopics when topic changes
                 setShowTopicDropdown(false)
               }}
               renderOption={(t) => `${t.serial || t.number || ''} ${t.title}`}
-              onAdd={onAddTopic}
+              onAdd={addTopic}
             />
 
             {/* Sub Topics */}
@@ -485,7 +496,7 @@ function LessonEditorModal({
                 setShowSubtopicDropdown(false)
               }}
               renderOption={(s) => `${s.serial || s.number || ''} ${s.title}`}
-              onAdd={selectedTopic ? onAddSubtopic : undefined}
+              onAdd={selectedTopic ? addSubtopic : undefined}
             />
 
             {/* Lesson Type + Times Row */}
@@ -559,7 +570,7 @@ function LessonEditorModal({
                 setShowPCDropdown(false)
               }}
               renderOption={(pc) => pc.name || pc.description || pc}
-              onAdd={onAddPC}
+              onAdd={addPerformanceCriteria}
             />
           </div>
 
