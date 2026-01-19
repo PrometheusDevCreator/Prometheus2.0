@@ -156,47 +156,55 @@ This is the **master index** of all Prometheus documentation. It serves as the s
 
 ---
 
-## 11. Claude Code Optimisation (Reference)
+## 11. Claude Code Optimisation
 
-> **REFERENCE ONLY — NO AUTO-INTEGRATION**
+> **SELECTIVE ADOPTION (M4.5)**
 >
-> These materials are staged for reference only. They do not override existing
-> project governance (`/CLAUDE.md`, `/CLAUDE_PROTOCOL.md`, project doctrine).
-> Adoption requires explicit Founder approval.
+> Non-executable reference materials adopted as ACTIVE documentation.
+> Hooks, settings.json, and install.sh remain REFERENCE ONLY.
+> See CLAUDE_PROTOCOL.md Appendix C for usage.
+
+### 11.1 Adopted Materials (ACTIVE)
+
+| File | Purpose | Status | Last Verified |
+|------|---------|--------|---------------|
+| `.planning/STATE.md` | Session state template | ACTIVE | 2025-01-19 |
+| `.claude/commands/context.md` | Context analysis command | ACTIVE | 2025-01-19 |
+| `.claude/commands/handoff.md` | Session handoff command | ACTIVE | 2025-01-19 |
+| `.claude/commands/resume.md` | Session resume command | ACTIVE | 2025-01-19 |
+| `.claude/commands/worktree.md` | Parallel branch command | ACTIVE | 2025-01-19 |
+| `.claude/commands/audit.md` | Project audit command | ACTIVE | 2025-01-19 |
+| `.claude/rules/python-files.md` | Python coding standards | ACTIVE | 2025-01-19 |
+| `.claude/rules/typescript-files.md` | TypeScript/React standards | ACTIVE | 2025-01-19 |
+| `.claude/rules/html-files.md` | HTML dashboard standards | ACTIVE | 2025-01-19 |
+
+### 11.2 Reference Materials (NOT ADOPTED)
 
 | File | Purpose | Status | Source |
 |------|---------|--------|--------|
 | `docs/cc/CLAUDE_CODE_GUIDE.md` | Universal development protocol concepts | REFERENCE ONLY | External (Claude) |
 | `docs/cc/IMPLEMENTATION-GUIDE.md` | Installation and workflow guide | REFERENCE ONLY | External (Claude) |
-| `docs/cc/optimization-package/` | Full optimization package structure | REFERENCE ONLY | External (Claude) |
+| `docs/cc/optimization-package/install.sh` | Installation script | REFERENCE ONLY | External (Claude) |
+| `docs/cc/optimization-package/.claude/settings.json` | Permissions config | REFERENCE ONLY | External (Claude) |
+| `docs/cc/optimization-package/.claude/hooks/` | Hook scripts | REFERENCE ONLY | External (Claude) |
 
-### Optimization Package Contents
+### 11.3 Optimization Package Structure (Reference)
 
 ```
 docs/cc/optimization-package/
-├── CLAUDE_CODE_GUIDE.md
-├── IMPLEMENTATION-GUIDE.md
+├── CLAUDE_CODE_GUIDE.md          (REFERENCE ONLY)
+├── IMPLEMENTATION-GUIDE.md       (REFERENCE ONLY)
 ├── install.sh                    (REFERENCE ONLY — NOT EXECUTABLE)
 ├── .planning/
-│   └── STATE.md                  (Session state template)
+│   └── STATE.md                  (ADOPTED → /.planning/STATE.md)
 └── .claude/
-    ├── settings.json             (Permissions and config)
-    ├── hooks/
-    │   ├── session-start.sh      (Session start hook)
-    │   └── pre-commit.sh         (Git safety hook)
-    ├── rules/
-    │   ├── python-files.md       (Python coding standards)
-    │   ├── typescript-files.md   (TypeScript/React standards)
-    │   └── html-files.md         (HTML dashboard standards)
-    └── commands/
-        ├── context.md            (/cc:context command)
-        ├── handoff.md            (/cc:handoff command)
-        ├── resume.md             (/cc:resume command)
-        ├── worktree.md           (/cc:worktree command)
-        └── audit.md              (/cc:audit command)
+    ├── settings.json             (REFERENCE ONLY)
+    ├── hooks/                    (REFERENCE ONLY)
+    ├── rules/                    (ADOPTED → /.claude/rules/)
+    └── commands/                 (ADOPTED → /.claude/commands/)
 ```
 
-**Integration Status:** NOT INTEGRATED — Staged for review only
+**Integration Status:** SELECTIVE ADOPTION — Per M4.5 Task Order (2025-01-19)
 
 ---
 
@@ -213,6 +221,7 @@ docs/cc/optimization-package/
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.2 | 2025-01-19 | CC | M4.5: Selective CC Optimisation Adoption (state template, runbooks, rules) |
 | 1.1 | 2025-01-18 | CC | Added Claude Code Optimisation (Reference) section |
 | 1.0 | 2025-01-18 | CC | Initial index creation per Task Order |
 

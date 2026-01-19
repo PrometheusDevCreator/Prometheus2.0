@@ -604,9 +604,57 @@ Prometheus2.0/
 
 ---
 
+## APPENDIX C: SESSION CONTINUITY PATTERNS (Adopted M4.5)
+
+### C.1 Session State Management
+
+CC should use session state patterns for continuity across context boundaries.
+
+**State File Location:** `.planning/STATE.md`
+
+**Commands Available:**
+| Command | Purpose | When to Use |
+|---------|---------|-------------|
+| `/cc:context` | Analyze context usage | When session is getting long |
+| `/cc:handoff` | Create session state | Before context gets critical |
+| `/cc:resume` | Resume previous session | At start of fresh session |
+| `/cc:worktree` | Create parallel branch | For parallel feature work |
+| `/cc:audit` | Discover project docs | When unfamiliar with project |
+
+**Command Files:** `.claude/commands/*.md`
+
+### C.2 Language-Specific Rules
+
+CC should follow language-specific patterns when modifying code.
+
+**Rules Files:** `.claude/rules/*.md`
+
+| Rule File | Scope |
+|-----------|-------|
+| `python-files.md` | `*.py` in `core/`, `orchestrator/` |
+| `typescript-files.md` | `*.jsx`, `*.js` in `prometheus-ui/` |
+| `html-files.md` | `*.html` dashboards/tools |
+
+### C.3 Handoff Protocol
+
+When context is HIGH or CRITICAL:
+
+1. Run `/cc:handoff` to capture state
+2. Update `docs/STATUS.md` with significant changes
+3. Confirm handoff complete before closing
+
+When resuming work:
+
+1. Run `/cc:resume` to load previous state
+2. Check `docs/STATUS.md` for authoritative system state
+3. Review `docs/TODO.md` for active tasks
+
+---
+
 *End of Protocol Document*
 
 **Document Control:**
-- Created: [Current Date]
+- Created: 2025-01-01
+- Updated: 2025-01-19 (M4.5: CC Optimisation Adoption)
 - Author: Prometheus Development Team
 - Review Cycle: Update as needed based on learnings
