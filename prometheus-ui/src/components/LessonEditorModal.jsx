@@ -49,7 +49,18 @@ function LessonEditorModal({
   const modalRef = useRef(null)
 
   // Phase 2: Get canonical actions from DesignContext
-  const { addTopic, addSubtopic, addPerformanceCriteria, canonicalData } = useDesign()
+  // Phase D: Added lesson-centric functions for proper loId + lessonId linking
+  // Phase C: Added update functions for inline editing
+  const {
+    addTopic,
+    addSubtopic,
+    addPerformanceCriteria,
+    canonicalData,
+    addTopicToLesson,
+    addSubtopicToLessonTopic,
+    updateLessonTopic,
+    updateLessonSubtopic
+  } = useDesign()
   const isEditingExisting = selectedLesson !== null
 
   // Form state
@@ -86,6 +97,110 @@ function LessonEditorModal({
   const [showSubtopicDropdown, setShowSubtopicDropdown] = useState(false)
   const [showTypeDropdown, setShowTypeDropdown] = useState(false)
   const [showPCDropdown, setShowPCDropdown] = useState(false)
+
+  // Phase C: Inline editing state for topics/subtopics
+  const [editingTopicId, setEditingTopicId] = useState(null)
+  const [editingSubtopicId, setEditingSubtopicId] = useState(null)
+  const [editingTitle, setEditingTitle] = useState('')
+  const editInputRef = useRef(null)
+
+  // Phase C: Auto-focus when editing state changes
+  useEffect(() => {
+    if ((editingTopicId || editingSubtopicId) && editInputRef.current) {
+      editInputRef.current.focus()
+      editInputRef.current.select()
+    }
+  }, [editingTopicId, editingSubtopicId])
+
+  // Phase C: Commit topic title edit
+  const commitTopicEdit = useCallback(() => {
+    if (editingTopicId && editingTitle.trim() && selectedLesson?.id) {
+      // Phase C: Find lesson topic - try both id and scalarTopicId match
+      // (editingTopicId could be lesson topic ID from create-then-edit, or canonical ID from double-click)
+      const lessonTopic = selectedLesson?.topics?.find(t =>
+        t.id === editingTopicId || t.scalarTopicId === editingTopicId
+      )
+      if (lessonTopic) {
+        // Use lesson topic ID for update
+        updateLessonTopic(selectedLesson.id, lessonTopic.id, { title: editingTitle.trim() })
+        // Phase C: Also select the edited topic in the form
+        const scalarTopicId = lessonTopic.scalarTopicId
+        const topicObj = scalarTopicId ? canonicalData?.topics?.[scalarTopicId] : null
+        if (topicObj) {
+          setFormData(prev => ({ ...prev, topics: [topicObj] }))
+        }
+      }
+    }
+    setEditingTopicId(null)
+    setEditingTitle('')
+  }, [editingTopicId, editingTitle, selectedLesson, updateLessonTopic, canonicalData])
+
+  // Phase C: Commit subtopic title edit
+  const commitSubtopicEdit = useCallback(() => {
+    if (editingSubtopicId && editingTitle.trim() && selectedLesson?.id) {
+      // Phase C: Find parent topic and subtopic - try both id and scalarSubtopicId match
+      let parentTopic = null
+      let lessonSubtopic = null
+      for (const t of (selectedLesson?.topics || [])) {
+        const s = (t.subtopics || []).find(sub =>
+          sub.id === editingSubtopicId || sub.scalarSubtopicId === editingSubtopicId
+        )
+        if (s) {
+          parentTopic = t
+          lessonSubtopic = s
+          break
+        }
+      }
+      if (parentTopic && lessonSubtopic) {
+        // Use lesson subtopic ID for update
+        updateLessonSubtopic(selectedLesson.id, parentTopic.id, lessonSubtopic.id, { title: editingTitle.trim() })
+        // Phase C: Also select the edited subtopic in the form
+        const scalarSubtopicId = lessonSubtopic.scalarSubtopicId
+        const subtopicObj = scalarSubtopicId ? canonicalData?.subtopics?.[scalarSubtopicId] : null
+        if (subtopicObj) {
+          setFormData(prev => ({ ...prev, subtopics: [subtopicObj] }))
+        }
+      }
+    }
+    setEditingSubtopicId(null)
+    setEditingTitle('')
+  }, [editingSubtopicId, editingTitle, selectedLesson, updateLessonSubtopic, canonicalData])
+
+  // Phase C: Cancel editing
+  const cancelEdit = useCallback(() => {
+    setEditingTopicId(null)
+    setEditingSubtopicId(null)
+    setEditingTitle('')
+  }, [])
+
+  // Phase C: Handle key events during editing
+  const handleEditKeyDown = useCallback((e, type) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (type === 'topic') {
+        commitTopicEdit()
+      } else {
+        commitSubtopicEdit()
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      cancelEdit()
+    }
+  }, [commitTopicEdit, commitSubtopicEdit, cancelEdit])
+
+  // Phase C: Start editing a topic (create-then-edit or double-click)
+  const startEditingTopic = useCallback((topicId, currentTitle) => {
+    setEditingTopicId(topicId)
+    setEditingSubtopicId(null)
+    setEditingTitle(currentTitle || 'New Topic')
+  }, [])
+
+  // Phase C: Start editing a subtopic
+  const startEditingSubtopic = useCallback((subtopicId, currentTitle) => {
+    setEditingSubtopicId(subtopicId)
+    setEditingTopicId(null)
+    setEditingTitle(currentTitle || 'New Subtopic')
+  }, [])
 
   // Helper to format time
   const formatTimeForInput = (timeStr) => {
@@ -272,8 +387,10 @@ function LessonEditorModal({
   }
 
   // Get display values for dropdowns
-  const selectedLO = courseData.learningObjectives?.find(lo =>
-    formData.learningObjectives.includes(lo.id || lo)
+  // Phase B: Read LOs from canonicalData instead of courseData (strings)
+  const canonicalLOs = Object.values(canonicalData?.los || {})
+  const selectedLO = canonicalLOs.find(lo =>
+    formData.learningObjectives.includes(lo.id)
   )
 
   // Phase 2: Read topics/subtopics from canonicalData instead of courseData
@@ -452,7 +569,7 @@ function LessonEditorModal({
               highlightFirst={true}
               isOpen={showLODropdown}
               onToggle={() => setShowLODropdown(!showLODropdown)}
-              options={courseData.learningObjectives || []}
+              options={canonicalLOs}
               onSelect={(lo) => {
                 updateField('learningObjectives', [lo.id || lo])
                 setShowLODropdown(false)
@@ -477,7 +594,22 @@ function LessonEditorModal({
                 setShowTopicDropdown(false)
               }}
               renderOption={(t) => `${t.serial || t.number || ''} ${t.title}`}
-              onAdd={addTopic}
+              onAdd={selectedLesson?.id ? () => {
+                const newTopicId = addTopicToLesson(selectedLesson.id, 'New Topic', selectedLO?.id)
+                if (newTopicId) {
+                  // Phase C: Enter edit mode immediately after creation
+                  startEditingTopic(newTopicId, 'New Topic')
+                }
+              } : undefined}
+              // Phase C: Inline editing props
+              isEditing={!!editingTopicId}
+              editValue={editingTitle}
+              onEditChange={(e) => setEditingTitle(e.target.value)}
+              onEditKeyDown={(e) => handleEditKeyDown(e, 'topic')}
+              onEditBlur={commitTopicEdit}
+              editInputRef={editInputRef}
+              // Phase C: Double-click to edit existing topic
+              onDoubleClick={selectedTopic?.id ? () => startEditingTopic(selectedTopic.id, selectedTopic.title) : undefined}
             />
 
             {/* Sub Topics */}
@@ -496,7 +628,22 @@ function LessonEditorModal({
                 setShowSubtopicDropdown(false)
               }}
               renderOption={(s) => `${s.serial || s.number || ''} ${s.title}`}
-              onAdd={selectedTopic ? addSubtopic : undefined}
+              onAdd={(selectedLesson?.id && selectedTopic?.id) ? () => {
+                const newSubtopicId = addSubtopicToLessonTopic(selectedLesson.id, selectedTopic.id, 'New Subtopic')
+                if (newSubtopicId) {
+                  // Phase C: Enter edit mode immediately after creation
+                  startEditingSubtopic(newSubtopicId, 'New Subtopic')
+                }
+              } : undefined}
+              // Phase C: Inline editing props
+              isEditing={!!editingSubtopicId}
+              editValue={editingTitle}
+              onEditChange={(e) => setEditingTitle(e.target.value)}
+              onEditKeyDown={(e) => handleEditKeyDown(e, 'subtopic')}
+              onEditBlur={commitSubtopicEdit}
+              editInputRef={editInputRef}
+              // Phase C: Double-click to edit existing subtopic
+              onDoubleClick={selectedSubtopic?.id ? () => startEditingSubtopic(selectedSubtopic.id, selectedSubtopic.title) : undefined}
             />
 
             {/* Lesson Type + Times Row */}
@@ -908,8 +1055,49 @@ function DropdownField({
   options = [],
   onSelect,
   renderOption,
-  onAdd  // Optional handler for '+' button
+  onAdd,  // Optional handler for '+' button
+  // Phase C: Inline editing props
+  isEditing = false,
+  editValue = '',
+  onEditChange,
+  onEditKeyDown,
+  onEditBlur,
+  editInputRef,
+  onDoubleClick  // Phase C: Double-click to edit existing item
 }) {
+  // Phase C: Click timer ref for distinguishing single vs double click
+  const clickTimerRef = useRef(null)
+
+  // Phase C: Handle click with delay to allow double-click to cancel
+  const handleClick = useCallback(() => {
+    if (onDoubleClick) {
+      // If double-click handler exists, delay the toggle to detect double-click
+      if (clickTimerRef.current) {
+        clearTimeout(clickTimerRef.current)
+      }
+      clickTimerRef.current = setTimeout(() => {
+        onToggle()
+        clickTimerRef.current = null
+      }, 200)  // 200ms delay to detect double-click
+    } else {
+      // No double-click handler, toggle immediately
+      onToggle()
+    }
+  }, [onToggle, onDoubleClick])
+
+  // Phase C: Handle double-click - cancel the pending single-click and enter edit mode
+  const handleDoubleClick = useCallback((e) => {
+    if (onDoubleClick) {
+      // Cancel pending single-click
+      if (clickTimerRef.current) {
+        clearTimeout(clickTimerRef.current)
+        clickTimerRef.current = null
+      }
+      e.stopPropagation()
+      onDoubleClick()
+    }
+  }, [onDoubleClick])
+
   // Parse value to highlight first word if needed
   const renderValue = () => {
     if (highlightFirst && value) {
@@ -975,26 +1163,50 @@ function DropdownField({
           </span>
         )}
       </div>
-      <button
-        onClick={onToggle}
-        style={{
-          width: '100%',
-          background: 'transparent',
-          border: `1px solid ${THEME.BORDER}`,
-          borderRadius: '4px',
-          padding: '10px 12px',
-          textAlign: 'left',
-          cursor: 'pointer',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          fontSize: '13px',
-          fontFamily: THEME.FONT_PRIMARY
-        }}
-      >
-        {renderValue()}
-        <span style={{ color: THEME.AMBER, marginLeft: '8px' }}>V</span>
-      </button>
+      {/* Phase C: Show input when editing, otherwise show dropdown button */}
+      {isEditing ? (
+        <input
+          ref={editInputRef}
+          type="text"
+          value={editValue}
+          onChange={onEditChange}
+          onKeyDown={onEditKeyDown}
+          onBlur={onEditBlur}
+          style={{
+            width: '100%',
+            background: '#2a2a2a',
+            border: `1px solid ${THEME.GREEN_BRIGHT}`,
+            borderRadius: '4px',
+            padding: '10px 12px',
+            fontSize: '13px',
+            fontFamily: THEME.FONT_PRIMARY,
+            color: THEME.WHITE,
+            outline: 'none'
+          }}
+        />
+      ) : (
+        <button
+          onClick={handleClick}
+          onDoubleClick={handleDoubleClick}
+          style={{
+            width: '100%',
+            background: 'transparent',
+            border: `1px solid ${THEME.BORDER}`,
+            borderRadius: '4px',
+            padding: '10px 12px',
+            textAlign: 'left',
+            cursor: 'pointer',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontSize: '13px',
+            fontFamily: THEME.FONT_PRIMARY
+          }}
+        >
+          {renderValue()}
+          <span style={{ color: THEME.AMBER, marginLeft: '8px' }}>V</span>
+        </button>
+      )}
       {isOpen && options.length > 0 && (
         <DropdownList
           options={options}

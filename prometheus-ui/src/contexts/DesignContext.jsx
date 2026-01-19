@@ -778,6 +778,34 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     }
   }, [courseData?.learningObjectives, convertCourseDataLOs])
 
+  // Phase B Fix: Sync courseData.learningObjectives to canonicalData.los
+  // This ensures LOs created in DEFINE appear in canonical store for Lesson Editor
+  useEffect(() => {
+    if (courseData?.learningObjectives?.length > 0) {
+      const converted = convertCourseDataLOs(courseData.learningObjectives)
+      const losMap = {}
+      converted.forEach(lo => {
+        losMap[lo.id] = {
+          id: lo.id,
+          moduleId: 'module-1',
+          verb: lo.verb,
+          description: lo.description,
+          order: lo.order,
+          expanded: lo.expanded ?? true
+        }
+      })
+
+      // Only update if we have new LOs to add
+      if (Object.keys(losMap).length > 0) {
+        canonicalLog('SYNC_DEFINE_LOS_TO_CANONICAL', {
+          loCount: Object.keys(losMap).length,
+          los: Object.values(losMap).map(l => `${l.order}. ${l.verb}`)
+        })
+        setCanonicalData(prev => ({ ...prev, los: losMap }))
+      }
+    }
+  }, [courseData?.learningObjectives, convertCourseDataLOs])
+
   // --------------------------------------------
   // SELECTION STATE (exactly one at a time)
   // --------------------------------------------
@@ -1315,7 +1343,8 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
   }, [recalculateLessonTopicNumbers])
 
   // Add topic to a lesson (with LO-based numbering and Scalar auto-sync)
-  const addTopicToLesson = useCallback((lessonId, topicTitle = 'New Topic') => {
+  // Phase D: Added preferredLOId parameter for Lesson Editor integration
+  const addTopicToLesson = useCallback((lessonId, topicTitle = 'New Topic', preferredLOId = null) => {
     const timestamp = Date.now()
     const lessonTopicId = `topic-lesson-${timestamp}`
     const scalarTopicId = `topic-scalar-${timestamp}`
@@ -1327,7 +1356,9 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       return
     }
 
-    const primaryLOId = lesson.learningObjectives?.[0] || null
+    // Phase D: Use preferredLOId if provided (from Lesson Editor form selection),
+    // otherwise fall back to lesson's first assigned LO
+    const primaryLOId = preferredLOId || lesson.learningObjectives?.[0] || null
     const loOrder = getLOOrder(primaryLOId)
 
     debugLog('ADD_TOPIC_TO_LESSON_START', {
@@ -1344,7 +1375,8 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       const currentLesson = prev.find(l => l.id === lessonId)
       if (!currentLesson) return prev
 
-      // If no LO assigned, use sequential "x.N" numbering (no Scalar sync)
+      // If no LO assigned, use sequential "x.N" numbering
+      // Phase C: Still link to canonical via scalarTopicId for inline editing support
       if (!loOrder) {
         const existingTopicCount = (currentLesson.topics || []).length
         const newTopic = {
@@ -1352,11 +1384,12 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
           title: topicTitle,
           number: `x.${existingTopicCount + 1}`,  // Sequential: x.1, x.2, x.3 etc
           loId: null,
-          scalarTopicId: null,
+          scalarTopicId: scalarTopicId,  // Phase C: Link to canonical for update support
           subtopics: []
         }
         debugLog('ADD_TOPIC_TO_LESSON_UNLINKED', {
           topicId: lessonTopicId,
+          scalarTopicId,  // Phase C: Added for debugging
           topicTitle,
           number: newTopic.number,
           reason: 'No LO assigned to lesson'
@@ -1462,6 +1495,9 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
         return prev
       })
     }
+
+    // Phase C: Return the lesson topic ID for create-then-edit
+    return lessonTopicId
   }, [lessons, getLOOrder])
 
   // Remove topic from a lesson (checks both id and scalarTopicId)
@@ -1554,7 +1590,7 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
         id: lessonSubtopicId,
         title: subtopicTitle,
         number: `${topicNumber}.${nextSubNum}`,  // e.g., "1.2.3" or "x.1.1"
-        scalarSubtopicId: !isUnallocated && scalarTopicId ? scalarSubtopicId : null // Link to scalar only if allocated
+        scalarSubtopicId: scalarTopicId ? scalarSubtopicId : null  // Phase C: Link to canonical for update support
       }
 
       // PHASE 1: Sync to canonical data store (ScalarDock reads from here)
@@ -1617,6 +1653,9 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
           : l
       )
     })
+
+    // Phase C: Return the lesson subtopic ID for create-then-edit
+    return lessonSubtopicId
   }, [])
 
   // Remove subtopic from a lesson topic
