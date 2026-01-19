@@ -22,7 +22,7 @@ export const CANONICAL_FLAGS = {
   WRITE_TO_CANONICAL: true,      // Phase M1: All writes go to canonical
   READ_FROM_CANONICAL: true,     // Phase M2: Prefer canonical reads
   DERIVE_LEGACY: true,           // Phase M3: Derive legacy from canonical
-  LEGACY_STORE_REMOVED: false,   // Phase M4: Legacy store deleted (not yet)
+  LEGACY_STORE_REMOVED: true,    // Phase M4: Legacy store deleted (COMPLETED 2025-01-19)
   DEBUG_LOGGING: true,           // Enable detailed logging during transition
 
   // Phase 4-5: Calm Wheel Integration

@@ -5,27 +5,36 @@
 > This is the **single source of truth** for Prometheus project status.
 > AI assistants should update this file at the end of each significant session.
 
-**Last Updated:** 2025-01-18
+**Last Updated:** 2025-01-19
 **Last Session By:** Claude Code (CC)
 
 ---
 
 ## Migration Phase Status
 
-> **PHASE 3 COMPLETE - 2025-01-18**
+> **PHASE 4 COMPLETE - 2025-01-19**
 >
-> **Declared Migration Phase:** M3 (Derive Legacy)
+> **Declared Migration Phase:** M4 (Legacy Store Removed)
 >
-> **Actual Compliance:** FULL - All violations fixed, PC canonical-first
+> **Actual Compliance:** FULL - All legacy writes removed, canonical is sole authority
 
 | Flag | Expected | Actual | Compliant |
 |------|----------|--------|-----------|
 | WRITE_TO_CANONICAL | true | true | YES |
 | READ_FROM_CANONICAL | true | true | YES |
 | DERIVE_LEGACY | true | true | YES |
-| LEGACY_STORE_REMOVED | false | false | YES |
+| LEGACY_STORE_REMOVED | true | true | YES |
 
-**Phase 3 Fixes Applied:**
+**Phase 4 (M4) Changes Applied:**
+- `LEGACY_STORE_REMOVED` flag set to true in canonicalAdapter.js
+- `effectiveScalarData` now uses useMemo with M4 fallback warning
+- `updateTopicTitle` and `updateSubtopicTitle` now write to canonical
+- `toggleScalarExpand` updated to write lo/topic expanded state to canonical
+- All guarded `setScalarData` calls now skip (flag is true)
+- Build verified: SUCCESS
+- Dev server verified: HTTP 200
+
+**Phase 3 Fixes (Previous):**
 - Performance Criteria added to canonicalData structure
 - 5 PC functions updated to canonical-first: addPC, updatePC, deletePC, linkItemToPC, unlinkItemFromPC
 - 4 PC reader functions updated to read from canonical
@@ -39,7 +48,61 @@
 - LessonEditorModal now uses `useDesign()` context for canonical actions
 - `unlinkTopic`, `linkTopicToLO` updated to write canonical first
 
-**Evidence:** See `docs/briefs/PHASE3_GATE_TEST_LOG.md` for Phase 3 verification
+**Evidence:** See `docs/briefs/M4_GATE_TEST_LOG.md` for M4 verification
+
+---
+
+## M4 Architecture Clarification
+
+> **"Legacy Store Removed" vs "Derived Scalar View"**
+
+### What M4 Means
+
+**LEGACY_STORE_REMOVED = true** means:
+1. All **writes** go to `canonicalData` (los, topics, subtopics, performanceCriteria)
+2. The `scalarData` state is now a **derived view**, not a source of truth
+3. 16 legacy write paths are **guarded and inactive**
+
+### What Still Exists (by Design)
+
+| State | Purpose | Status |
+|-------|---------|--------|
+| `canonicalData` | Source of truth for LO/Topic/Subtopic/PC | AUTHORITATIVE |
+| `scalarData` | Module structure + derived scalar view | DERIVED (read-only) |
+| `effectiveScalarData` | Computed from canonical via derivation | COMPUTED |
+
+### Why `scalarData` State Remains
+
+The `scalarData` useState still exists because:
+1. **Module structure** is not yet in canonical (modules define the course hierarchy skeleton)
+2. **Module expand/collapse state** is UI state stored locally
+3. **Derivation needs the module template** to populate with canonical data
+
+### Data Flow Diagram
+
+```
+User Action
+    │
+    ▼
+setCanonicalData()  ←── ALL WRITES GO HERE
+    │
+    ▼
+canonicalData (los, topics, subtopics, PC)
+    │
+    ▼ (derivation via deriveScalarDataFromCanonical)
+    │
+effectiveScalarData = derivedScalarData || scalarData
+    │
+    ▼ (fallback only during initial hydration)
+    │
+UI Components read effectiveScalarData
+```
+
+### M4 Guarantees
+
+1. No component can write directly to `scalarData` for LO/Topic/Subtopic/PC
+2. `effectiveScalarData` always reflects canonical state after hydration
+3. Console warning logged if fallback occurs (M4_FALLBACK_WARNING)
 
 ---
 
@@ -92,11 +155,11 @@
 
 | Date | Session | Key Changes |
 |------|---------|-------------|
+| 2025-01-19 | CC | **Phase 4 (M4) Complete**: Legacy store removed, all writes go to canonical, effectiveScalarData derived only |
 | 2025-01-18 | CC | **Phase 3 Behavioural Fix**: SCALAR '+ Lesson' button fixed to add lesson without view switch or clear |
 | 2025-01-18 | CC | **Phase 2-3 Complete**: Canonical model alignment, PC added to canonical, all write/read paths verified |
 | 2025-01-18 | CC | **Phase 0-1 Diagnostics**: Documentation consolidation, state-map.md, mutation-map.md, migration phase determination |
 | 2025-01-16 | CC | **UI Polish**: '+' buttons for SCALAR/Lesson Editor, LESSON LIBRARY rename, tooltip adjustments |
-| 2025-01-15 | CC | **Lesson Editor Redesign**: Two-column layout, notes tabs, image upload, view destination tabs |
 
 ---
 

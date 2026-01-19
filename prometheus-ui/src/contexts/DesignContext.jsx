@@ -652,8 +652,22 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     return derived
   }, [canonicalData, scalarData.modules])
 
-  // Use derived data if available, otherwise fall back to legacy
-  const effectiveScalarData = derivedScalarData || scalarData
+  // M4 COMPLETE: Use derived data from canonical
+  // Fallback to legacy only during initial render before migration
+  const effectiveScalarData = useMemo(() => {
+    if (derivedScalarData) {
+      return derivedScalarData
+    }
+    // M4 Warning: If we're falling back to legacy, log it
+    if (CANONICAL_FLAGS.LEGACY_STORE_REMOVED) {
+      canonicalLog('M4_FALLBACK_WARNING', {
+        message: 'Using legacy scalarData - canonical should be populated',
+        hasCanonicalLOs: Object.keys(canonicalData.los).length > 0,
+        hasCanonicalTopics: Object.keys(canonicalData.topics).length > 0
+      })
+    }
+    return scalarData
+  }, [derivedScalarData, scalarData, canonicalData.los, canonicalData.topics])
 
   // Computed: Get topic serial from canonical store
   const getCanonicalTopicSerial = useCallback((topicId) => {
@@ -1702,8 +1716,9 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
   }, [])
 
   // Update topic title in lesson (with Scalar auto-sync)
+  // M4: Updated to write to canonical instead of legacy scalarData
   const updateTopicTitle = useCallback((topicId, title) => {
-    // Update in lessons
+    // Update in lessons (bidirectional sync)
     setLessons(prev => prev.map(lesson => ({
       ...lesson,
       topics: (lesson.topics || []).map(t =>
@@ -1713,32 +1728,14 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       )
     })))
 
-    // Update in scalar data
-    setScalarData(prev => {
-      const newData = { ...prev, modules: [...prev.modules] }
-      for (let m = 0; m < newData.modules.length; m++) {
-        const module = { ...newData.modules[m] }
-        newData.modules[m] = module
-        module.learningObjectives = [...module.learningObjectives]
-        for (let l = 0; l < module.learningObjectives.length; l++) {
-          const lo = { ...module.learningObjectives[l] }
-          module.learningObjectives[l] = lo
-          lo.topics = [...lo.topics]
-          for (let t = 0; t < lo.topics.length; t++) {
-            if (lo.topics[t].id === topicId) {
-              lo.topics[t] = { ...lo.topics[t], title }
-              return newData
-            }
-          }
-        }
-      }
-      return prev
-    })
+    // M4: Write to canonical (scalarData is now derived)
+    setCanonicalData(prev => canonicalUpdate(prev, 'topic', topicId, { title }))
   }, [])
 
   // Update subtopic title in lesson (with Scalar auto-sync)
+  // M4: Updated to write to canonical instead of legacy scalarData
   const updateSubtopicTitle = useCallback((subtopicId, title) => {
-    // Update in lessons
+    // Update in lessons (bidirectional sync)
     setLessons(prev => prev.map(lesson => ({
       ...lesson,
       topics: (lesson.topics || []).map(topic => ({
@@ -1751,32 +1748,8 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
       }))
     })))
 
-    // Update in scalar data
-    setScalarData(prev => {
-      const newData = { ...prev, modules: [...prev.modules] }
-      for (let m = 0; m < newData.modules.length; m++) {
-        const module = { ...newData.modules[m] }
-        newData.modules[m] = module
-        module.learningObjectives = [...module.learningObjectives]
-        for (let l = 0; l < module.learningObjectives.length; l++) {
-          const lo = { ...module.learningObjectives[l] }
-          module.learningObjectives[l] = lo
-          lo.topics = [...lo.topics]
-          for (let t = 0; t < lo.topics.length; t++) {
-            const topic = { ...lo.topics[t] }
-            lo.topics[t] = topic
-            topic.subtopics = [...(topic.subtopics || [])]
-            for (let s = 0; s < topic.subtopics.length; s++) {
-              if (topic.subtopics[s].id === subtopicId) {
-                topic.subtopics[s] = { ...topic.subtopics[s], title }
-                return newData
-              }
-            }
-          }
-        }
-      }
-      return prev
-    })
+    // M4: Write to canonical (scalarData is now derived)
+    setCanonicalData(prev => canonicalUpdate(prev, 'subtopic', subtopicId, { title }))
   }, [])
 
   // Update learning objective (Correction #3: updates lesson.learningObjectives, NOT scalarData)
@@ -2020,43 +1993,43 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
   // --------------------------------------------
 
   // Toggle expand/collapse for any scalar node
+  // M4: Updated to write to canonical for lo/topic, keep scalarData for module (not in canonical yet)
   const toggleScalarExpand = useCallback((nodeType, nodeId) => {
-    setScalarData(prev => {
-      const newData = { ...prev, modules: [...prev.modules] }
-
-      for (let m = 0; m < newData.modules.length; m++) {
-        const module = { ...newData.modules[m] }
-        newData.modules[m] = module
-
-        if (nodeType === 'module' && module.id === nodeId) {
-          module.expanded = !module.expanded
-          return newData
-        }
-
-        module.learningObjectives = [...module.learningObjectives]
-        for (let l = 0; l < module.learningObjectives.length; l++) {
-          const lo = { ...module.learningObjectives[l] }
-          module.learningObjectives[l] = lo
-
-          if (nodeType === 'lo' && lo.id === nodeId) {
-            lo.expanded = !lo.expanded
+    if (nodeType === 'module') {
+      // Modules are not in canonical yet - update scalarData directly
+      setScalarData(prev => {
+        const newData = { ...prev, modules: [...prev.modules] }
+        for (let m = 0; m < newData.modules.length; m++) {
+          const module = { ...newData.modules[m] }
+          newData.modules[m] = module
+          if (module.id === nodeId) {
+            module.expanded = !module.expanded
             return newData
           }
-
-          lo.topics = [...lo.topics]
-          for (let t = 0; t < lo.topics.length; t++) {
-            const topic = { ...lo.topics[t] }
-            lo.topics[t] = topic
-
-            if (nodeType === 'topic' && topic.id === nodeId) {
-              topic.expanded = !topic.expanded
-              return newData
-            }
-          }
         }
-      }
-      return newData
-    })
+        return newData
+      })
+    } else if (nodeType === 'lo') {
+      // M4: Write to canonical
+      setCanonicalData(prev => {
+        const lo = prev.los[nodeId]
+        if (!lo) return prev
+        return {
+          ...prev,
+          los: { ...prev.los, [nodeId]: { ...lo, expanded: !lo.expanded } }
+        }
+      })
+    } else if (nodeType === 'topic') {
+      // M4: Write to canonical
+      setCanonicalData(prev => {
+        const topic = prev.topics[nodeId]
+        if (!topic) return prev
+        return {
+          ...prev,
+          topics: { ...prev.topics, [nodeId]: { ...topic, expanded: !topic.expanded } }
+        }
+      })
+    }
   }, [])
 
   // Add new LO to a module

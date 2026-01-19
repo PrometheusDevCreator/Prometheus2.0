@@ -1,0 +1,55 @@
+{
+  "_reference_notice": {
+    "status": "Reference / Non-authoritative",
+    "execution": "NOT PERMITTED",
+    "scope": "Claude Code optimisation concepts only",
+    "does_not_override": "/CLAUDE.md, /CLAUDE_PROTOCOL.md, project doctrine"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(npm *)",
+      "Bash(yarn *)",
+      "Bash(pnpm *)",
+      "Bash(pip *)",
+      "Bash(python *)",
+      "Bash(node *)",
+      "Bash(cat *)",
+      "Bash(ls *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(grep *)",
+      "Bash(find *)",
+      "Bash(wc *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(rm *)",
+      "Read(*)",
+      "Write(*)"
+    ],
+    "deny": [
+      "Bash(git push *)",
+      "Bash(git push)",
+      "Bash(rm -rf /)*",
+      "Bash(sudo *)"
+    ]
+  },
+  "context": {
+    "compactThreshold": 80,
+    "autoCompact": false,
+    "preserveOnCompact": [
+      "CLAUDE.md",
+      ".planning/STATE.md"
+    ]
+  },
+  "git": {
+    "protectedBranches": ["main", "master", "production", "staging"],
+    "requireBranchForCommit": true,
+    "commitMessageStyle": "conventional"
+  },
+  "hooks": {
+    "sessionStart": ".claude/hooks/session-start.sh",
+    "preCommit": ".claude/hooks/pre-commit.sh"
+  }
+}
