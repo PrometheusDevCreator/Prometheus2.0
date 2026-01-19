@@ -19,6 +19,7 @@ import GradientBorder from '../components/GradientBorder'
 import Footer from '../components/Footer'
 import DefinePageDurationWheel from '../components/define/DefinePageDurationWheel'
 import DefinePageContentWheel from '../components/define/DefinePageContentWheel'
+import { useDesign } from '../contexts/DesignContext'
 
 // ============================================
 // DEFINE LAYOUT TOKENS (Phase 3R)
@@ -57,6 +58,9 @@ const BLOOMS_CATEGORIES = [
 const BLOOMS_VERBS = BLOOMS_CATEGORIES.flatMap(cat => cat.verbs)
 
 function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, courseState, onSaveCountIncrement, exitPending, timetableData, lessonEditorOpen, onLessonEditorToggle }) {
+  // Phase E: Get setCanonicalData to write LOs directly to canonical store
+  const { setCanonicalData } = useDesign()
+
   const [isPKEActive, setIsPKEActive] = useState(false)
   const [focusedField, setFocusedField] = useState(null)
   const [hoveredField, setHoveredField] = useState(null)
@@ -341,13 +345,44 @@ function Define({ onNavigate, courseData, setCourseData, courseLoaded, user, cou
     }
 
     setCourseData?.(formData)
+
+    // Phase E: Write LOs directly to canonical store (no longer relying on Phase B sync effect)
+    // Convert string LOs to canonical LO objects
+    const loStrings = formData.learningObjectives || []
+    const losMap = {}
+    loStrings
+      .filter(lo => lo && lo.trim().length > 0)
+      .forEach((loText, idx) => {
+        const words = loText.trim().split(/\s+/)
+        const verb = words[0]?.toUpperCase() || 'IDENTIFY'
+        const description = words.slice(1).join(' ') || ''
+        const loId = `lo-define-${idx + 1}`
+        losMap[loId] = {
+          id: loId,
+          moduleId: 'module-1',
+          verb,
+          description,
+          order: idx + 1,
+          expanded: true
+        }
+      })
+
+    // Write canonical LOs directly (this is the authoritative source now)
+    if (Object.keys(losMap).length > 0) {
+      console.log('[CANONICAL] DEFINE_SAVE_LOS:', {
+        loCount: Object.keys(losMap).length,
+        los: Object.values(losMap).map(l => `${l.order}. ${l.verb}`)
+      })
+      setCanonicalData(prev => ({ ...prev, los: losMap }))
+    }
+
     setIsPKEActive(false)
     // Confirm all LOs (turn green) on save
     setLoConfirmedUpTo(formData.learningObjectives.length - 1)
     onSaveCountIncrement?.()
     resetActiveColumn()
     setHasUnsavedChanges(false) // Clear unsaved changes flag - enables navigation arrows
-  }, [formData, setCourseData, onSaveCountIncrement, resetActiveColumn, getInvalidLOIndices])
+  }, [formData, setCourseData, onSaveCountIncrement, resetActiveColumn, getInvalidLOIndices, setCanonicalData])
 
   // Handle clear (resets active column)
   const handleClear = useCallback(() => {

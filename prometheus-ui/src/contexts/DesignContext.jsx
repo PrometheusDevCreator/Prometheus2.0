@@ -763,48 +763,11 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     return sessionLinkedElements.some(el => el.type === type && el.id === id)
   }, [linkingSource, sessionLinkedElements])
 
-  // Sync scalarData when courseData.learningObjectives changes
-  useEffect(() => {
-    if (courseData?.learningObjectives?.length > 0) {
-      const newLOs = convertCourseDataLOs(courseData.learningObjectives)
-      setScalarData(prev => ({
-        ...prev,
-        modules: prev.modules.map((module, idx) =>
-          idx === 0
-            ? { ...module, learningObjectives: newLOs }
-            : module
-        )
-      }))
-    }
-  }, [courseData?.learningObjectives, convertCourseDataLOs])
-
-  // Phase B Fix: Sync courseData.learningObjectives to canonicalData.los
-  // This ensures LOs created in DEFINE appear in canonical store for Lesson Editor
-  useEffect(() => {
-    if (courseData?.learningObjectives?.length > 0) {
-      const converted = convertCourseDataLOs(courseData.learningObjectives)
-      const losMap = {}
-      converted.forEach(lo => {
-        losMap[lo.id] = {
-          id: lo.id,
-          moduleId: 'module-1',
-          verb: lo.verb,
-          description: lo.description,
-          order: lo.order,
-          expanded: lo.expanded ?? true
-        }
-      })
-
-      // Only update if we have new LOs to add
-      if (Object.keys(losMap).length > 0) {
-        canonicalLog('SYNC_DEFINE_LOS_TO_CANONICAL', {
-          loCount: Object.keys(losMap).length,
-          los: Object.values(losMap).map(l => `${l.order}. ${l.verb}`)
-        })
-        setCanonicalData(prev => ({ ...prev, los: losMap }))
-      }
-    }
-  }, [courseData?.learningObjectives, convertCourseDataLOs])
+  // Phase E: Removed Phase B sync effects
+  // - courseData.learningObjectives → scalarData sync (REMOVED)
+  // - courseData.learningObjectives → canonicalData.los sync (REMOVED)
+  // DEFINE now writes directly to canonicalData.los in handleSave
+  // effectiveScalarData derives from canonicalData (M4 complete)
 
   // --------------------------------------------
   // SELECTION STATE (exactly one at a time)

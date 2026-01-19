@@ -14,10 +14,11 @@
  * - Topics/Subtopics hierarchical management with commit behavior
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { THEME } from '../constants/theme'
 import Footer from '../components/Footer'
 import breakSymbol from '../assets/Break_Symbol.png'
+import { useDesign } from '../contexts/DesignContext'
 
 // Constants
 const SNAP_MINUTES = 5 // Snap to 5-minute increments
@@ -28,6 +29,9 @@ const TIMETABLE_TOTAL_WIDTH = 1300 // Fixed width: X:-650 to X:+650
 const NUM_DAYS_ALWAYS = 5 // Always show 5 day rows
 
 function OutlinePlanner({ onNavigate, courseData, setCourseData, courseLoaded, user, courseState }) {
+  // Phase E: Get canonical data for LOs
+  const { canonicalData } = useDesign()
+
   const [isPKEActive, setIsPKEActive] = useState(false)
 
   // Module/Week navigation
@@ -55,13 +59,25 @@ function OutlinePlanner({ onNavigate, courseData, setCourseData, courseLoaded, u
   // Number of days - always show 5 rows
   const numDays = NUM_DAYS_ALWAYS
 
-  // Learning Objectives from DEFINE page
-  const learningObjectives = courseData?.learningObjectives?.filter(lo => lo && lo.trim()) || [
-    'EXPLAIN the course details',
-    'ANALYSE the subject',
-    'OPERATE the system',
-    'SUPERVISE the personnel'
-  ]
+  // Phase E: Learning Objectives from canonical store (not courseData.learningObjectives)
+  const learningObjectives = useMemo(() => {
+    const losMap = canonicalData?.los || {}
+    const losArray = Object.values(losMap)
+      .sort((a, b) => (a.order || 0) - (b.order || 0))
+      .map(lo => `${lo.verb} ${lo.description}`.trim())
+      .filter(lo => lo.length > 0)
+
+    // Fallback to defaults if no canonical LOs
+    if (losArray.length === 0) {
+      return [
+        'EXPLAIN the course details',
+        'ANALYSE the subject',
+        'OPERATE the system',
+        'SUPERVISE the personnel'
+      ]
+    }
+    return losArray
+  }, [canonicalData?.los])
 
   // Lessons state
   const [lessons, setLessons] = useState([
