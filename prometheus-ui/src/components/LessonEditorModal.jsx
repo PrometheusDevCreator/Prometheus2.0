@@ -387,6 +387,7 @@ function LessonEditorModal({
 
     if (isEditingExisting && selectedLesson?.id) {
       // Phase F3: Use saveLessonEditorModel for complete writeback
+      // Timetable updates are commit-on-save by design (Founder decision)
       const success = saveLessonEditorModel(selectedLesson.id, model)
 
       if (success) {

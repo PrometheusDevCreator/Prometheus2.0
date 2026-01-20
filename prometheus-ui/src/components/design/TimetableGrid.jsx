@@ -15,6 +15,10 @@
  * - Equal height distribution
  * - Day label cell (left): "Day 1", "Day 2", etc.
  * - Content area (right): Contains lesson blocks
+ *
+ * Timetable updates are commit-on-save by design (Founder decision).
+ * Changes to lesson time/type in Lesson Editor take effect after Save,
+ * not during live field edits. Do NOT introduce live-preview reactivity.
  */
 
 import React, { useMemo, useCallback, useState, useRef, useEffect } from 'react'

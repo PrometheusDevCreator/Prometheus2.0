@@ -983,11 +983,22 @@ function ScalarDock({ width = '100%', height = '100%', onAddLesson, onAddPC }) {
     return expanded
   }, [canonicalData?.topics])
 
+  // M5.6a: Derive whether all Scalar items are expanded (for toggle label)
+  // GUARDRAIL [M5.7]: This derives from canonical state only - no local UI state
+  const allExpanded = useMemo(() => {
+    const losCount = Object.keys(canonicalData?.los || {}).length
+    const topicsCount = Object.keys(canonicalData?.topics || {}).length
+    if (losCount === 0 && topicsCount === 0) return false
+
+    const allLosExpanded = Object.values(canonicalData?.los || {}).every(lo => lo.expanded)
+    const allTopicsExpanded = Object.values(canonicalData?.topics || {}).every(topic => topic.expanded)
+    return allLosExpanded && allTopicsExpanded
+  }, [canonicalData?.los, canonicalData?.topics])
+
   const [activeLOId, setActiveLOId] = useState(null)
   const [selectedColumn, setSelectedColumn] = useState(null) // 'lo' | 'lesson' | 'pc'
   const [addLOHovered, setAddLOHovered] = useState(false)
-  const [expandAllHovered, setExpandAllHovered] = useState(false)    // M5.6
-  const [collapseAllHovered, setCollapseAllHovered] = useState(false) // M5.6
+  const [toggleExpandHovered, setToggleExpandHovered] = useState(false) // M5.6a: Single toggle hover
 
   // Data
   const module = useMemo(() => {
@@ -1283,13 +1294,13 @@ function ScalarDock({ width = '100%', height = '100%', onAddLesson, onAddPC }) {
           minHeight: '4vh'
         }}
       >
-        {/* Linking Mode Label - positioned 1200px from left (or right side), 50px up from baseline */}
+        {/* Linking Mode Label - M5.6b: moved up by 50px per UX spec */}
         {linkingMode.active && (
           <div
             style={{
               position: 'absolute',
               right: '2vw',
-              top: '1vh',
+              top: 'calc(1vh - 50px)',
               zIndex: 100,
               textAlign: 'left',
               lineHeight: 1.4
@@ -1338,6 +1349,32 @@ function ScalarDock({ width = '100%', height = '100%', onAddLesson, onAddPC }) {
             </div>
           </div>
         )}
+      </div>
+
+      {/* M5.6a: Display All / Collapse All toggle row */}
+      <div
+        style={{
+          padding: '0.3vh 1vw',
+          flexShrink: 0
+        }}
+      >
+        <span
+          onClick={() => allExpanded ? collapseAllScalar() : expandAllScalar()}
+          onMouseEnter={() => setToggleExpandHovered(true)}
+          onMouseLeave={() => setToggleExpandHovered(false)}
+          style={{
+            fontSize: FONT.HEADER,
+            fontFamily: THEME.FONT_PRIMARY,
+            color: toggleExpandHovered
+              ? THEME.WHITE
+              : (allExpanded ? THEME.AMBER : THEME.TEXT_DIM),
+            cursor: 'pointer',
+            transition: 'color 0.2s ease',
+            userSelect: 'none'
+          }}
+        >
+          {allExpanded ? 'Collapse All' : 'Display All'}
+        </span>
       </div>
 
       {/* Column Headers Row - scrollable to sync with content */}
@@ -1392,44 +1429,6 @@ function ScalarDock({ width = '100%', height = '100%', onAddLesson, onAddPC }) {
             title="Add Learning Objective"
           >
             +
-          </button>
-          {/* M5.6: Expand All / Collapse All buttons */}
-          <button
-            onClick={expandAllScalar}
-            onMouseEnter={() => setExpandAllHovered(true)}
-            onMouseLeave={() => setExpandAllHovered(false)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: expandAllHovered ? THEME.WHITE : THEME.TEXT_DIM,
-              cursor: 'pointer',
-              fontSize: '1.1vh',
-              fontFamily: THEME.FONT_PRIMARY,
-              padding: '0 0.3vw',
-              transition: 'color 0.2s ease',
-              marginLeft: '0.5vw'
-            }}
-            title="Expand All"
-          >
-            ▼ ALL
-          </button>
-          <button
-            onClick={collapseAllScalar}
-            onMouseEnter={() => setCollapseAllHovered(true)}
-            onMouseLeave={() => setCollapseAllHovered(false)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: collapseAllHovered ? THEME.WHITE : THEME.TEXT_DIM,
-              cursor: 'pointer',
-              fontSize: '1.1vh',
-              fontFamily: THEME.FONT_PRIMARY,
-              padding: '0 0.3vw',
-              transition: 'color 0.2s ease'
-            }}
-            title="Collapse All"
-          >
-            ▲ ALL
           </button>
           {/* Selection underline */}
           {selectedColumn === 'lo' && (
