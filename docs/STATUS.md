@@ -12,11 +12,11 @@
 
 ## Migration Phase Status
 
-> **PHASE E COMPLETE - 2025-01-19**
+> **M5 COMPLETE - 2025-01-20**
 >
-> **Declared Migration Phase:** M4 + Phase E (Canonical LO Authoring Lockdown)
+> **Declared Migration Phase:** M5 - Canonical Linking, Hydration & Reactivity
 >
-> **Actual Compliance:** FULL - DEFINE writes directly to canonical, Phase B sync removed
+> **Actual Compliance:** FULL - All consumers derive from canonical, guardrails in place
 
 | Flag | Expected | Actual | Compliant |
 |------|----------|--------|-----------|
@@ -43,6 +43,8 @@
 | **Phase D** | Lesson-Centric Linking + loId Propagation | COMPLETE |
 | **Phase E** | Canonical LO Authoring Lockdown | COMPLETE |
 | **Phase F** | Lesson Editor Transactional Lockdown | COMPLETE |
+| **M5** | Canonical Linking, Hydration & Reactivity | COMPLETE |
+| **M5 Micro** | UX Spec Alignment (Display All toggle, Linking Mode) | COMPLETE |
 
 **Phase E Details:**
 - DEFINE.jsx now writes LOs directly to `canonicalData.los` on Save
@@ -59,6 +61,20 @@
 - Topics/subtopics persist across close/reopen cycles
 - Deletion policy: Option A (children become orphans, no cascading)
 - Gate Log: See `docs/briefs/PHASE_F_GATE_LOG.md`
+
+**M5 Details (2025-01-20):**
+- 7 GUARDRAIL comments added to prevent canonical bypass
+- `expandAllScalar` and `collapseAllScalar` write to canonical (not local UI state)
+- ScalarDock derives `expandedLOs`/`expandedTopics` via useMemo from canonicalData
+- DEV ASSERTION `[M5_TIMETABLE_REACTIVITY_MISMATCH]` catches prop/canonical drift
+- Timetable reactivity verified: time/type changes propagate immediately after save
+- Gate Log: See `docs/briefs/M5_GATE_LOG.md`
+
+**M5 Micro UX Details (2025-01-20):**
+- Replaced dual ▼ ALL / ▲ ALL buttons with single "Display All" / "Collapse All" text toggle
+- Toggle grey when inactive, burnt orange when active
+- Linking Mode label moved up by 50px
+- Added commit-on-save annotation to TimetableGrid.jsx and LessonEditorModal.jsx
 
 **Phase 3 Fixes (Previous):**
 - Performance Criteria added to canonicalData structure
@@ -181,36 +197,45 @@ UI Components read effectiveScalarData
 
 | Date | Session | Key Changes |
 |------|---------|-------------|
+| 2025-01-20 | CC | **M5 Complete**: Canonical Linking, Hydration & Reactivity - 7 GUARDRAILs, DEV ASSERTIONs, UX alignment |
 | 2025-01-20 | CC | **Phase F Complete**: Lesson Editor Transactional Lockdown - getLessonEditorModel, saveLessonEditorModel, atomic save/cancel |
 | 2025-01-19 | CC | **Phase B/C/D/E Complete**: LO rendering fix, inline edit, lesson-centric linking, canonical LO authoring lockdown |
 | 2025-01-19 | CC | **Phase 4 (M4) Complete**: Legacy store removed, all writes go to canonical, effectiveScalarData derived only |
 | 2025-01-18 | CC | **Phase 3 Behavioural Fix**: SCALAR '+ Lesson' button fixed to add lesson without view switch or clear |
-| 2025-01-18 | CC | **Phase 2-3 Complete**: Canonical model alignment, PC added to canonical, all write/read paths verified |
 
 ---
 
 ## Latest Commits
 
 ```
-commit 414ea15 (main)
-Date: 2025-01-19
+commit 1be6ba1 (main)
+Date: 2025-01-20
 
-feat(DEFINE): Phase E - Canonical LO Authoring Lockdown
+fix(M5): UX Spec Alignment - Display All toggle and Linking Mode position
 
-- DEFINE writes LOs directly to canonicalData.los on Save
-- OutlinePlanner rewired to read from canonicalData.los
-- Phase B sync effects removed (42 lines deleted)
-- 4 files changed, 339 insertions(+), 51 deletions(-)
+- M5.6a: Replace dual expand/collapse buttons with single text toggle
+- M5.6b: Move Linking Mode label up by 50px
+- Timetable: Add commit-on-save design decision annotations
+- 3 files changed, 46 insertions(+), 42 deletions(-)
 
-commit a52a0e8
-Date: 2025-01-19
+commit 207a2fd
+Date: 2025-01-20
 
-feat(LessonEditor): Phase B/C/D - LO rendering fix + inline editing + loId propagation
+feat(M5): Canonical Linking, Hydration & Reactivity
 
-- Phase B: LessonEditor reads LOs from canonicalData.los
-- Phase C: Inline edit with create-then-edit UX, double-click to edit
-- Phase D: Lesson-centric linking with preferredLOId parameter
-- 6 files changed, 1064 insertions(+), 32 deletions(-)
+- Add GUARDRAIL comments (7 total) to prevent bypass of canonical patterns
+- Implement Scalar expand/collapse derived from canonicalData (not useState)
+- Add M5_TIMETABLE_REACTIVITY DEV ASSERTION for reactivity validation
+- 6 files changed, 984 insertions(+), 117 deletions(-)
+
+commit 38ddf84
+Date: 2025-01-20
+
+feat(LessonEditor): Phase F - Transactional Lockdown
+
+- getLessonEditorModel, saveLessonEditorModel for atomic read/write
+- Hydrate on open, store originalModel for cancel functionality
+- 4 files changed, 500+ insertions
 ```
 
 ---

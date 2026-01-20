@@ -38,6 +38,8 @@
 
 | Task | Completed | Notes |
 |------|-----------|-------|
+| **M5: Canonical Linking, Hydration & Reactivity** | 2025-01-20 | 7 GUARDRAILs, DEV ASSERTIONs, UX alignment |
+| **M5 Micro: UX Spec Alignment** | 2025-01-20 | Display All toggle, Linking Mode position |
 | **Phase F: Lesson Editor Transactional Lockdown** | 2025-01-20 | getLessonEditorModel, saveLessonEditorModel, atomic save/cancel |
 | **Phase E: Canonical LO Authoring Lockdown** | 2025-01-19 | DEFINE writes to canonical, Phase B sync removed |
 | **Phase D: Lesson-Centric Linking** | 2025-01-19 | preferredLOId parameter, loId propagation |
@@ -58,12 +60,14 @@
 
 | Time | Task | Action | Commit |
 |------|------|--------|--------|
-| Session Start | Phase F Implementation | Lesson Editor Transactional Lockdown | `b966176` |
-| - | getLessonEditorModel | Added to DesignContext.jsx (Lines 1774-1908) | - |
-| - | saveLessonEditorModel | Added to DesignContext.jsx (Lines 1910-1960) | - |
-| - | LessonEditorModal rewrite | Hydration + save with transactional model | - |
-| - | Phase F Testing | All F1-F5 objectives verified via Playwright | - |
-| Session End | Gate Log | Created PHASE_F_GATE_LOG.md | - |
+| Session Start | Phase F Implementation | Lesson Editor Transactional Lockdown | `38ddf84` |
+| - | M5 Implementation | Canonical Linking, Hydration & Reactivity | `207a2fd` |
+| - | 7 GUARDRAIL comments | Prevent canonical bypass in DesignContext, ScalarDock, LessonEditorModal | - |
+| - | DEV ASSERTIONs | M5_TIMETABLE_REACTIVITY_MISMATCH in LessonBlock.jsx | - |
+| - | Scalar UX | expandAllScalar, collapseAllScalar derived from canonical | - |
+| - | M5 Micro UX | Display All toggle, Linking Mode position adjustment | `1be6ba1` |
+| - | Comprehensive Brief | SARAH_BRIEF_M5_COMPREHENSIVE_2025-01-20.md | - |
+| Session End | Gate Log | Created M5_GATE_LOG.md, updated STATUS.md | - |
 
 ### 2025-01-19 Session
 
