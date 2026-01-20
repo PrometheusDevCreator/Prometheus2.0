@@ -6,7 +6,7 @@
 > AI assistants should offer to update this file when tasks are identified or completed.
 > For strategic ideas and future vision, see [IDEAS.md](IDEAS.md).
 
-**Last Updated:** 2025-01-15
+**Last Updated:** 2025-01-20
 **Updated By:** Claude Code (CC)
 
 ---
@@ -15,10 +15,10 @@
 
 | Task | Priority | Status | Notes |
 |------|----------|--------|-------|
-| **Lesson Editor Modal Testing** | **HIGH** | **Ready for User Validation** | Redesign complete, test image upload & save |
-| **SCALAR Bidirectional Sync Testing** | **HIGH** | **Ready for Manual Testing** | Sync implemented, needs user validation |
 | Backend API integration | HIGH | Not Started | API scaffolded in `core/api/`, needs connection to UI |
 | PKE Engine implementation | HIGH | Not Started | Core intelligence feature, `core/pke/` is placeholder |
+| Performance Criteria CRUD | MEDIUM | Not Started | PC editing in LessonEditor/SCALAR |
+| Generate page implementation | MEDIUM | Not Started | Currently placeholder in `pages/Generate.jsx` |
 
 ---
 
@@ -27,7 +27,6 @@
 | Task | Priority | Notes |
 |------|----------|-------|
 | OVERVIEW PlanningCanvas testing | MEDIUM | New component - needs validation |
-| Generate page implementation | MEDIUM | Currently placeholder in `pages/Generate.jsx` |
 | Consumer migration (LessonBlock) | LOW | Deferred from Phase 6 |
 | Hierarchical design spec documentation | LOW | Global rules → App-specific rulesets |
 | LO Bloom's validation enforcement | LOW | Validation exists in Define.jsx, not enforced |
@@ -39,20 +38,43 @@
 
 | Task | Completed | Notes |
 |------|-----------|-------|
+| **Phase F: Lesson Editor Transactional Lockdown** | 2025-01-20 | getLessonEditorModel, saveLessonEditorModel, atomic save/cancel |
+| **Phase E: Canonical LO Authoring Lockdown** | 2025-01-19 | DEFINE writes to canonical, Phase B sync removed |
+| **Phase D: Lesson-Centric Linking** | 2025-01-19 | preferredLOId parameter, loId propagation |
+| **Phase C: Inline Edit + Create-Then-Edit** | 2025-01-19 | Double-click edit, auto-focus on create |
+| **Phase B: LO Rendering Fix** | 2025-01-19 | LessonEditor reads from canonicalData.los |
 | **Lesson Editor Modal Redesign** | 2025-01-15 | Two-column layout, notes tabs, image upload |
 | SCALAR Bidirectional Sync Implementation | 2025-01-14 | 6 functions modified in DesignContext.jsx |
 | OVERVIEW Planning Tools | 2025-01-14 | PlanningCanvas, Timeline, NoteBlock, ColorPalette |
 | DESIGN Phase 6: System Testing | 2025-01-11 | 180 tests passed, all phases complete |
 | DESIGN Phase 5: ScalarDock | 2025-01-11 | Tree-based SCALAR editor |
 | DESIGN Phase 4: WorkDock | 2025-01-11 | Lesson dock with filtering |
-| DESIGN Phase 3: WheelNav | 2025-01-11 | 5-level hierarchy navigation |
-| DESIGN Phase 2: LessonCardPrimitive | 2025-01-11 | Unified lesson card component |
-| DESIGN Phase 1: Canonical Data Model | 2025-01-11 | Normalized stores with deterministic numbering |
-| FORMAT Page (All 6 Phases) | 2025-12-30 | TemplateContext, IndexedDB, all editors |
 
 ---
 
 ## Task Log (Audit Trail)
+
+### 2025-01-20 Session
+
+| Time | Task | Action | Commit |
+|------|------|--------|--------|
+| Session Start | Phase F Implementation | Lesson Editor Transactional Lockdown | `b966176` |
+| - | getLessonEditorModel | Added to DesignContext.jsx (Lines 1774-1908) | - |
+| - | saveLessonEditorModel | Added to DesignContext.jsx (Lines 1910-1960) | - |
+| - | LessonEditorModal rewrite | Hydration + save with transactional model | - |
+| - | Phase F Testing | All F1-F5 objectives verified via Playwright | - |
+| Session End | Gate Log | Created PHASE_F_GATE_LOG.md | - |
+
+### 2025-01-19 Session
+
+| Time | Task | Action | Commit |
+|------|------|--------|--------|
+| Session Start | Phase B/C/D Implementation | LO rendering fix, inline edit, lesson-centric linking | `a52a0e8` |
+| - | Phase E Implementation | Canonical LO authoring lockdown | `414ea15` |
+| - | DEFINE rewrite | handleSave writes directly to canonicalData.los | - |
+| - | OutlinePlanner rewrite | Reads from canonicalData.los instead of courseData | - |
+| - | Phase B sync removal | Removed 42 lines of sync code from DesignContext | - |
+| Session End | Gate Logs | Created PHASE_B/C/D/E_GATE_LOG.md | - |
 
 ### 2025-01-15 Session
 

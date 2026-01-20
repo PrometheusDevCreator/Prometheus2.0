@@ -51,6 +51,7 @@ function LessonEditorModal({
   // Phase 2: Get canonical actions from DesignContext
   // Phase D: Added lesson-centric functions for proper loId + lessonId linking
   // Phase C: Added update functions for inline editing
+  // Phase F: Added transactional model functions
   const {
     addTopic,
     addSubtopic,
@@ -59,7 +60,9 @@ function LessonEditorModal({
     addTopicToLesson,
     addSubtopicToLessonTopic,
     updateLessonTopic,
-    updateLessonSubtopic
+    updateLessonSubtopic,
+    getLessonEditorModel,
+    saveLessonEditorModel
   } = useDesign()
   const isEditingExisting = selectedLesson !== null
 
@@ -87,6 +90,9 @@ function LessonEditorModal({
 
   // Images state
   const [images, setImages] = useState([])
+
+  // Phase F: Original model for cancel functionality (transactional)
+  const [originalModel, setOriginalModel] = useState(null)
 
   // Bottom tab state
   const [activeBottomTab, setActiveBottomTab] = useState(initialTab)
@@ -222,29 +228,67 @@ function LessonEditorModal({
     return `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`
   }
 
-  // Reset/populate form when modal opens
+  // Phase F: Reset/populate form when modal opens using transactional model
   useEffect(() => {
     if (isOpen) {
-      if (selectedLesson) {
-        const startTime = formatTimeForInput(selectedLesson.startTime)
-        setFormData({
-          title: selectedLesson.title || '',
-          learningObjectives: selectedLesson.learningObjectives || [],
-          topics: selectedLesson.topics || [],
-          subtopics: [],
-          lessonType: selectedLesson.type || 'practical',
-          performanceCriteria: selectedLesson.performanceCriteria || [],
-          startTime: startTime,
-          endTime: calculateEndTime(startTime, selectedLesson.duration),
-          duration: selectedLesson.duration || 60,
-          day: selectedLesson.day || 1,
-          week: selectedLesson.week || 1,
-          module: selectedLesson.module || 1
-        })
-        setSlideNotes(selectedLesson.slideNotes || [''])
-        setInstructorNotes(selectedLesson.instructorNotes || [''])
-        setImages(selectedLesson.images || [])
+      if (selectedLesson?.id) {
+        // Phase F1: Hydrate from canonical using getLessonEditorModel
+        const model = getLessonEditorModel(selectedLesson.id)
+
+        if (model) {
+          // Store original for cancel functionality (F2)
+          setOriginalModel(model)
+
+          const startTime = formatTimeForInput(model.startTime)
+          setFormData({
+            title: model.title || '',
+            learningObjectives: model.links.loIds || [],
+            topics: model.rawTopics || [],
+            subtopics: [], // Will be populated from topic selection
+            lessonType: model.type || 'practical',
+            performanceCriteria: model.links.pcIds || [],
+            startTime: startTime,
+            endTime: calculateEndTime(startTime, model.duration),
+            duration: model.duration || 60,
+            day: model.day || 1,
+            week: model.week || 1,
+            module: model.module || 1
+          })
+          setSlideNotes(model.slideNotes || [''])
+          setInstructorNotes(model.instructorNotes || [''])
+          setImages(model.images || [])
+
+          console.log('[PHASE_F] Hydrated lesson editor from canonical:', {
+            lessonId: model.id,
+            title: model.title,
+            loCount: model.links.loIds.length,
+            topicCount: model.rawTopics.length
+          })
+        } else {
+          // Fallback to selectedLesson props if model not found
+          const startTime = formatTimeForInput(selectedLesson.startTime)
+          setOriginalModel(null)
+          setFormData({
+            title: selectedLesson.title || '',
+            learningObjectives: selectedLesson.learningObjectives || [],
+            topics: selectedLesson.topics || [],
+            subtopics: [],
+            lessonType: selectedLesson.type || 'practical',
+            performanceCriteria: selectedLesson.performanceCriteria || [],
+            startTime: startTime,
+            endTime: calculateEndTime(startTime, selectedLesson.duration),
+            duration: selectedLesson.duration || 60,
+            day: selectedLesson.day || 1,
+            week: selectedLesson.week || 1,
+            module: selectedLesson.module || 1
+          })
+          setSlideNotes(selectedLesson.slideNotes || [''])
+          setInstructorNotes(selectedLesson.instructorNotes || [''])
+          setImages(selectedLesson.images || [])
+        }
       } else {
+        // New lesson - initialize empty model
+        setOriginalModel(null)
         setFormData({
           title: '',
           learningObjectives: [],
@@ -266,7 +310,7 @@ function LessonEditorModal({
       setCurrentNotePage(0)
       setActiveNotesTab('slide')
     }
-  }, [isOpen, selectedLesson])
+  }, [isOpen, selectedLesson, getLessonEditorModel])
 
   // Handle escape key
   useEffect(() => {
@@ -301,14 +345,15 @@ function LessonEditorModal({
     })
   }, [])
 
-  // Handle save
+  // Phase F3: Handle save with complete transactional writeback
   const handleSave = useCallback(() => {
     if (!formData.title.trim()) {
       alert('Title is required')
       return
     }
 
-    const lessonData = {
+    // Build complete model for writeback
+    const model = {
       title: formData.title,
       type: formData.lessonType,
       duration: formData.duration,
@@ -316,22 +361,75 @@ function LessonEditorModal({
       day: formData.day,
       week: formData.week,
       module: formData.module,
-      topics: formData.topics,
-      learningObjectives: formData.learningObjectives,
-      performanceCriteria: formData.performanceCriteria,
+      scheduled: activeBottomTab === 'timetable',
+      // Notes and images
       slideNotes: slideNotes,
       instructorNotes: instructorNotes,
       images: images,
-      scheduled: activeBottomTab === 'timetable'
+      // Links
+      links: {
+        loIds: formData.learningObjectives,
+        topicIds: (formData.topics || []).map(t => t.scalarTopicId || t.id).filter(Boolean),
+        subtopicIds: (formData.topics || []).flatMap(t =>
+          (t.subtopics || []).map(s => s.scalarSubtopicId || s.id)
+        ).filter(Boolean),
+        pcIds: formData.performanceCriteria
+      },
+      // Raw topics (preserves structure including subtopics)
+      rawTopics: formData.topics
     }
 
-    if (isEditingExisting) {
-      onUpdateLesson?.(selectedLesson.id, lessonData)
+    if (isEditingExisting && selectedLesson?.id) {
+      // Phase F3: Use saveLessonEditorModel for complete writeback
+      const success = saveLessonEditorModel(selectedLesson.id, model)
+
+      if (success) {
+        console.log('[PHASE_F] Saved lesson via transactional model:', {
+          lessonId: selectedLesson.id,
+          title: model.title,
+          topicCount: model.rawTopics?.length || 0,
+          subtopicCount: model.links.subtopicIds.length
+        })
+      }
+
+      // Also call legacy callback for backward compatibility
+      onUpdateLesson?.(selectedLesson.id, {
+        title: model.title,
+        type: model.type,
+        duration: model.duration,
+        startTime: model.startTime,
+        day: model.day,
+        week: model.week,
+        module: model.module,
+        topics: model.rawTopics,
+        learningObjectives: model.links.loIds,
+        performanceCriteria: model.links.pcIds,
+        slideNotes: model.slideNotes,
+        instructorNotes: model.instructorNotes,
+        images: model.images,
+        scheduled: model.scheduled
+      })
     } else {
-      onCreateLesson?.(lessonData)
+      // New lesson - use create callback
+      onCreateLesson?.({
+        title: model.title,
+        type: model.type,
+        duration: model.duration,
+        startTime: model.startTime,
+        day: model.day,
+        week: model.week,
+        module: model.module,
+        topics: model.rawTopics,
+        learningObjectives: model.links.loIds,
+        performanceCriteria: model.links.pcIds,
+        slideNotes: model.slideNotes,
+        instructorNotes: model.instructorNotes,
+        images: model.images,
+        scheduled: model.scheduled
+      })
     }
     onClose?.()
-  }, [formData, slideNotes, instructorNotes, images, activeBottomTab, isEditingExisting, selectedLesson, onCreateLesson, onUpdateLesson, onClose])
+  }, [formData, slideNotes, instructorNotes, images, activeBottomTab, isEditingExisting, selectedLesson, onCreateLesson, onUpdateLesson, onClose, saveLessonEditorModel])
 
   // Get current notes array based on active tab
   const currentNotes = activeNotesTab === 'slide' ? slideNotes : instructorNotes

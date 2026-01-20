@@ -1767,6 +1767,199 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
   }, [])
 
   // --------------------------------------------
+  // PHASE F: LESSON EDITOR TRANSACTIONAL MODEL
+  // Provides complete hydration/writeback for Lesson Editor
+  // --------------------------------------------
+
+  /**
+   * Phase F1: Get complete lesson editor model for transactional editing
+   * Returns all lesson data needed for editor hydration with resolved display objects
+   * @param {string} lessonId - The lesson ID to get model for
+   * @returns {Object|null} Complete lesson editor model or null if not found
+   */
+  const getLessonEditorModel = useCallback((lessonId) => {
+    if (!lessonId) return null
+
+    const lesson = lessons.find(l => l.id === lessonId)
+    if (!lesson) return null
+
+    // Extract link IDs from lesson structure
+    const loIds = lesson.learningObjectives || []
+
+    // Extract topic IDs (both lesson topic IDs and canonical scalarTopicIds)
+    const topicIds = (lesson.topics || []).map(t => t.scalarTopicId || t.id).filter(Boolean)
+
+    // Extract subtopic IDs from all topics
+    const subtopicIds = (lesson.topics || []).flatMap(t =>
+      (t.subtopics || []).map(s => s.scalarSubtopicId || s.id)
+    ).filter(Boolean)
+
+    // Extract PC IDs
+    const pcIds = (lesson.performanceCriteria || []).map(pc => pc.id || pc).filter(Boolean)
+
+    // Resolve LO display objects from canonical
+    const resolvedLOs = loIds.map(loId => {
+      const lo = canonicalData.los[loId]
+      if (!lo) return null
+      return {
+        id: lo.id,
+        verb: lo.verb,
+        description: lo.description,
+        order: lo.order,
+        display: `${lo.order || 1}. ${lo.verb} ${lo.description}`
+      }
+    }).filter(Boolean)
+
+    // Resolve topic display objects from canonical
+    const resolvedTopics = (lesson.topics || []).map(lessonTopic => {
+      const canonicalTopic = lessonTopic.scalarTopicId
+        ? canonicalData.topics[lessonTopic.scalarTopicId]
+        : null
+      const serial = canonicalTopic
+        ? computeTopicSerial(canonicalTopic, canonicalData.los, canonicalData.topics)
+        : lessonTopic.number || 'x.?'
+      return {
+        id: lessonTopic.id,
+        scalarTopicId: lessonTopic.scalarTopicId,
+        title: lessonTopic.title,
+        serial,
+        loId: canonicalTopic?.loId || lessonTopic.loId,
+        subtopics: (lessonTopic.subtopics || []).map(lessonSubtopic => {
+          const canonicalSubtopic = lessonSubtopic.scalarSubtopicId
+            ? canonicalData.subtopics[lessonSubtopic.scalarSubtopicId]
+            : null
+          const subSerial = canonicalSubtopic
+            ? computeSubtopicSerial(canonicalSubtopic, canonicalData.topics, canonicalData.los, canonicalData.subtopics)
+            : lessonSubtopic.number || `${serial}.?`
+          return {
+            id: lessonSubtopic.id,
+            scalarSubtopicId: lessonSubtopic.scalarSubtopicId,
+            title: lessonSubtopic.title,
+            serial: subSerial
+          }
+        })
+      }
+    })
+
+    // Resolve PC display objects from canonical
+    const resolvedPCs = pcIds.map(pcId => {
+      const pc = canonicalData.performanceCriteria?.[pcId]
+      if (!pc) {
+        // Handle legacy PC format (object in array)
+        const legacyPC = (lesson.performanceCriteria || []).find(p => p.id === pcId || p === pcId)
+        if (legacyPC && typeof legacyPC === 'object') {
+          return { id: legacyPC.id, name: legacyPC.name, color: legacyPC.color }
+        }
+        return null
+      }
+      return {
+        id: pc.id,
+        name: pc.name,
+        color: pc.color,
+        order: pc.order
+      }
+    }).filter(Boolean)
+
+    canonicalLog('PHASE_F_GET_LESSON_MODEL', {
+      lessonId,
+      title: lesson.title,
+      loCount: resolvedLOs.length,
+      topicCount: resolvedTopics.length,
+      subtopicCount: subtopicIds.length,
+      pcCount: resolvedPCs.length
+    })
+
+    return {
+      // Core lesson fields
+      id: lesson.id,
+      title: lesson.title,
+      type: lesson.type || 'instructor-led',
+      duration: lesson.duration || 60,
+      startTime: lesson.startTime || '0900',
+      day: lesson.day || 1,
+      week: lesson.week || 1,
+      module: lesson.module || 1,
+      scheduled: lesson.scheduled || false,
+      saved: lesson.saved || false,
+
+      // Notes and images
+      slideNotes: lesson.slideNotes || [''],
+      instructorNotes: lesson.instructorNotes || [''],
+      images: lesson.images || [],
+
+      // Link IDs (for writeback)
+      links: {
+        loIds,
+        topicIds,
+        subtopicIds,
+        pcIds
+      },
+
+      // Resolved display objects (for UI)
+      resolved: {
+        los: resolvedLOs,
+        topics: resolvedTopics,
+        pcs: resolvedPCs
+      },
+
+      // Raw lesson topics array (for preserving structure on save)
+      rawTopics: lesson.topics || []
+    }
+  }, [lessons, canonicalData])
+
+  /**
+   * Phase F3: Save complete lesson editor model (transactional writeback)
+   * Writes all lesson data back to canonical store in one operation
+   * @param {string} lessonId - The lesson ID to update
+   * @param {Object} model - Complete lesson data including links
+   * @returns {boolean} Success status
+   */
+  const saveLessonEditorModel = useCallback((lessonId, model) => {
+    if (!lessonId || !model) return false
+
+    const lesson = lessons.find(l => l.id === lessonId)
+    if (!lesson) return false
+
+    canonicalLog('PHASE_F_SAVE_LESSON_MODEL', {
+      lessonId,
+      title: model.title,
+      type: model.type,
+      duration: model.duration,
+      loIds: model.links?.loIds,
+      topicCount: model.rawTopics?.length || 0,
+      subtopicCount: model.rawTopics?.reduce((sum, t) => sum + (t.subtopics?.length || 0), 0) || 0,
+      pcIds: model.links?.pcIds
+    })
+
+    // Build complete update object
+    const updates = {
+      title: model.title,
+      type: model.type,
+      duration: model.duration,
+      startTime: model.startTime,
+      day: model.day,
+      week: model.week,
+      module: model.module,
+      scheduled: model.scheduled,
+      // Notes and images
+      slideNotes: model.slideNotes,
+      instructorNotes: model.instructorNotes,
+      images: model.images,
+      // Links
+      learningObjectives: model.links?.loIds || [],
+      topics: model.rawTopics || [],
+      performanceCriteria: model.links?.pcIds || []
+    }
+
+    // Apply update atomically
+    setLessons(prev => prev.map(l =>
+      l.id === lessonId ? { ...l, ...updates } : l
+    ))
+
+    return true
+  }, [lessons])
+
+  // --------------------------------------------
   // SLIDE OPERATIONS (for BUILD page)
   // --------------------------------------------
 
@@ -3409,6 +3602,10 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     updateSubtopicTitle,
     updateLearningObjectiveText,
 
+    // Phase F: Lesson Editor Transactional Model
+    getLessonEditorModel,
+    saveLessonEditorModel,
+
     // Build page state
     buildSelection,
     setBuildSelection,
@@ -3460,6 +3657,8 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     editorCollapsed, courseData, setCourseData,
     // Shared update helpers
     updateLessonTitle, updateTopicTitle, updateSubtopicTitle, updateLearningObjectiveText,
+    // Phase F: Lesson Editor Transactional Model
+    getLessonEditorModel, saveLessonEditorModel,
     // Build page state and operations
     buildSelection, ensureLessonHasDefaultSlide, addSlideToLesson, duplicateSlide,
     updateSlideType, updateSlideContentBlock, updateSlideInstructorNotes,

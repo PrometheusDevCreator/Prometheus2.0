@@ -5,18 +5,18 @@
 > This is the **single source of truth** for Prometheus project status.
 > AI assistants should update this file at the end of each significant session.
 
-**Last Updated:** 2025-01-19
+**Last Updated:** 2025-01-20
 **Last Session By:** Claude Code (CC)
 
 ---
 
 ## Migration Phase Status
 
-> **PHASE 4 COMPLETE - 2025-01-19**
+> **PHASE E COMPLETE - 2025-01-19**
 >
-> **Declared Migration Phase:** M4 (Legacy Store Removed)
+> **Declared Migration Phase:** M4 + Phase E (Canonical LO Authoring Lockdown)
 >
-> **Actual Compliance:** FULL - All legacy writes removed, canonical is sole authority
+> **Actual Compliance:** FULL - DEFINE writes directly to canonical, Phase B sync removed
 
 | Flag | Expected | Actual | Compliant |
 |------|----------|--------|-----------|
@@ -33,6 +33,32 @@
 - All guarded `setScalarData` calls now skip (flag is true)
 - Build verified: SUCCESS
 - Dev server verified: HTTP 200
+
+**Phase B/C/D/E/F Changes Applied (2025-01-19 to 2025-01-20):**
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| **Phase B** | LO Rendering Fix - LessonEditor reads from canonicalData.los | COMPLETE |
+| **Phase C** | Inline Edit + Create-Then-Edit UX | COMPLETE |
+| **Phase D** | Lesson-Centric Linking + loId Propagation | COMPLETE |
+| **Phase E** | Canonical LO Authoring Lockdown | COMPLETE |
+| **Phase F** | Lesson Editor Transactional Lockdown | COMPLETE |
+
+**Phase E Details:**
+- DEFINE.jsx now writes LOs directly to `canonicalData.los` on Save
+- OutlinePlanner.jsx rewired to read from `canonicalData.los` (not courseData)
+- Phase B sync effects REMOVED (42 lines deleted from DesignContext.jsx)
+- `courseData.learningObjectives` no longer used as rendering source
+- Grep-proof: See `docs/briefs/PHASE_E_GATE_LOG.md`
+
+**Phase F Details (2025-01-20):**
+- `getLessonEditorModel(lessonId)` implemented - returns complete lesson model from canonical
+- `saveLessonEditorModel(lessonId, model)` implemented - atomic writeback of all fields
+- LessonEditorModal hydrates from canonical on open, stores originalModel for cancel
+- CANCEL restores original state, SAVE commits all fields atomically
+- Topics/subtopics persist across close/reopen cycles
+- Deletion policy: Option A (children become orphans, no cascading)
+- Gate Log: See `docs/briefs/PHASE_F_GATE_LOG.md`
 
 **Phase 3 Fixes (Previous):**
 - Performance Criteria added to canonicalData structure
@@ -155,33 +181,36 @@ UI Components read effectiveScalarData
 
 | Date | Session | Key Changes |
 |------|---------|-------------|
+| 2025-01-20 | CC | **Phase F Complete**: Lesson Editor Transactional Lockdown - getLessonEditorModel, saveLessonEditorModel, atomic save/cancel |
+| 2025-01-19 | CC | **Phase B/C/D/E Complete**: LO rendering fix, inline edit, lesson-centric linking, canonical LO authoring lockdown |
 | 2025-01-19 | CC | **Phase 4 (M4) Complete**: Legacy store removed, all writes go to canonical, effectiveScalarData derived only |
 | 2025-01-18 | CC | **Phase 3 Behavioural Fix**: SCALAR '+ Lesson' button fixed to add lesson without view switch or clear |
 | 2025-01-18 | CC | **Phase 2-3 Complete**: Canonical model alignment, PC added to canonical, all write/read paths verified |
-| 2025-01-18 | CC | **Phase 0-1 Diagnostics**: Documentation consolidation, state-map.md, mutation-map.md, migration phase determination |
-| 2025-01-16 | CC | **UI Polish**: '+' buttons for SCALAR/Lesson Editor, LESSON LIBRARY rename, tooltip adjustments |
 
 ---
 
 ## Latest Commits
 
 ```
-commit 2723a61 (feature/design-calm-wheel)
-Date: 2025-01-16
+commit 414ea15 (main)
+Date: 2025-01-19
 
-feat(UI): Add + buttons, LESSON LIBRARY rename, and tooltip adjustments
+feat(DEFINE): Phase E - Canonical LO Authoring Lockdown
 
-- SCALAR: '+' buttons next to LEARNING OBJECTIVES, LESSON TITLES, PERFORMANCE CRITERIA headers
-- SCALAR: LINKING MODE label with multi-line instructions (right-aligned)
-- LESSON EDITOR: '+' buttons for TOPIC, SUB TOPICS, PERFORMANCE CRITERIA dropdowns
-- TIMETABLE: Renamed "Unallocated" to "LESSON LIBRARY"
-- NAV HUB: Tooltip positions adjusted (DESIGN/FORMAT UP 20px, BUILD UP 50px)
-- 6 files modified
+- DEFINE writes LOs directly to canonicalData.los on Save
+- OutlinePlanner rewired to read from canonicalData.los
+- Phase B sync effects removed (42 lines deleted)
+- 4 files changed, 339 insertions(+), 51 deletions(-)
 
-commit 79ca18a
-Date: 2025-01-16
+commit a52a0e8
+Date: 2025-01-19
 
-feat(UI): Navigation Hub tooltip positioning and OVERVIEW tab improvements
+feat(LessonEditor): Phase B/C/D - LO rendering fix + inline editing + loId propagation
+
+- Phase B: LessonEditor reads LOs from canonicalData.los
+- Phase C: Inline edit with create-then-edit UX, double-click to edit
+- Phase D: Lesson-centric linking with preferredLOId parameter
+- 6 files changed, 1064 insertions(+), 32 deletions(-)
 ```
 
 ---
@@ -209,6 +238,55 @@ None currently.
 ## Session Handoff Notes
 
 *Important context for the next session:*
+
+### Phase F Complete (2025-01-20)
+
+**Lesson Editor Transactional Lockdown:**
+- `getLessonEditorModel(lessonId)` in DesignContext.jsx (Lines 1774-1908):
+  - Returns complete lesson model with core fields, links (loIds, topicIds, subtopicIds, pcIds), resolved display objects
+  - Reads from canonical data stores
+- `saveLessonEditorModel(lessonId, model)` in DesignContext.jsx (Lines 1910-1960):
+  - Atomic writeback of all fields to lessons state
+  - No partial writes, no silent field drops
+- LessonEditorModal.jsx changes:
+  - Hydrates from canonical on modal open
+  - Stores originalModel for CANCEL functionality
+  - CANCEL restores original state without writes
+  - SAVE commits all fields atomically
+
+**Tested Behaviors:**
+- F1: Hydration from canonical verified with console logs
+- F2: Title editing - CANCEL reverts, SAVE persists
+- F3: Complete writeback - all fields saved atomically
+- F4: Topic/subtopic persistence across close/reopen
+- F5: Deletion policy - Option A (no cascading deletes)
+
+**Gate Log:** See `docs/briefs/PHASE_F_GATE_LOG.md`
+
+### Phase B/C/D/E Complete (2025-01-19)
+
+**Phase B - LO Rendering Fix:**
+- LessonEditorModal now reads LOs from `canonicalData.los` instead of courseData
+- LO dropdown populated from canonical objects with verb + description
+
+**Phase C - Inline Edit + Create-Then-Edit:**
+- Double-click on Topic/Subtopic enters inline edit mode
+- '+' button creates item AND immediately enters edit mode with auto-focus
+- ENTER commits, ESC cancels
+- Cross-view reflection: SCALAR updates live when titles change
+
+**Phase D - Lesson-Centric Linking:**
+- `addTopicToLesson` now accepts `preferredLOId` parameter
+- Topics created from LessonEditor get valid `loId` from selected LO
+- Topics appear correctly numbered in SCALAR (e.g., "1.1 New Topic")
+
+**Phase E - Canonical LO Authoring Lockdown:**
+- DEFINE.jsx `handleSave` writes directly to `canonicalData.los`
+- OutlinePlanner.jsx reads from `canonicalData.los`
+- Phase B sync effects REMOVED (42 lines deleted)
+- `courseData.learningObjectives` no longer used as rendering source
+
+**Gate Logs:** See `docs/briefs/PHASE_B_GATE_LOG.md`, `PHASE_C_GATE_LOG.md`, `PHASE_D_GATE_LOG.md`, `PHASE_E_GATE_LOG.md`, `PHASE_F_GATE_LOG.md`
 
 ### Phase 3 Behavioural Fix (2025-01-18)
 
