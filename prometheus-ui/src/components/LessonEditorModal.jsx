@@ -229,6 +229,9 @@ function LessonEditorModal({
   }
 
   // Phase F: Reset/populate form when modal opens using transactional model
+  // GUARDRAIL [M5.7]: Hydration MUST use getLessonEditorModel for canonical reads.
+  // Do NOT read directly from selectedLesson props for existing lessons.
+  // The transactional model ensures we get a consistent snapshot of canonical state.
   useEffect(() => {
     if (isOpen) {
       if (selectedLesson?.id) {
@@ -346,6 +349,9 @@ function LessonEditorModal({
   }, [])
 
   // Phase F3: Handle save with complete transactional writeback
+  // GUARDRAIL [M5.7]: Save MUST use saveLessonEditorModel for canonical writes.
+  // This ensures all consumers (Scalar, Timetable, Linking Mode) react immediately.
+  // Do NOT bypass with direct state mutations.
   const handleSave = useCallback(() => {
     if (!formData.title.trim()) {
       alert('Title is required')
@@ -495,19 +501,8 @@ function LessonEditorModal({
   const canonicalTopics = Object.values(canonicalData?.topics || {})
   const canonicalSubtopics = Object.values(canonicalData?.subtopics || {})
 
-  // Find selected topic from canonical data
-  const selectedTopic = canonicalTopics.find(t =>
-    formData.topics.some(ft => ft?.id === t.id || ft === t.id)
-  ) || formData.topics[0]
-
-  // Get subtopics filtered by selected topic
-  const availableSubtopics = selectedTopic?.id
-    ? canonicalSubtopics.filter(s => s.topicId === selectedTopic.id)
-    : []
-
-  const selectedSubtopic = canonicalSubtopics.find(s =>
-    formData.subtopics.some(fs => fs?.id === s.id || fs === s.id)
-  ) || formData.subtopics[0]
+  // M5.2: Removed single-select selectedTopic/selectedSubtopic variables
+  // Now using multi-select chip lists - all linked items shown in formData.topics
 
   const selectedType = LESSON_TYPES.find(t => t.id === formData.lessonType) || LESSON_TYPES[1]
   const selectedPC = formData.performanceCriteria[0]
@@ -675,74 +670,417 @@ function LessonEditorModal({
               renderOption={(lo) => `${lo.order || 1}. ${lo.verb} ${lo.description}`}
             />
 
-            {/* Topics */}
-            <DropdownField
-              label="TOPICS"
-              value={selectedTopic
-                ? `${selectedTopic.serial || selectedTopic.number || ''} ${selectedTopic.title}`
-                : 'Select Topic'
-              }
-              valueColor={selectedTopic ? THEME.TEXT_PRIMARY : THEME.TEXT_DIM}
-              isOpen={showTopicDropdown}
-              onToggle={() => setShowTopicDropdown(!showTopicDropdown)}
-              options={canonicalTopics}
-              onSelect={(topic) => {
-                updateField('topics', [topic])
-                updateField('subtopics', []) // Clear subtopics when topic changes
-                setShowTopicDropdown(false)
-              }}
-              renderOption={(t) => `${t.serial || t.number || ''} ${t.title}`}
-              onAdd={selectedLesson?.id ? () => {
-                const newTopicId = addTopicToLesson(selectedLesson.id, 'New Topic', selectedLO?.id)
-                if (newTopicId) {
-                  // Phase C: Enter edit mode immediately after creation
-                  startEditingTopic(newTopicId, 'New Topic')
-                }
-              } : undefined}
-              // Phase C: Inline editing props
-              isEditing={!!editingTopicId}
-              editValue={editingTitle}
-              onEditChange={(e) => setEditingTitle(e.target.value)}
-              onEditKeyDown={(e) => handleEditKeyDown(e, 'topic')}
-              onEditBlur={commitTopicEdit}
-              editInputRef={editInputRef}
-              // Phase C: Double-click to edit existing topic
-              onDoubleClick={selectedTopic?.id ? () => startEditingTopic(selectedTopic.id, selectedTopic.title) : undefined}
-            />
+            {/* M5.2: Topics - Multi-select with additive linking */}
+            <div style={{ position: 'relative' }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '4px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <label style={{
+                    fontSize: '11px',
+                    color: THEME.TEXT_DIM,
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px'
+                  }}>
+                    TOPICS
+                  </label>
+                  {/* + Button for Adding Topics */}
+                  {selectedLesson?.id && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const newTopicId = addTopicToLesson(selectedLesson.id, 'New Topic', selectedLO?.id)
+                        if (newTopicId) {
+                          startEditingTopic(newTopicId, 'New Topic')
+                        }
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: THEME.AMBER,
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        padding: '0 4px',
+                        transition: 'color 0.2s ease',
+                        lineHeight: 1
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = THEME.WHITE}
+                      onMouseLeave={(e) => e.currentTarget.style.color = THEME.AMBER}
+                      title="Add new topic"
+                    >
+                      +
+                    </button>
+                  )}
+                </div>
+                <span style={{ fontSize: '10px', color: THEME.TEXT_DIM }}>
+                  {formData.topics.length} linked
+                </span>
+              </div>
 
-            {/* Sub Topics */}
-            <DropdownField
-              label="SUB TOPICS"
-              value={selectedSubtopic
-                ? `${selectedSubtopic.serial || selectedSubtopic.number || ''} ${selectedSubtopic.title}`
-                : 'Select Subtopic'
-              }
-              valueColor={selectedSubtopic ? THEME.TEXT_PRIMARY : THEME.TEXT_DIM}
-              isOpen={showSubtopicDropdown}
-              onToggle={() => setShowSubtopicDropdown(!showSubtopicDropdown)}
-              options={availableSubtopics}
-              onSelect={(subtopic) => {
-                updateField('subtopics', [subtopic])
-                setShowSubtopicDropdown(false)
-              }}
-              renderOption={(s) => `${s.serial || s.number || ''} ${s.title}`}
-              onAdd={(selectedLesson?.id && selectedTopic?.id) ? () => {
-                const newSubtopicId = addSubtopicToLessonTopic(selectedLesson.id, selectedTopic.id, 'New Subtopic')
-                if (newSubtopicId) {
-                  // Phase C: Enter edit mode immediately after creation
-                  startEditingSubtopic(newSubtopicId, 'New Subtopic')
-                }
-              } : undefined}
-              // Phase C: Inline editing props
-              isEditing={!!editingSubtopicId}
-              editValue={editingTitle}
-              onEditChange={(e) => setEditingTitle(e.target.value)}
-              onEditKeyDown={(e) => handleEditKeyDown(e, 'subtopic')}
-              onEditBlur={commitSubtopicEdit}
-              editInputRef={editInputRef}
-              // Phase C: Double-click to edit existing subtopic
-              onDoubleClick={selectedSubtopic?.id ? () => startEditingSubtopic(selectedSubtopic.id, selectedSubtopic.title) : undefined}
-            />
+              {/* Dropdown to add existing topics */}
+              <button
+                onClick={() => setShowTopicDropdown(!showTopicDropdown)}
+                style={{
+                  width: '100%',
+                  background: 'transparent',
+                  border: `1px solid ${THEME.BORDER}`,
+                  borderRadius: '4px',
+                  padding: '8px 12px',
+                  color: THEME.TEXT_DIM,
+                  fontSize: '13px',
+                  fontFamily: THEME.FONT_PRIMARY,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <span>Add existing topic...</span>
+                <span style={{ color: THEME.AMBER }}>V</span>
+              </button>
+
+              {/* Dropdown options */}
+              {showTopicDropdown && canonicalTopics.length > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  background: THEME.BG_PANEL,
+                  border: `1px solid ${THEME.BORDER}`,
+                  borderRadius: '4px',
+                  marginTop: '4px',
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  zIndex: 1000
+                }}>
+                  {canonicalTopics.map((t, idx) => (
+                    <div
+                      key={t.id || idx}
+                      onClick={() => {
+                        // M5.2: Append topic (with dedup) instead of replacing
+                        const topicId = t.scalarTopicId || t.id
+                        const alreadyLinked = formData.topics.some(
+                          ft => (ft.scalarTopicId || ft.id) === topicId
+                        )
+                        if (!alreadyLinked) {
+                          // Create a topic entry that matches lesson topic structure
+                          const newTopic = {
+                            id: `topic-linked-${Date.now()}`,
+                            scalarTopicId: t.id,
+                            title: t.title,
+                            number: t.serial || `x.${formData.topics.length + 1}`,
+                            loId: t.loId,
+                            subtopics: []
+                          }
+                          updateField('topics', [...formData.topics, newTopic])
+                        }
+                        setShowTopicDropdown(false)
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        color: THEME.TEXT_PRIMARY,
+                        borderBottom: idx < canonicalTopics.length - 1 ? `1px solid ${THEME.BORDER}` : 'none'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = THEME.BG_DARK}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      {t.serial || ''} {t.title}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* M5.2: Linked Topics Chip List */}
+              {formData.topics.length > 0 && (
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '6px',
+                  marginTop: '8px'
+                }}>
+                  {formData.topics.map((topic, idx) => {
+                    // Resolve display info from canonical if available
+                    const canonicalTopic = canonicalTopics.find(ct =>
+                      ct.id === topic.scalarTopicId || ct.id === topic.id
+                    )
+                    const displaySerial = canonicalTopic?.serial || topic.number || `${idx + 1}`
+                    const displayTitle = canonicalTopic?.title || topic.title || 'Untitled'
+
+                    return (
+                      <div
+                        key={topic.id || idx}
+                        onDoubleClick={() => startEditingTopic(topic.id, topic.title)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          background: THEME.BG_DARK,
+                          border: `1px solid ${THEME.BORDER}`,
+                          borderRadius: '4px',
+                          padding: '4px 8px',
+                          fontSize: '12px'
+                        }}
+                      >
+                        <span style={{ color: THEME.GREEN_BRIGHT }}>{displaySerial}</span>
+                        <span style={{ color: THEME.TEXT_PRIMARY }}>{displayTitle}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            // M5.2: Remove this topic from the list
+                            updateField('topics', formData.topics.filter((_, i) => i !== idx))
+                          }}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: THEME.TEXT_DIM,
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            padding: '0 2px',
+                            lineHeight: 1
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = THEME.AMBER}
+                          onMouseLeave={(e) => e.currentTarget.style.color = THEME.TEXT_DIM}
+                          title="Remove topic"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* M5.2: Sub Topics - Multi-select with additive linking */}
+            <div style={{ position: 'relative' }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '4px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <label style={{
+                    fontSize: '11px',
+                    color: THEME.TEXT_DIM,
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px'
+                  }}>
+                    SUB TOPICS
+                  </label>
+                  {/* + Button for Adding Subtopics (requires a topic to be linked) */}
+                  {selectedLesson?.id && formData.topics.length > 0 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        // Use first topic as parent for new subtopic
+                        const parentTopic = formData.topics[0]
+                        if (parentTopic?.id) {
+                          const newSubtopicId = addSubtopicToLessonTopic(selectedLesson.id, parentTopic.id, 'New Subtopic')
+                          if (newSubtopicId) {
+                            startEditingSubtopic(newSubtopicId, 'New Subtopic')
+                          }
+                        }
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: THEME.AMBER,
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        padding: '0 4px',
+                        transition: 'color 0.2s ease',
+                        lineHeight: 1
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = THEME.WHITE}
+                      onMouseLeave={(e) => e.currentTarget.style.color = THEME.AMBER}
+                      title="Add new subtopic"
+                    >
+                      +
+                    </button>
+                  )}
+                </div>
+                <span style={{ fontSize: '10px', color: THEME.TEXT_DIM }}>
+                  {formData.topics.reduce((sum, t) => sum + (t.subtopics?.length || 0), 0)} linked
+                </span>
+              </div>
+
+              {/* Dropdown to add existing subtopics */}
+              <button
+                onClick={() => setShowSubtopicDropdown(!showSubtopicDropdown)}
+                disabled={formData.topics.length === 0}
+                style={{
+                  width: '100%',
+                  background: 'transparent',
+                  border: `1px solid ${THEME.BORDER}`,
+                  borderRadius: '4px',
+                  padding: '8px 12px',
+                  color: formData.topics.length === 0 ? THEME.TEXT_MUTED : THEME.TEXT_DIM,
+                  fontSize: '13px',
+                  fontFamily: THEME.FONT_PRIMARY,
+                  textAlign: 'left',
+                  cursor: formData.topics.length === 0 ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  opacity: formData.topics.length === 0 ? 0.5 : 1
+                }}
+              >
+                <span>{formData.topics.length === 0 ? 'Link a topic first' : 'Add existing subtopic...'}</span>
+                <span style={{ color: THEME.AMBER }}>V</span>
+              </button>
+
+              {/* Dropdown options - show subtopics for all linked topics */}
+              {showSubtopicDropdown && formData.topics.length > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  background: THEME.BG_PANEL,
+                  border: `1px solid ${THEME.BORDER}`,
+                  borderRadius: '4px',
+                  marginTop: '4px',
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  zIndex: 1000
+                }}>
+                  {/* Get all subtopics for linked topics */}
+                  {(() => {
+                    const linkedTopicIds = formData.topics.map(t => t.scalarTopicId || t.id)
+                    const relevantSubtopics = canonicalSubtopics.filter(s =>
+                      linkedTopicIds.includes(s.topicId)
+                    )
+                    if (relevantSubtopics.length === 0) {
+                      return (
+                        <div style={{ padding: '8px 12px', color: THEME.TEXT_DIM, fontSize: '13px' }}>
+                          No subtopics available
+                        </div>
+                      )
+                    }
+                    return relevantSubtopics.map((s, idx) => (
+                      <div
+                        key={s.id || idx}
+                        onClick={() => {
+                          // M5.2: Add subtopic to its parent topic (with dedup)
+                          const parentTopicIdx = formData.topics.findIndex(t =>
+                            (t.scalarTopicId || t.id) === s.topicId
+                          )
+                          if (parentTopicIdx >= 0) {
+                            const parentTopic = formData.topics[parentTopicIdx]
+                            const alreadyLinked = (parentTopic.subtopics || []).some(
+                              st => (st.scalarSubtopicId || st.id) === s.id
+                            )
+                            if (!alreadyLinked) {
+                              const newSubtopic = {
+                                id: `subtopic-linked-${Date.now()}`,
+                                scalarSubtopicId: s.id,
+                                title: s.title,
+                                number: s.serial || `${parentTopic.number}.${(parentTopic.subtopics?.length || 0) + 1}`
+                              }
+                              const updatedTopics = [...formData.topics]
+                              updatedTopics[parentTopicIdx] = {
+                                ...parentTopic,
+                                subtopics: [...(parentTopic.subtopics || []), newSubtopic]
+                              }
+                              updateField('topics', updatedTopics)
+                            }
+                          }
+                          setShowSubtopicDropdown(false)
+                        }}
+                        style={{
+                          padding: '8px 12px',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          color: THEME.TEXT_PRIMARY,
+                          borderBottom: idx < relevantSubtopics.length - 1 ? `1px solid ${THEME.BORDER}` : 'none'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = THEME.BG_DARK}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        {s.serial || ''} {s.title}
+                      </div>
+                    ))
+                  })()}
+                </div>
+              )}
+
+              {/* M5.2: Linked Subtopics Chip List (grouped by parent topic) */}
+              {formData.topics.some(t => t.subtopics?.length > 0) && (
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '6px',
+                  marginTop: '8px'
+                }}>
+                  {formData.topics.flatMap((topic, topicIdx) =>
+                    (topic.subtopics || []).map((subtopic, subIdx) => {
+                      // Resolve display info from canonical if available
+                      const canonicalSubtopic = canonicalSubtopics.find(cs =>
+                        cs.id === subtopic.scalarSubtopicId || cs.id === subtopic.id
+                      )
+                      const displaySerial = canonicalSubtopic?.serial || subtopic.number || `${topic.number}.${subIdx + 1}`
+                      const displayTitle = canonicalSubtopic?.title || subtopic.title || 'Untitled'
+
+                      return (
+                        <div
+                          key={subtopic.id || `${topicIdx}-${subIdx}`}
+                          onDoubleClick={() => startEditingSubtopic(subtopic.id, subtopic.title)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            background: THEME.BG_DARK,
+                            border: `1px solid ${THEME.BORDER}`,
+                            borderRadius: '4px',
+                            padding: '4px 8px',
+                            fontSize: '12px'
+                          }}
+                        >
+                          <span style={{ color: THEME.GREEN_BRIGHT }}>{displaySerial}</span>
+                          <span style={{ color: THEME.TEXT_PRIMARY }}>{displayTitle}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              // M5.2: Remove this subtopic from its parent topic
+                              const updatedTopics = [...formData.topics]
+                              updatedTopics[topicIdx] = {
+                                ...topic,
+                                subtopics: (topic.subtopics || []).filter((_, i) => i !== subIdx)
+                              }
+                              updateField('topics', updatedTopics)
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: THEME.TEXT_DIM,
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              padding: '0 2px',
+                              lineHeight: 1
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = THEME.AMBER}
+                            onMouseLeave={(e) => e.currentTarget.style.color = THEME.TEXT_DIM}
+                            title="Remove subtopic"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Lesson Type + Times Row */}
             <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end' }}>

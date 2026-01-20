@@ -48,7 +48,8 @@ function LessonBlock({
     saveToLibrary,
     duplicateLesson,
     deleteLesson,
-    LESSON_TYPES
+    LESSON_TYPES,
+    lessons  // M5.5: For reactivity assertion
   } = useDesign()
 
   // Refs for drag operations
@@ -75,6 +76,41 @@ function LessonBlock({
     setEditStartTime(lesson.startTime || '')
     setEditDuration(lesson.duration.toString())
   }, [lesson.title, lesson.startTime, lesson.duration])
+
+  // M5.5: DEV ASSERTION - Verify timetable reactivity
+  // This checks that the lesson prop matches the canonical lesson in context
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === undefined) {
+      const canonicalLesson = lessons.find(l => l.id === lesson.id)
+      if (canonicalLesson) {
+        const mismatches = []
+
+        // Check time-related fields that affect position/size
+        if (canonicalLesson.startTime !== lesson.startTime) {
+          mismatches.push(`startTime: prop=${lesson.startTime} vs canonical=${canonicalLesson.startTime}`)
+        }
+        if (canonicalLesson.duration !== lesson.duration) {
+          mismatches.push(`duration: prop=${lesson.duration} vs canonical=${canonicalLesson.duration}`)
+        }
+        if (canonicalLesson.type !== lesson.type) {
+          mismatches.push(`type: prop=${lesson.type} vs canonical=${canonicalLesson.type}`)
+        }
+        if (canonicalLesson.title !== lesson.title) {
+          mismatches.push(`title: prop="${lesson.title}" vs canonical="${canonicalLesson.title}"`)
+        }
+
+        if (mismatches.length > 0) {
+          console.warn('[M5_TIMETABLE_REACTIVITY_MISMATCH]', {
+            lessonId: lesson.id,
+            lessonTitle: lesson.title,
+            mismatches,
+            propLesson: { startTime: lesson.startTime, duration: lesson.duration, type: lesson.type, title: lesson.title },
+            canonicalLesson: { startTime: canonicalLesson.startTime, duration: canonicalLesson.duration, type: canonicalLesson.type, title: canonicalLesson.title }
+          })
+        }
+      }
+    }
+  }, [lesson, lessons])
 
   // Focus title input when editing starts
   useEffect(() => {

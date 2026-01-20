@@ -1776,6 +1776,10 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
    * Returns all lesson data needed for editor hydration with resolved display objects
    * @param {string} lessonId - The lesson ID to get model for
    * @returns {Object|null} Complete lesson editor model or null if not found
+   *
+   * GUARDRAIL [M5.7]: This is the ONLY read path for lesson editor hydration.
+   * Do NOT read directly from props or legacy courseData for editor fields.
+   * All links must be hydrated from canonical via this function.
    */
   const getLessonEditorModel = useCallback((lessonId) => {
     if (!lessonId) return null
@@ -1913,6 +1917,10 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
    * @param {string} lessonId - The lesson ID to update
    * @param {Object} model - Complete lesson data including links
    * @returns {boolean} Success status
+   *
+   * GUARDRAIL [M5.7]: This is the ONLY write path for lesson editor saves.
+   * Do NOT bypass this function with direct setLessons calls from modal.
+   * All link changes (topics, subtopics, LOs, PCs) must flow through here.
    */
   const saveLessonEditorModel = useCallback((lessonId, model) => {
     if (!lessonId || !model) return false
@@ -2225,6 +2233,59 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
         }
       })
     }
+  }, [])
+
+  // M5.6: Expand all SCALAR nodes (LOs and topics)
+  // GUARDRAIL [M5.7]: Expand state persists in canonicalData, not local UI state.
+  // ScalarDock derives expandedLOs/expandedTopics from canonical via useMemo.
+  const expandAllScalar = useCallback(() => {
+    setCanonicalData(prev => {
+      const newLos = { ...prev.los }
+      const newTopics = { ...prev.topics }
+
+      // Expand all LOs
+      Object.keys(newLos).forEach(loId => {
+        newLos[loId] = { ...newLos[loId], expanded: true }
+      })
+
+      // Expand all topics
+      Object.keys(newTopics).forEach(topicId => {
+        newTopics[topicId] = { ...newTopics[topicId], expanded: true }
+      })
+
+      console.log('[M5_SCALAR_EXPAND_ALL]', {
+        loCount: Object.keys(newLos).length,
+        topicCount: Object.keys(newTopics).length
+      })
+
+      return { ...prev, los: newLos, topics: newTopics }
+    })
+  }, [])
+
+  // M5.6: Collapse all SCALAR nodes (LOs and topics)
+  // GUARDRAIL [M5.7]: Collapse state persists in canonicalData, not local UI state.
+  const collapseAllScalar = useCallback(() => {
+    setCanonicalData(prev => {
+      const newLos = { ...prev.los }
+      const newTopics = { ...prev.topics }
+
+      // Collapse all LOs
+      Object.keys(newLos).forEach(loId => {
+        newLos[loId] = { ...newLos[loId], expanded: false }
+      })
+
+      // Collapse all topics
+      Object.keys(newTopics).forEach(topicId => {
+        newTopics[topicId] = { ...newTopics[topicId], expanded: false }
+      })
+
+      console.log('[M5_SCALAR_COLLAPSE_ALL]', {
+        loCount: Object.keys(newLos).length,
+        topicCount: Object.keys(newTopics).length
+      })
+
+      return { ...prev, los: newLos, topics: newTopics }
+    })
   }, [])
 
   // Add new LO to a module
@@ -3511,6 +3572,8 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     setScalarData,
     selectedScalarItem,
     toggleScalarExpand,
+    expandAllScalar,      // M5.6
+    collapseAllScalar,    // M5.6
     addLearningObjective,
     addTopic,
     addSubtopic,
@@ -3639,7 +3702,7 @@ export function DesignProvider({ children, courseData, setCourseData, timetableD
     addTopicToLesson, removeTopicFromLesson, updateLessonTopic,
     addSubtopicToLessonTopic, removeSubtopicFromLessonTopic, updateLessonSubtopic,
     moveLesson, resizeLesson, checkCollision, findAvailableSlot,
-    effectiveScalarData, selectedScalarItem, toggleScalarExpand,
+    effectiveScalarData, selectedScalarItem, toggleScalarExpand, expandAllScalar, collapseAllScalar,
     addLearningObjective, addTopic, addSubtopic, updateScalarNode, deleteScalarNode,
     reorderTopic, reorderSubtopic, reorderLO, createLessonFromScalar,
     // Canonical data store

@@ -903,7 +903,10 @@ function ScalarDock({ width = '100%', height = '100%', onAddLesson, onAddPC }) {
     currentModule,
     scheduledLessons = [],
     unscheduledLessons = [],
-    createLessonFromScalar  // Add lesson without view switch
+    createLessonFromScalar,  // Add lesson without view switch
+    toggleScalarExpand,      // M5.6: Individual expand/collapse
+    expandAllScalar,         // M5.6
+    collapseAllScalar        // M5.6
   } = useDesign()
 
   // UI State
@@ -913,6 +916,43 @@ function ScalarDock({ width = '100%', height = '100%', onAddLesson, onAddPC }) {
     linkedElements: new Set()
   })
 
+  // M5.3: Helper to hydrate linkedElements from lesson's canonical links
+  const hydrateLinkingModeFromLesson = useCallback((lesson) => {
+    const linked = new Set()
+
+    // Add linked LOs
+    ;(lesson.learningObjectives || []).forEach(loId => {
+      linked.add(`lo:${loId}`)
+    })
+
+    // Add linked topics and their subtopics
+    ;(lesson.topics || []).forEach(topic => {
+      const topicId = topic.scalarTopicId || topic.id
+      if (topicId) linked.add(`topic:${topicId}`)
+
+      ;(topic.subtopics || []).forEach(subtopic => {
+        const subtopicId = subtopic.scalarSubtopicId || subtopic.id
+        if (subtopicId) linked.add(`subtopic:${subtopicId}`)
+      })
+    })
+
+    // Add linked PCs
+    ;(lesson.performanceCriteria || []).forEach(pc => {
+      const pcId = typeof pc === 'object' ? pc.id : pc
+      if (pcId) linked.add(`pc:${pcId}`)
+    })
+
+    // M5.3 DEV ASSERTION: Log hydration for debugging
+    console.log('[M5_LINKING_HYDRATION]', {
+      lessonId: lesson.id,
+      lessonTitle: lesson.title,
+      linkedCount: linked.size,
+      linkedElements: Array.from(linked)
+    })
+
+    return linked
+  }, [])
+
   const [deleteWarning, setDeleteWarning] = useState({
     active: false,
     elementType: null,
@@ -920,11 +960,34 @@ function ScalarDock({ width = '100%', height = '100%', onAddLesson, onAddPC }) {
     elementTitle: null
   })
 
-  const [expandedLOs, setExpandedLOs] = useState(new Set())
-  const [expandedTopics, setExpandedTopics] = useState(new Set())
+  // M5.6: Derive expanded state from canonicalData instead of local state
+  // This ensures expand/collapse persists in canonical and syncs with expandAllScalar/collapseAllScalar
+  // GUARDRAIL [M5.7]: Do NOT replace with useState - expand state MUST come from canonical.
+  const expandedLOs = useMemo(() => {
+    const expanded = new Set()
+    if (canonicalData?.los) {
+      Object.entries(canonicalData.los).forEach(([loId, lo]) => {
+        if (lo.expanded) expanded.add(loId)
+      })
+    }
+    return expanded
+  }, [canonicalData?.los])
+
+  const expandedTopics = useMemo(() => {
+    const expanded = new Set()
+    if (canonicalData?.topics) {
+      Object.entries(canonicalData.topics).forEach(([topicId, topic]) => {
+        if (topic.expanded) expanded.add(topicId)
+      })
+    }
+    return expanded
+  }, [canonicalData?.topics])
+
   const [activeLOId, setActiveLOId] = useState(null)
   const [selectedColumn, setSelectedColumn] = useState(null) // 'lo' | 'lesson' | 'pc'
   const [addLOHovered, setAddLOHovered] = useState(false)
+  const [expandAllHovered, setExpandAllHovered] = useState(false)    // M5.6
+  const [collapseAllHovered, setCollapseAllHovered] = useState(false) // M5.6
 
   // Data
   const module = useMemo(() => {
@@ -978,30 +1041,14 @@ function ScalarDock({ width = '100%', height = '100%', onAddLesson, onAddPC }) {
     }
   }, [selection])
 
-  // Toggle handlers
+  // Toggle handlers - M5.6: Updated to use canonical toggleScalarExpand
   const toggleLOExpand = useCallback((loId) => {
-    setExpandedLOs(prev => {
-      const next = new Set(prev)
-      if (next.has(loId)) {
-        next.delete(loId)
-      } else {
-        next.add(loId)
-      }
-      return next
-    })
-  }, [])
+    toggleScalarExpand('lo', loId)
+  }, [toggleScalarExpand])
 
   const toggleTopicExpand = useCallback((topicId) => {
-    setExpandedTopics(prev => {
-      const next = new Set(prev)
-      if (next.has(topicId)) {
-        next.delete(topicId)
-      } else {
-        next.add(topicId)
-      }
-      return next
-    })
-  }, [])
+    toggleScalarExpand('topic', topicId)
+  }, [toggleScalarExpand])
 
   // Keyboard handler
   useEffect(() => {
@@ -1086,37 +1133,44 @@ function ScalarDock({ width = '100%', height = '100%', onAddLesson, onAddPC }) {
     deleteScalarNode(type, id)
   }, [deleteScalarNode])
 
+  // M5.6: Updated to use canonical expand via toggleScalarExpand
   const handleAddLO = useCallback(() => {
     const newLoId = addLearningObjective(module?.id)
     // Auto-expand and select the new LO
     if (newLoId) {
-      setExpandedLOs(prev => new Set([...prev, newLoId]))
+      // Expand via canonical if not already expanded
+      if (!expandedLOs.has(newLoId)) {
+        toggleScalarExpand('lo', newLoId)
+      }
       select('lo', newLoId)
     }
-  }, [addLearningObjective, module, select])
+  }, [addLearningObjective, module, select, expandedLOs, toggleScalarExpand])
 
   const handleAddTopic = useCallback((loId) => {
     const newTopicId = addTopic(loId)
     // Auto-expand parent LO and select the new topic
-    if (loId) {
-      setExpandedLOs(prev => new Set([...prev, loId]))
+    if (loId && !expandedLOs.has(loId)) {
+      toggleScalarExpand('lo', loId)
     }
     if (newTopicId) {
-      setExpandedTopics(prev => new Set([...prev, newTopicId]))
+      // Expand new topic to show subtopic area
+      if (!expandedTopics.has(newTopicId)) {
+        toggleScalarExpand('topic', newTopicId)
+      }
       select('topic', newTopicId)
     }
-  }, [addTopic, select])
+  }, [addTopic, select, expandedLOs, expandedTopics, toggleScalarExpand])
 
   const handleAddSubtopic = useCallback((topicId) => {
     const newSubtopicId = addSubtopic(topicId)
     // Auto-expand parent topic and select the new subtopic
-    if (topicId) {
-      setExpandedTopics(prev => new Set([...prev, topicId]))
+    if (topicId && !expandedTopics.has(topicId)) {
+      toggleScalarExpand('topic', topicId)
     }
     if (newSubtopicId) {
       select('subtopic', newSubtopicId)
     }
-  }, [addSubtopic, select])
+  }, [addSubtopic, select, expandedTopics, toggleScalarExpand])
 
   // Toggle link handler (double-click enters linking mode)
   const handleToggleLink = useCallback((type, id) => {
@@ -1339,6 +1393,44 @@ function ScalarDock({ width = '100%', height = '100%', onAddLesson, onAddPC }) {
           >
             +
           </button>
+          {/* M5.6: Expand All / Collapse All buttons */}
+          <button
+            onClick={expandAllScalar}
+            onMouseEnter={() => setExpandAllHovered(true)}
+            onMouseLeave={() => setExpandAllHovered(false)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: expandAllHovered ? THEME.WHITE : THEME.TEXT_DIM,
+              cursor: 'pointer',
+              fontSize: '1.1vh',
+              fontFamily: THEME.FONT_PRIMARY,
+              padding: '0 0.3vw',
+              transition: 'color 0.2s ease',
+              marginLeft: '0.5vw'
+            }}
+            title="Expand All"
+          >
+            ▼ ALL
+          </button>
+          <button
+            onClick={collapseAllScalar}
+            onMouseEnter={() => setCollapseAllHovered(true)}
+            onMouseLeave={() => setCollapseAllHovered(false)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: collapseAllHovered ? THEME.WHITE : THEME.TEXT_DIM,
+              cursor: 'pointer',
+              fontSize: '1.1vh',
+              fontFamily: THEME.FONT_PRIMARY,
+              padding: '0 0.3vw',
+              transition: 'color 0.2s ease'
+            }}
+            title="Collapse All"
+          >
+            ▲ ALL
+          </button>
           {/* Selection underline */}
           {selectedColumn === 'lo' && (
             <div
@@ -1554,10 +1646,12 @@ function ScalarDock({ width = '100%', height = '100%', onAddLesson, onAddPC }) {
                     if (linkingMode.active && linkingMode.sourceElement?.type === 'lesson' && linkingMode.sourceElement?.id === lesson.id) {
                       setLinkingMode({ active: false, sourceElement: null, linkedElements: new Set() })
                     } else {
+                      // M5.3: Hydrate linkedElements from lesson's canonical links on entry
+                      const hydratedLinks = hydrateLinkingModeFromLesson(lesson)
                       setLinkingMode({
                         active: true,
                         sourceElement: { type: 'lesson', id: lesson.id },
-                        linkedElements: new Set()
+                        linkedElements: hydratedLinks
                       })
                     }
                   }}

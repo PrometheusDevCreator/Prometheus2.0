@@ -17,7 +17,7 @@
  * - Content area (right): Contains lesson blocks
  */
 
-import React, { useMemo, useCallback, useState, useRef } from 'react'
+import React, { useMemo, useCallback, useState, useRef, useEffect } from 'react'
 import { THEME } from '../../constants/theme'
 import { useDesign } from '../../contexts/DesignContext'
 import LessonBlock from './LessonBlock'
@@ -67,6 +67,27 @@ function TimetableGrid({ startHour = 8, endHour = 17, onSchedulePending, onOpenL
       lesson => lesson.day === day && lesson.week === currentWeek
     )
   }, [scheduledLessons, currentWeek])
+
+  // M5.5: Debug log for timetable reactivity
+  // Logs when scheduled lessons change (for verifying time/type updates propagate)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === undefined) {
+      if (scheduledLessons.length > 0) {
+        console.log('[M5_TIMETABLE_REACTIVITY]', {
+          scheduledCount: scheduledLessons.length,
+          lessons: scheduledLessons.map(l => ({
+            id: l.id,
+            title: l.title,
+            startTime: l.startTime,
+            duration: l.duration,
+            type: l.type,
+            day: l.day,
+            week: l.week
+          }))
+        })
+      }
+    }
+  }, [scheduledLessons])
 
   // Convert lesson start time to pixel offset
   const getBlockLeft = (lesson) => {
